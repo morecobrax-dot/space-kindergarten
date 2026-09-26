@@ -62,7 +62,7 @@ function fast(c){
   Object.assign(c.TIMING, {
     travel: 0, travelFirst: 0, travelReduced: 0, travelSettle: 0,
     praiseMin: 0, betweenRounds: 0, celebrateGuard: 0, starEvery: 0, starFirst: 0,
-    reprompt: 1e9, captionBase: 0, captionPerChar: 0,
+    reprompt: 1e9, idleHint: 1e9, captionBase: 0, captionPerChar: 0,
     speechStartGrace: 5, speechSafetyBase: 40, speechSafetyPerChar: 0
   });
   return c;
@@ -72,17 +72,19 @@ function fast(c){
    line on the next tick — enough for the app to believe it was heard. */
 function fakeSpeech(){
   const said = [];
+  const utterances = [];
   let cancels = 0;
   function Utterance(text){ this.text = text; }
   const synth = {
     paused: false,
-    speak(u){ said.push(u.text); setTimeout(() => { if(u.onstart) u.onstart(); if(u.onend) u.onend(); }, 0); },
+    speak(u){ said.push(u.text); utterances.push(u); setTimeout(() => { if(u.onstart) u.onstart(); if(u.onend) u.onend(); }, 0); },
     cancel(){ cancels++; },
     resume(){},
-    getVoices(){ return [{ name: 'Test', lang: 'en-US', localService: true }]; }
+    getVoices(){ return [{ name: 'Test', lang: 'en-US', voiceURI: 'test', localService: true }]; }
   };
-  return { said, cancels: () => cancels, extras: { speechSynthesis: synth, SpeechSynthesisUtterance: Utterance } };
+  return { said, utterances, cancels: () => cancels, extras: { speechSynthesis: synth, SpeechSynthesisUtterance: Utterance } };
 }
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
 
 /* Plays the current mission to the end: `wrongFirst` rounds are answered
    wrongly until the answer is shown, every other round correctly. */
@@ -1495,6 +1497,10 @@ function testCosmeticIsolation(){
     .forEach(w => T('the Dock never touches ' + w, dockCode.indexOf(w) === -1));
   T('the Dock writes only through the two saves it owns',
     (dockCode.match(/save[A-Z][a-z]+\(/g) || []).every(s => s === 'saveStars(' || s === 'saveRocket('));
+  /* A helper that saves is still a save: remembering "the Dock welcome was
+     said" in the profile was nearly how the Dock gained a third key. */
+  ['setStoryFlag', 'ensureProfile', 'KEYS.profile', 'journey.profile =']
+    .forEach(w => T('the Dock never writes the profile, even through ' + w, dockCode.indexOf(w) === -1));
   const missionCode = ['choose', 'finishMission', 'nextStep', 'askRound', 'enterMission']
     .map(n => fnBody(src, n)).join('\n');
   T('and the mission never touches the rocket', missionCode.indexOf('saveRocket') === -1 && missionCode.indexOf('KEYS.rocket') === -1);
@@ -1603,7 +1609,14 @@ async function testAudio(){
     T('and its praise', !!c.voiceCue('found.' + a.target + '.0'));
     T('and its "here it is"', !!c.voiceCue('show.' + a.target));
   });
-  T('every destination story line exists', Object.values(c.DESTINATIONS.moon.story).every(id => !!c.voiceCue(id)));
+  T('every destination story line exists', Object.values(c.DESTINATIONS.moon.story).every(id => c.lineExists(id)));
+  const families = [...new Set(Object.keys(c.VOICE_CUES).map(id => (id.match(/^(.*)\.\d+$/) || [])[1]).filter(Boolean))];
+  T('every line family is reachable, from .1 up with no gaps',
+    families.length > 0 && families.every(f => c.familySize(f) >= 1 &&
+      Object.keys(c.VOICE_CUES).filter(id => id.indexOf(f + '.') === 0 && /\.\d+$/.test(id)).length === c.familySize(f)),
+    families.join(','));
+  T('a family wraps, so any count picks a real line',
+    families.every(f => [0, 1, 2, 3, 7, 100].every(n => !!c.voiceCue(c.familyLine(f, n)))));
   T('star counts from 0 to 50 all have lines', Array.from({ length: 51 }, (_, n) => n).every(n => c.voiceCue('stars.have.' + n)));
   T('every price shortfall has a line', [1, 2, 3, 4, 5, 6].every(n => c.voiceCue('dock.needMore.' + n)));
   T('every paint has its name spoken', c.COSMETICS.every(x => c.voiceCue('paint.' + x.id)));
@@ -1621,6 +1634,62 @@ async function testAudio(){
   sub('the device voice is labelled as the temporary stand-in it is');
   T('the grown-ups area says so', /temporary stand-in for recorded narration/.test(src));
   T('the audio section says so', /TEMPORARY stand-in/.test(src));
+  T('and it names the voice in use, the only way to see it on a device', /'Voice in use: '/.test(src));
+
+  sub('the most natural voice the device has is chosen, never a novelty one');
+  /* Found on a real iPad: "robotic". The app took the first English voice
+     listed, and pitch-shifted it. These are voice ids as iPadOS reports them. */
+  const V = (name, lang, uri) => ({ name, lang, voiceURI: uri, localService: true, default: false });
+  const albert = V('Albert', 'en-US', 'com.apple.speech.synthesis.voice.Albert');
+  const bubbles = V('Bubbles', 'en-US', 'com.apple.speech.synthesis.voice.Bubbles');
+  const rocko = V('Rocko', 'en-US', 'com.apple.eloquence.en-US.Rocko');
+  const samantha = V('Samantha', 'en-US', 'com.apple.voice.compact.en-US.Samantha');
+  const daniel = V('Daniel (Enhanced)', 'en-GB', 'com.apple.voice.enhanced.en-GB.Daniel');
+  const thomas = V('Thomas', 'fr-FR', 'com.apple.voice.compact.fr-FR.Thomas');
+  const ava = V('Ava (Premium)', 'en-US', 'com.apple.voice.premium.en-US.Ava');
+  const listed = [albert, bubbles, rocko, samantha, daniel, thomas, ava];
+  T('a Premium US voice wins when installed', c.bestVoice(listed) === ava);
+  T('an Enhanced voice beats a compact one', c.bestVoice([samantha, V('Samantha (Enhanced)', 'en-US', 'com.apple.voice.enhanced.en-US.Samantha')]).voiceURI.indexOf('enhanced') !== -1);
+  T('a US voice beats a British Enhanced one: US English is the intended locale',
+    c.bestVoice([albert, rocko, daniel, samantha]) === samantha);
+  T('the order the device lists voices in does not matter',
+    c.bestVoice(listed.slice().reverse()) === ava && c.bestVoice([ava].concat(listed)) === ava);
+  T('an Eloquence voice ranks below a compact one', c.bestVoice([rocko, samantha]) === samantha);
+  T('a novelty voice is never chosen while any other English voice exists', c.bestVoice([albert, bubbles, rocko]) === rocko);
+  T('another language is never chosen at all', c.bestVoice([thomas]) === null);
+  T('the voice is not pitch-shifted, which made it sound robotic on a real iPad', c.SPEECH_STYLE.pitch === 1);
+  T('it speaks US English', c.SPEECH_STYLE.lang === 'en-US');
+  {
+    const sp0 = fakeSpeech();
+    const v0 = H.loadApp({ windowExtras: sp0.extras });
+    fast(v0.ctx);
+    await v0.ctx.Voice.say('guide.welcome');
+    const u0 = sp0.utterances[0];
+    T('the speech engine is actually given that style and voice',
+      !!u0 && u0.pitch === 1 && u0.rate === v0.ctx.SPEECH_STYLE.rate && u0.voice && u0.voice.name === 'Test');
+  }
+  {
+    /* The advice in the grown-ups area is to download a Premium voice. One
+       downloaded while the app is open must not wait for a reload. */
+    const installed = [samantha];
+    const spoken = [];
+    let changed = null;
+    const synth = {
+      paused: false,
+      speak(u){ spoken.push(u); setTimeout(() => { if(u.onstart) u.onstart(); if(u.onend) u.onend(); }, 0); },
+      cancel(){}, resume(){},
+      getVoices(){ return installed.slice(); },
+      addEventListener(type, fn){ if(type === 'voiceschanged') changed = fn; }
+    };
+    const v1 = H.loadApp({ windowExtras: { speechSynthesis: synth, SpeechSynthesisUtterance: function(t){ this.text = t; } } });
+    fast(v1.ctx);
+    await v1.ctx.Voice.say('guide.welcome');
+    installed.push(ava);
+    if(changed) changed();
+    await v1.ctx.Voice.say('mission.howTo');
+    T('a better voice installed while the app is open is used from the next line',
+      spoken.length === 2 && spoken[0].voice === samantha && spoken[1].voice === ava);
+  }
 
   sub('turning the voice off is honoured');
   const sp = fakeSpeech();
@@ -1760,9 +1829,13 @@ async function testChildJourney(){
   const saidBefore = sp.said.length;
   await playMission(c, { wrongRounds: [2] });
   const lines = sp.said.slice(saidBefore);
-  T('a wrong answer hears "Almost! Listen again."', lines.some(s => /Almost! Listen again\./.test(s)));
+  T('a wrong answer hears "…Listen again."', lines.some(s => /Listen again\./.test(s)));
   T('a second wrong answer is shown the answer', lines.some(s => /Here it is!/.test(s)));
-  T('every correct answer names the letter found', lines.filter(s => /That's the letter/.test(s)).length === c.MISSIONS['moon-1'].activities.length);
+  const praiseSet = new Set();
+  c.MISSIONS['moon-1'].activities.forEach(a => {
+    for(let k = 0; k < c.LETTER_LINES.found.length; k++) praiseSet.add(c.voiceCue('found.' + a.target + '.' + k).speak);
+  });
+  T('every correct answer is praised, by name', lines.filter(s => praiseSet.has(s)).length === c.MISSIONS['moon-1'].activities.length);
   T('the mission ends in the celebration', c.currentScene === 'celebrate');
   T('with the beacon relit', lines.some(s => /beacon is shining again/.test(s)));
   T('and the stars announced', lines.some(s => /You found 3 stars!/.test(s)));
@@ -1823,8 +1896,9 @@ async function testChildJourney(){
   const third = H.loadApp({ sharedStorage: shared, windowExtras: sp2.extras });
   const t = fast(third.ctx);
   await t.launch();
-  T('a returning explorer hears the short arrival, not the whole story again',
-    sp2.said.some(s => /Back on the Moon/.test(s)) && !sp2.said.some(s => /beacon is dim/.test(s)));
+  const arrivals = [1, 2, 3].map(n => t.voiceCue('story.moon.arrive.' + n).speak);
+  T('a returning explorer hears a short arrival, not the whole story again',
+    sp2.said.some(s => arrivals.indexOf(s) !== -1) && !sp2.said.some(s => /beacon is dim/.test(s)));
   await playMission(t);
   T('a replay earns stars too — practice is taking part', t.starBalance(t.journey.stars) === 3);
   T('and is recorded as its own run', t.journey.completions.length === 2);
@@ -1884,6 +1958,178 @@ async function testMotion(){
     /\.travel-out \.t-earth\{ opacity: 0;/.test(css()) && /\.travel-home \.t-moon\{ opacity: 0;/.test(css()));
 }
 
+/* =========================================================
+   CONTRACT 30 — WHEN PIP SPEAKS
+   Found on a real iPad: the same sentences, in the same words, on
+   every visit. Pip now speaks by rule — an instruction once, a hint
+   only when a child seems stuck, a recurring moment in words not
+   just heard, and a sentence always finished.
+   ========================================================= */
+async function testDialogue(){
+  section('CONTRACT 30 — Pip speaks when it helps, and never the same way twice in a row');
+  const sp = fakeSpeech();
+  const app = H.loadApp({ windowExtras: sp.extras });
+  const c = fast(app.ctx);
+  const family = base => new Set(Array.from({ length: c.familySize(base) }, (_, i) => c.voiceCue(base + '.' + (i + 1)).speak));
+  const inFamily = base => { const set = family(base); return s => set.has(s); };
+  const letterLines = kind => {
+    const set = new Set();
+    Object.keys(c.LETTERS).forEach(L => c.LETTER_LINES[kind].forEach((_, k) => set.add(c.voiceCue(kind + '.' + L + '.' + k).speak)));
+    return s => set.has(s);
+  };
+  /* Which phrasing a letter line uses, whatever the letter: two praises for
+     different letters are still the same words if the phrasing is. */
+  const phrasing = kind => s => {
+    for(const L of Object.keys(c.LETTERS)){
+      for(let k = 0; k < c.LETTER_LINES[kind].length; k++) if(c.voiceCue(kind + '.' + L + '.' + k).speak === s) return k;
+    }
+    return -1;
+  };
+  const isHint = inFamily('guide.launchHint');
+  const isAlmost = inFamily('feedback.almost');
+  const isQuestion = letterLines('find');
+  const isPraise = letterLines('found');
+  const noRepeats = list => list.every((s, i) => i === 0 || s !== list[i - 1]);
+  const rounds = c.MISSIONS['moon-1'].activities.length;
+  /* A question, as opposed to the same question again after "almost". */
+  const asked = m => m.filter((s, i) => isQuestion(s) && !isAlmost(m[i - 1]));
+  const reasked = m => m.filter((s, i) => isQuestion(s) && isAlmost(m[i - 1]));
+  const pick = (lists, pred) => lists.map(l => l.find(pred)).filter(Boolean);
+  const line = id => c.voiceCue(id).speak;
+
+  sub('an instruction is given once, then Pip waits to be needed');
+  await c.startAdventure();
+  T('arriving on Earth the first time explains the Launch button', sp.said.filter(isHint).length === 1);
+  const missions = [], trips = [];
+  for(let i = 0; i < 4; i++){
+    const at = sp.said.length;
+    await c.launch();
+    await playMission(c, { wrongRounds: i === 1 ? [1, 3] : [] });
+    const home = sp.said.length;
+    await c.flyHome();
+    missions.push(sp.said.slice(at, home));
+    trips.push(sp.said.slice(home));
+  }
+  T('four missions and four trips home later, it has not been repeated unasked', sp.said.filter(isHint).length === 1);
+  T('"the beacon is shining again" is said at the relight, and only then',
+    missions[0].indexOf(line('story.moon.restored')) !== -1 && missions.slice(1).every(m => m.indexOf(line('story.moon.restored')) === -1));
+  T('"look, the Moon is shining" is said on the flight home from that mission, and only then',
+    trips[0].indexOf(line('guide.moonShining')) !== -1 && trips.slice(1).every(t => t.indexOf(line('guide.moonShining')) === -1));
+  T('the paint-brush hint is volunteered once, not on every return', sp.said.filter(s => s === line('guide.dockHint')).length === 1);
+  T('the task is explained on the first arrival only', sp.said.filter(s => s === line('mission.howTo')).length === 1);
+
+  sub('a moment that recurs is never said the same way twice in a row');
+  const launches = pick(missions, inFamily('travel.launch'));
+  T('launching', launches.length === 4 && noRepeats(launches), launches.join(' / '));
+  const arrivals = pick(missions.slice(1), inFamily('story.moon.arrive'));
+  T('arriving', arrivals.length === 3 && noRepeats(arrivals), arrivals.join(' / '));
+  const finishes = pick(missions.slice(1), inFamily('story.moon.shining'));
+  T('finishing', finishes.length === 3 && noRepeats(finishes), finishes.join(' / '));
+  const homes = pick(trips.slice(1), inFamily('guide.home'));
+  T('coming home', homes.length === 3 && noRepeats(homes), homes.join(' / '));
+  T('each question, in every mission',
+    missions.every(m => asked(m).length === rounds && noRepeats(asked(m).map(phrasing('find')))));
+  T('each praise, in every mission',
+    missions.every(m => m.filter(isPraise).length === rounds && noRepeats(m.filter(isPraise).map(phrasing('found')))));
+  const almosts = missions[1].filter(isAlmost);
+  T('"almost"', almosts.length === 2 && noRepeats(almosts), almosts.join(' / '));
+  T('but the first question of a mission is always the plainest',
+    missions.every(m => m.find(isQuestion) === line('find.' + c.MISSIONS['moon-1'].activities[0].target)));
+  T('and after "almost", the question comes again in its plainest words',
+    reasked(missions[1]).length === 2 && reasked(missions[1]).every(s => phrasing('find')(s) === 0));
+  T('every question and every praise says "the letter ___", so a letter name is never heard as a word',
+    ['find', 'again', 'found', 'show'].every(k => c.LETTER_LINES[k].every(t => /the letter \{L\}/i.test(t))));
+
+  sub('a hint only when a child seems stuck, and only once a visit');
+  c.TIMING.idleHint = 60;
+  let mark = sp.said.length;
+  await c.goEarth([]);
+  T('a visit with nothing new to say is quiet', sp.said.length === mark);
+  await wait(30);
+  T('a short pause is left alone', sp.said.length === mark);
+  c.noteActivity();
+  await wait(45);
+  T('a tap restarts the wait: a child who is tapping is not stuck', sp.said.length === mark);
+  await wait(90);
+  const hint = sp.said.slice(mark);
+  T('a child who stops hears one hint', hint.length === 1 && isHint(hint[0]), hint.join(' / '));
+  T('in different words from the last time it was explained', hint[0] !== sp.said.filter(isHint).slice(-2)[0]);
+  await wait(150);
+  T('and no second one on the same visit', sp.said.length === mark + 1);
+
+  sub('asked, by a tap, Pip answers — and finishes its sentence');
+  mark = sp.said.length;
+  c.tapPip(); c.tapPip(); c.tapPip();
+  T('three quick taps on Pip start one answer, not three beginnings', sp.said.length === mark + 1);
+  await wait(20);
+  c.tapPip();
+  const answers = sp.said.slice(mark);
+  T('with stars to spend, the answers take turns between the Dock and the launch',
+    answers.length === 2 && answers[0] === line('guide.dockHint') && isHint(answers[1]), answers.join(' / '));
+  await wait(20);
+  mark = sp.said.length;
+  c.sayStarCount(); c.sayStarCount();
+  T('tapping the star count twice says it once, whole', sp.said.length === mark + 1);
+  await wait(20);
+  c.sayStarCount();
+  T('and again once it has finished, because it was asked again', sp.said.length === mark + 2);
+
+  sub('the Rocket Dock explains itself once');
+  await wait(20);
+  const isDockIdle = inFamily('dock.idle');
+  mark = sp.said.length;
+  c.openDock();
+  await wait(150);
+  const visit1 = sp.said.slice(mark);
+  T('the first visit welcomes', visit1.indexOf(line('dock.welcome')) !== -1);
+  T('and a child who has not tried a color is offered one hint', visit1.filter(isDockIdle).length === 1, visit1.join(' / '));
+  c.leaveDock();
+  await wait(20);
+  mark = sp.said.length;
+  c.openDock();
+  await wait(20);
+  T('a second visit is quiet', sp.said.length === mark);
+  c.pickPaint('paint-sky');
+  await wait(150);
+  T('a child who tries a color is not told to try a color', !sp.said.slice(mark).some(isDockIdle));
+  c.leaveDock();
+  await wait(20);
+  mark = sp.said.length;
+  c.openDock();
+  await wait(150);
+  const visit3 = sp.said.slice(mark).filter(isDockIdle);
+  T('a later pause is met in other words', visit3.length === 1 && visit3[0] !== visit1.filter(isDockIdle)[0], visit3.join(' / '));
+  c.leaveDock();
+
+  sub('grown-ups and missions are not interrupted by Earth hints');
+  mark = sp.said.length;
+  c.openGrownups();
+  await wait(150);
+  T('with the grown-ups area open, no hint', sp.said.length === mark);
+  c.closeGrownups();
+  await wait(10);                     // back on Earth, and the wait for a hint has begun
+  mark = sp.said.length;
+  await c.launch();
+  await wait(150);
+  const inMission = sp.said.slice(mark);
+  T('the Earth hint never follows the child into a mission', !inMission.some(isHint), inMission.join(' / '));
+  const q = inMission[inMission.length - 1];
+  T('the mission is waiting on its question', isQuestion(q), q);
+
+  sub('in a mission, Pip waits, then nudges — twice at most');
+  c.TIMING.reprompt = 30;
+  mark = sp.said.length;
+  c.repeatPrompt(); c.repeatPrompt();
+  T('the speaker button repeats the question in the same words — once, however hard it is pressed',
+    sp.said[mark] === q && sp.said.length === mark + 1);
+  await wait(250);
+  const nudges = sp.said.slice(mark + 1);
+  T('silence is met with a nudge, a second nudge, then patience', nudges.length === 2, nudges.join(' / '));
+  T('each nudge is new words, not a replay', nudges.length === 2 && nudges[0] !== q && nudges[1] !== q && nudges[0] !== nudges[1]);
+  T('and still names the letter', nudges.every(s => /the letter/.test(s)));
+  c.TIMING.reprompt = 1e9;
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -1891,5 +2137,6 @@ module.exports = {
   testMobile, testDesignSystem, testPWA, testRelease, testStress,
   testAccessibility, testContamination, testSourcesOfTruth,
   testContent, testLearningEngine, testStarLedger, testCosmeticIsolation,
-  testPersistence, testAudio, testAssets, testPrivacy, testChildJourney, testMotion
+  testPersistence, testAudio, testAssets, testPrivacy, testChildJourney, testMotion,
+  testDialogue
 };

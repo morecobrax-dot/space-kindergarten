@@ -53,7 +53,8 @@ const SUITES = [
   C.testAssets,
   C.testPrivacy,
   C.testChildJourney,
-  C.testMotion
+  C.testMotion,
+  C.testDialogue
 ];
 
 async function main(){

@@ -19,7 +19,9 @@ what they found.
 ## 1. Letter names as spoken by the device voice
 
 The device voice reads `speak`, never the bare letter. Listen for each letter
-in context: *"Find the letter ___."* and *"That's the letter ___."*
+in context. Every line that names a letter says *"the letter ___"*, as in
+*"Find the letter ___."* and *"That's the letter ___."* A bare "em" or "oh"
+after "found" is heard as "them" or as a sigh.
 
 | Letter | Script | Risk to listen for | Status |
 |---|---|---|---|
@@ -59,14 +61,32 @@ targets UK or Australian classrooms, Z, H and several scripts change.
 
 ## 4. Feedback and wording
 
+A moment that recurs has several phrasings (separated by " / " below), and
+Pip rotates through them so that no phrasing is used twice in a row. The
+rules for when Pip speaks at all are in
+[LEARNING-DESIGN.md](LEARNING-DESIGN.md#when-pip-speaks).
+
 | Line | Script | Status |
 |---|---|---|
-| Question | "Find the letter em." (bubble: "Find the letter!") | Awaiting review |
-| Correct | "Yes! / Great job! / You found it! That's the letter em." | Awaiting review |
-| First miss | "Almost! Listen again." then the question again | Awaiting review |
+| Question, first of a mission | "Find the letter em." (bubble: "Find the letter!") | Awaiting review |
+| Question, later rounds | "Now find the letter em." / "Can you find the letter em?" / "Where is the letter em?" | Awaiting review |
+| Nudge, after 10 seconds of no tap | "Listen. Find the letter em.", then "Take your time. Find the letter em.", then nothing more | Awaiting review |
+| Correct | "Yes! That's the letter em." / "Great job! You found the letter em." / "You got it! The letter em." / "Wonderful! That's the letter em." / "Super! You found the letter em." | Awaiting review |
+| First miss | "Almost! Listen again." / "Good try! Listen again." / "So close! Listen again.", then "Find the letter em." | Awaiting review |
 | Second miss | "Here it is! This is the letter em. Tap it!" | Awaiting review |
 | First arrival | "We made it to the Moon! Its beacon is dim. Let's find letters to light it up!" then "I'll say a letter. You tap it!" | Awaiting review |
-| Mission end | "You did it! The Moon's beacon is shining again!" then "You found 3 stars!" | Awaiting review |
+| Later arrivals | "Back on the Moon! Let's find letters." / "The Moon again! Ready to find some letters?" / "Here we are! Let's find more letters." | Awaiting review |
+| Mission end, the relight | "You did it! The Moon's beacon is shining again!" then "You found 3 stars!" | Awaiting review |
+| Mission end, later | "You did it! The Moon is shining bright!" / "Hooray! Another mission done!" / "Great work, explorer! The Moon is glowing!", then the stars | Awaiting review |
+| Launch | "Let's launch!" / "Blast off!" / "Here we go!" | Awaiting review |
+| Earth, first visit | "Tap the big Launch button to fly to the Moon!" | Awaiting review |
+| Earth, hint when stuck | "Ready to fly? Tap Launch!" / "Let's fly! Tap the yellow Launch button." / "Tap the big Launch button to fly to the Moon!" | Awaiting review |
+| Home | "Welcome home, explorer!" / "Home again! Nice flying." / "Welcome back to Earth!" | Awaiting review |
+| Home after the relight | "Welcome home! Look, the Moon is shining!" | Awaiting review |
+| Stars to spend | "You have stars! Tap the paint brush to give your rocket new paint." Said once unasked; after that, only when Pip is tapped | Awaiting review |
+| Rocket Dock, first visit each time the app is opened | "Welcome to the Rocket Dock! Tap a color." | Awaiting review |
+| Rocket Dock, hint when stuck | "Tap a color to try it on your rocket." / "Which color do you like? Tap one to try it!" | Awaiting review |
+| Hint timing | A pause of 12 seconds on Earth or in the Dock earns one hint per visit. Is 12 seconds right for this age? | Awaiting review |
 
 ## 5. Grown-ups area wording
 

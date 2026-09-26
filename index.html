@@ -1448,6 +1448,22 @@ function validateAppId(id){
    ========================================================= */
 const APP_UPDATES = [
   {
+    id: 'v0-1-1',
+    version: '0.1.1',
+    title: 'A friendlier Pip',
+    date: '2026-09-26',
+    summary: 'Pip sounds more natural, and speaks when it helps instead of repeating itself.',
+    newFeatures: [],
+    improvements: [
+      'Pip uses the most natural English voice on this device, and no longer changes its pitch',
+      'Pip says recurring things in different words, never the same sentence twice in a row',
+      'Instructions are given once; after that Pip offers a hint only when a child seems stuck',
+      'Pip finishes a sentence instead of starting over when something is tapped again',
+      'The grown-ups area names the voice in use and explains how to download a better one'
+    ],
+    fixes: []
+  },
+  {
     id: 'v0-1-0',
     version: '0.1.0',
     title: 'First flight',
@@ -2254,21 +2270,41 @@ const COSMETICS = [
    script — what the device voice reads today and what a voice actor will
    record. A recording is attached by id in VOICE_RECORDINGS; when it
    exists it plays instead of the device voice and nothing else changes. */
+/* A line id ending in .1, .2, .3 is one member of a FAMILY: interchangeable
+   phrasings for a moment that recurs, such as launching, arriving, coming home
+   or "almost". Which member is spoken is decided by rule (see "When Pip
+   speaks" under SCENES), so a moment that happens six times does not sound
+   like one sentence said six times. Each member is its own line, so each
+   can get its own recording. */
 const VOICE_CUES = {
   'guide.welcome':          { text: "Hi! I'm Pip.",          speak: "Hi, explorer! I'm Pip, your space buddy. Let's go on an adventure!" },
-  'guide.launchHint':       { text: 'Tap Launch!',           speak: 'Tap the big Launch button to fly to the Moon!' },
-  'guide.home':             { text: 'Welcome home!',         speak: 'Welcome home, explorer!' },
+  'guide.launchHint.1':     { text: 'Tap Launch!',           speak: 'Tap the big Launch button to fly to the Moon!' },
+  'guide.launchHint.2':     { text: 'Ready? Tap Launch!',    speak: 'Ready to fly? Tap Launch!' },
+  'guide.launchHint.3':     { text: "Let's fly!",            speak: "Let's fly! Tap the yellow Launch button." },
+  'guide.home.1':           { text: 'Welcome home!',         speak: 'Welcome home, explorer!' },
+  'guide.home.2':           { text: 'Home again!',           speak: 'Home again! Nice flying.' },
+  'guide.home.3':           { text: 'Back on Earth!',        speak: 'Welcome back to Earth!' },
   'guide.moonShining':      { text: 'The Moon is shining!',  speak: 'Welcome home! Look, the Moon is shining!' },
   'guide.dockHint':         { text: 'Paint your rocket!',    speak: 'You have stars! Tap the paint brush to give your rocket new paint.' },
-  'travel.launch':          { text: "Let's launch!",         speak: "Let's launch!" },
+  'travel.launch.1':        { text: "Let's launch!",         speak: "Let's launch!" },
+  'travel.launch.2':        { text: 'Blast off!',            speak: 'Blast off!' },
+  'travel.launch.3':        { text: 'Here we go!',           speak: 'Here we go!' },
   'story.moon.firstArrive': { text: 'The Moon!',             speak: "We made it to the Moon! Its beacon is dim. Let's find letters to light it up!" },
-  'story.moon.arrive':      { text: 'The Moon!',             speak: "Back on the Moon! Let's find letters." },
+  'story.moon.arrive.1':    { text: 'The Moon!',             speak: "Back on the Moon! Let's find letters." },
+  'story.moon.arrive.2':    { text: 'The Moon!',             speak: 'The Moon again! Ready to find some letters?' },
+  'story.moon.arrive.3':    { text: 'The Moon!',             speak: "Here we are! Let's find more letters." },
   'story.moon.restored':    { text: 'You did it!',           speak: "You did it! The Moon's beacon is shining again!" },
-  'story.moon.shining':     { text: 'You did it!',           speak: 'You did it! The Moon is shining bright!' },
+  'story.moon.shining.1':   { text: 'You did it!',           speak: 'You did it! The Moon is shining bright!' },
+  'story.moon.shining.2':   { text: 'Hooray!',               speak: 'Hooray! Another mission done!' },
+  'story.moon.shining.3':   { text: 'Great work!',           speak: 'Great work, explorer! The Moon is glowing!' },
   'mission.howTo':          { text: 'Listen, then tap!',     speak: "I'll say a letter. You tap it!" },
-  'feedback.almost':        { text: 'Almost!',               speak: 'Almost! Listen again.' },
+  'feedback.almost.1':      { text: 'Almost!',               speak: 'Almost! Listen again.' },
+  'feedback.almost.2':      { text: 'Good try!',             speak: 'Good try! Listen again.' },
+  'feedback.almost.3':      { text: 'So close!',             speak: 'So close! Listen again.' },
   'home.ask':               { text: 'Go back to Earth?',     speak: 'Go back to Earth?' },
   'dock.welcome':           { text: 'Rocket Dock',           speak: 'Welcome to the Rocket Dock! Tap a color.' },
+  'dock.idle.1':            { text: 'Tap a color!',          speak: 'Tap a color to try it on your rocket.' },
+  'dock.idle.2':            { text: 'Pick a color!',         speak: 'Which color do you like? Tap one to try it!' },
   'dock.unlocked':          { text: 'Ta-da!',                speak: 'Ta-da! Your rocket has new paint!' },
   'dock.equipped':          { text: 'Looking good!',         speak: 'Looking good!' },
   /* Off-screen: the rotate prompt carries its own words, and writing them
@@ -2280,9 +2316,32 @@ const VOICE_CUES = {
    ASSET_REGISTRY like every other file, so a recording is registered there
    first and referenced here by its path. */
 const VOICE_RECORDINGS = {};
-const PRAISE = ['Yes!', 'Great job!', 'You found it!'];
+/* Lines that name a letter, as templates: {L} is the letter's spoken name.
+   Every one says "the letter ___": a bare "em" or "oh" after "found" or
+   "that's" is heard as "them" or as a sigh, which is the confusion the
+   question avoids too. */
+const LETTER_LINES = {
+  find:  ['Find the letter {L}.', 'Now find the letter {L}.', 'Can you find the letter {L}?', 'Where is the letter {L}?'],
+  again: ['Listen. Find the letter {L}.', 'Take your time. Find the letter {L}.'],
+  found: ["Yes! That's the letter {L}.", 'Great job! You found the letter {L}.', 'You got it! The letter {L}.',
+          "Wonderful! That's the letter {L}.", 'Super! You found the letter {L}.'],
+  show:  ['Here it is! This is the letter {L}. Tap it!']
+};
+function letterLine(kind, index, L){
+  const list = LETTER_LINES[kind];
+  return list[(Math.abs(index) || 0) % list.length].replace('{L}', LETTERS[L].speak);
+}
 
 function countWord(n, one, many){ return n === 1 ? 'one ' + one : n + ' ' + many; }
+
+/* How many members a line family has, and member n of it (wrapping). A
+   plain id with no family is returned as it is. */
+function familySize(base){ let n = 0; while(VOICE_CUES[base + '.' + (n + 1)]) n++; return n; }
+function familyLine(base, n){
+  const size = familySize(base);
+  return size ? base + '.' + ((Math.abs(n) % size) + 1) : base;
+}
+function lineExists(id){ return !!voiceCue(id) || familySize(id) > 0; }
 
 /* Lines that carry a value are built from data, so a new letter or a new
    price never needs a hand-written line — and never goes without one. */
@@ -2292,18 +2351,19 @@ function voiceCue(id){
   if(VOICE_CUES[id]) cue = { text: VOICE_CUES[id].text, speak: VOICE_CUES[id].speak, offscreen: !!VOICE_CUES[id].offscreen };
   const p = id.split('.');
   const L = LETTERS[p[1]];
-  if(!cue && p[0] === 'find' && L && p.length === 2){
+  const k = p.length === 3 ? parseInt(p[2], 10) : 0;
+  const letterId = L && (p.length === 2 || (p.length === 3 && k >= 0));
+  if(!cue && letterId && (p[0] === 'find' || p[0] === 'again')){
     /* On screen: the task, never the letter. Showing "Find M" beside a
        tile that says M turns hearing a name into matching two shapes.
        `visual` is used only when nothing can be heard at all. */
-    cue = { text: 'Find the letter!', visual: 'Find ' + p[1], speak: 'Find the letter ' + L.speak + '.' };
+    cue = { text: 'Find the letter!', visual: 'Find ' + p[1], speak: letterLine(p[0], k, p[1]) };
   }
-  if(!cue && p[0] === 'found' && L && p.length === 3){
-    const praise = PRAISE[(parseInt(p[2], 10) || 0) % PRAISE.length];
-    cue = { text: "That's " + p[1] + '!', speak: praise + " That's the letter " + L.speak + '.' };
+  if(!cue && letterId && p[0] === 'found'){
+    cue = { text: "That's " + p[1] + '!', speak: letterLine('found', k, p[1]) };
   }
-  if(!cue && p[0] === 'show' && L && p.length === 2){
-    cue = { text: 'Here it is!', speak: 'Here it is! This is the letter ' + L.speak + '. Tap it!' };
+  if(!cue && letterId && p[0] === 'show'){
+    cue = { text: 'Here it is!', speak: letterLine('show', k, p[1]) };
   }
   const n = parseInt(p[p.length - 1], 10);
   if(!cue && id.indexOf('stars.found.') === 0 && n >= 0){
@@ -2377,7 +2437,7 @@ function validateContent(){
     if(d.kind === 'destination'){
       if(JOURNEY_ORDER.indexOf(id) === -1) flag('destination ' + id + ' is not on the journey');
       if(!SKILLS[d.primarySkill]) flag('destination ' + id + ' has unknown primary skill');
-      Object.keys(d.story || {}).forEach(k => { if(!voiceCue(d.story[k])) flag('destination ' + id + ' story line ' + k + ' is missing'); });
+      Object.keys(d.story || {}).forEach(k => { if(!lineExists(d.story[k])) flag('destination ' + id + ' story line ' + k + ' is missing'); });
     }
   });
   JOURNEY_ORDER.forEach(id => { if(!DESTINATIONS[id]) flag('journey names unknown destination ' + id); });
@@ -2397,6 +2457,9 @@ function validateContent(){
   Object.keys(VOICE_CUES).forEach(id => {
     const c = VOICE_CUES[id];
     if(!c.text || !c.speak) flag('voice line ' + id + ' needs both text and a script');
+    /* A family member past a gap (.1 .2 .4) would never be chosen. */
+    const m = id.match(/^(.*)\.(\d+)$/);
+    if(m && Number(m[2]) > familySize(m[1])) flag('voice line ' + id + ' is unreachable: its family has a gap');
   });
 
   const ids = {};
@@ -2824,6 +2887,7 @@ const TIMING = {
   travel: 1100, travelFirst: 2600, travelReduced: 320, travelSettle: 40,
   praiseMin: 950, betweenRounds: 260, celebrateGuard: 1100, starEvery: 420, starFirst: 450,
   reprompt: 10000, maxReprompts: 2, gateHold: 3000,
+  idleHint: 12000,                                 // a pause this long on Earth or in the Dock earns one hint
   captionBase: 900, captionPerChar: 55,            // pacing when nothing can be heard
   speechStartGrace: 1200,                          // a voice that has not begun by now is not coming
   speechSafetyBase: 2500, speechSafetyPerChar: 110 // iOS sometimes never reports the end
@@ -2837,6 +2901,42 @@ function showCaption(cue){
   el.textContent = !cue ? '' : (!lineAudible(cue) && cue.visual ? cue.visual : cue.text);
 }
 function setSpeaking(on){ document.documentElement.setAttribute('data-speaking', on ? 'true' : 'false'); }
+
+/* How the device voice is asked to speak. Pitch stays at 1: shifting a
+   synthesised voice is what makes it sound most artificial — it was 1.08,
+   and "robotic" was the first thing heard on a real iPad. A slightly slow
+   rate keeps letter names clear for five-year-olds. */
+const SPEECH_STYLE = { lang: 'en-US', rate: 0.92, pitch: 1 };
+
+/* Voices that must never be a child's guide: Apple's novelty voices
+   (Bubbles, Zarvox, Bad News…) and the oldest desktop voices. Matched on
+   the name or the voice id. */
+const VOICE_AVOID = /(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|deranged|hysterical|fred|junior|kathy|ralph|princess|bruce|agnes|vicki|victoria|speech\.synthesis\.voice)/i;
+
+/* Picking a voice was "the first English voice in the list", and on an iPad
+   that list can start with a basic compact voice or a novelty one. Rank
+   instead: the intended locale first, then Apple's Premium and Enhanced
+   voices (the natural-sounding ones, when installed), then anything that
+   works offline. Deterministic: the same list always gives the same voice. */
+function voiceScore(v){
+  const lang = String((v && v.lang) || '').replace('_', '-').toLowerCase();
+  if(lang.indexOf('en') !== 0) return 0;                  // never another language
+  const id = (String(v.name || '') + ' ' + String(v.voiceURI || '')).toLowerCase();
+  if(VOICE_AVOID.test(id)) return 1;                      // only if nothing else exists
+  let s = 10;
+  if(lang === SPEECH_STYLE.lang.toLowerCase()) s += 40;
+  if(id.indexOf('premium') !== -1) s += 30;
+  else if(id.indexOf('enhanced') !== -1) s += 20;
+  if(id.indexOf('eloquence') !== -1) s -= 5;              // clearer than novelty, flatter than compact
+  if(v.localService) s += 4;                              // works offline
+  if(v.default) s += 2;
+  return s;
+}
+function bestVoice(list){
+  let best = null, top = 0;
+  (list || []).forEach(v => { const s = voiceScore(v); if(s > top){ top = s; best = v; } });
+  return best;
+}
 
 const Voice = (function(){
   let seq = 0;          // moves on whenever something new is said, or on stop
@@ -2856,11 +2956,15 @@ const Voice = (function(){
     if(chosen) return chosen;
     let list = [];
     try{ list = s.getVoices() || []; }catch(e){ list = []; }
-    chosen = list.find(v => v.lang === 'en-US' && v.localService) ||
-             list.find(v => v.lang === 'en-US') ||
-             list.find(v => /^en/i.test(v.lang || '')) || null;
+    chosen = bestVoice(list);
     return chosen;
   }
+  /* Voices arrive asynchronously, and a Premium voice downloaded while the
+     app is open joins the list later: choose again when the list changes. */
+  try{
+    const s0 = synth();
+    if(s0 && typeof s0.addEventListener === 'function') s0.addEventListener('voiceschanged', () => { chosen = null; });
+  }catch(e){}
 
   function halt(){
     const c = current;
@@ -2877,7 +2981,7 @@ const Voice = (function(){
     if(!s){ me.finish(); return; }
     try{
       const u = new window.SpeechSynthesisUtterance(cue.speak);
-      u.lang = 'en-US'; u.rate = 0.88; u.pitch = 1.08;
+      u.lang = SPEECH_STYLE.lang; u.rate = SPEECH_STYLE.rate; u.pitch = SPEECH_STYLE.pitch;
       const v = pickVoice(s);
       if(v) u.voice = v;
       u.onstart = () => { me.started = true; };
@@ -2899,10 +3003,12 @@ const Voice = (function(){
     halt();
     showCaption(cue);
     if(!cue) return Promise.resolve();
-    return new Promise(resolve => {
+    let mine = null;
+    const heard = new Promise(resolve => {
       let done = false, timer = null, audio = null;
       const readingTime = TIMING.captionBase + cue.text.length * TIMING.captionPerChar;
-      const me = {
+      const me = mine = {
+        id: cue.id,
         started: false,
         finish(){
           if(done) return;
@@ -2939,10 +3045,20 @@ const Voice = (function(){
       }
       speakWithSynth(cue, me);
     });
+    mine.heard = heard;
+    return heard;
   }
 
   function resolveCue(id){ return typeof id === 'string' ? voiceCue(id) : id; }
-  function say(id){ seq++; return line(resolveCue(id)); }
+  /* Asking for the line already being spoken does not start it again: a
+     child who taps the same thing three times hears it once, not three
+     beginnings of it. */
+  function say(id){
+    const cue = resolveCue(id);
+    if(cue && cue.id && current && current.id === cue.id && current.heard) return current.heard;
+    seq++;
+    return line(cue);
+  }
   /* Lines in order. Anything said in the meantime — a tap, a new
      question — ends the sequence where it stands. */
   function sequence(ids){
@@ -2961,8 +3077,16 @@ const Voice = (function(){
     if(!s) return;
     try{ const u = new window.SpeechSynthesisUtterance(' '); u.volume = 0; s.speak(u); }catch(e){}
   }
-  return { say: say, sequence: sequence, stop: stop, unlock: unlock, available: available,
-           isUnlocked(){ return unlocked; } };
+  /* Which voice is speaking, for the grown-ups area — the only way to see
+     it on a device without a cable and a desktop inspector. */
+  function label(){
+    const s = synth();
+    if(!s) return null;
+    const v = pickVoice(s);
+    return v ? v.name + ' (' + v.lang + ')' : 'the device default';
+  }
+  return { say: say, sequence: sequence, stop: stop, unlock: unlock, available: available, label: label,
+           isUnlocked(){ return unlocked; }, speaking(){ return current !== null; } };
 })();
 
 /* Short, soft effects made by the Web Audio API — no files, nothing to
@@ -3036,8 +3160,43 @@ function unlockAudio(){ Voice.unlock(); Sfx.unlock(); }
    --------------------------------------------------------- */
 const session = {
   run: null, busy: false, locked: true, travel: null,
-  idleTimer: null, holdTimer: null, dockPick: null, celebrateReadyAt: 0
+  idleTimer: null, holdTimer: null, dockPick: null, celebrateReadyAt: 0,
+  /* What Pip has said this session, so recurring moments rotate. */
+  said: { launch: 0, arrive: 0, home: 0, almost: 0, hint: 0, dockIdle: 0, pip: 0 },
+  praiseAt: 0, hintGiven: false, hintTimer: null, justRelit: false, dockWelcomed: false
 };
+
+/* ---- When Pip speaks ----
+   By rule, never by chance, and never an AI:
+   1. An instruction is given once. After that Pip stays quiet and offers a
+      hint only when the child seems stuck — no tap for TIMING.idleHint on
+      Earth or in the Dock — and at most once per visit.
+   2. A moment that recurs (launching, arriving, coming home, each question,
+      praise, "almost") rotates through its family of phrasings, so two in
+      a row are never the same.
+   3. A moment with nothing new to say is not given a line.
+   4. Pip finishes a sentence. A tap asking for the line already being
+      spoken does not restart it, and tapping Pip mid-sentence waits.
+   The device voice showed all of this matters on a real iPad: the same
+   sentence on every visit is exactly how a child learns to ignore Pip. */
+function armIdleHint(){
+  disarmIdleHint();
+  if(session.hintGiven) return;
+  session.hintTimer = setTimeout(() => {
+    session.hintTimer = null;
+    if(session.hintGiven || session.busy || overlayOpen()) return;
+    if(currentScene === 'earth'){
+      session.hintGiven = true;
+      Voice.say(familyLine('guide.launchHint', ++session.said.hint));
+    } else if(currentScene === 'dock'){
+      session.hintGiven = true;
+      Voice.say(familyLine('dock.idle', session.said.dockIdle++));
+    }
+  }, TIMING.idleHint);
+}
+function disarmIdleHint(){ if(session.hintTimer){ clearTimeout(session.hintTimer); session.hintTimer = null; } }
+/* A child who is tapping is not stuck: any touch restarts the wait. */
+function noteActivity(){ if(session.hintTimer) armIdleHint(); }
 
 /* The child's glyph set: filled, rounded, one visual weight, drawn on a
    24px grid. Every one sits beside a word and behind a spoken line. */
@@ -3109,7 +3268,8 @@ function startAdventure(){
   return Voice.say('guide.welcome').then(() => {
     session.busy = false;
     if(btn) btn.removeAttribute('aria-disabled');
-    return goEarth(['guide.launchHint']);
+    /* The one time the launch instruction is given unasked. */
+    return goEarth([familyLine('guide.launchHint', 0)]);
   });
 }
 
@@ -3145,7 +3305,9 @@ function goEarth(lines){
   showScene('earth');
   renderEarth();
   drawFlightPath();
-  return Voice.sequence(lines || []);
+  session.hintGiven = false;
+  disarmIdleHint();
+  return Voice.sequence(lines || []).then(() => { if(currentScene === 'earth') armIdleHint(); });
 }
 
 /* A dotted path from the rocket to where the adventure is going: the
@@ -3168,10 +3330,18 @@ function drawFlightPath(){
                     cy.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + '"/>';
 }
 
+/* Tapping Pip is the child asking for help, so Pip answers — and then does
+   not also volunteer the idle hint on this visit. With stars to spend the
+   answers take turns between the two things there are to do; otherwise it
+   is the launch hint, in a phrasing not just heard. */
 function tapPip(){
   unlockAudio();
   if(currentScene !== 'earth') return;
-  Voice.say(affordablePaints().length ? 'guide.dockHint' : 'guide.launchHint');
+  session.hintGiven = true;
+  disarmIdleHint();
+  if(Voice.speaking()) return;
+  const dockTurn = affordablePaints().length > 0 && session.said.pip++ % 2 === 0;
+  Voice.say(dockTurn ? 'guide.dockHint' : familyLine('guide.launchHint', ++session.said.hint));
 }
 
 /* ---- Launch and travel ---- */
@@ -3180,8 +3350,9 @@ function launch(){
   session.busy = true;
   unlockAudio();
   cancelGateHold();
+  disarmIdleHint();
   Sfx.play('launch');
-  Voice.say('travel.launch');
+  Voice.say(familyLine('travel.launch', journey.completions.length + session.said.launch++));
   const dest = currentDestination(journey.completions);
   const first = !storyFlag('arrived.' + dest);
   return travel('out', { first: first }).then(() => enterMission(dest, first));
@@ -3274,8 +3445,11 @@ function enterMission(dest, first){
   beginNextRound(run);
   setLocked(true);
   session.busy = false;
+  /* Praise starts at a different phrasing each run, then rotates. */
+  session.praiseAt = hashString(run.id) % LETTER_LINES.found.length;
   const d = DESTINATIONS[dest];
-  const intro = first ? [d.story.firstArrival, 'mission.howTo'] : [d.story.arrival];
+  const intro = first ? [d.story.firstArrival, 'mission.howTo']
+                      : [familyLine(d.story.arrival, journey.completions.length + session.said.arrive++)];
   return Voice.sequence(intro).then(() => (session.run === run ? askRound(run) : null));
 }
 
@@ -3328,6 +3502,15 @@ function setLocked(on){
 }
 function tileClass(i, cls){ const t = document.getElementById('choice-' + i); if(t) t.classList.add(cls); }
 
+/* The first question of a mission is always the plainest phrasing; the
+   rest rotate through the others, so six questions never sound like one
+   sentence six times. Every phrasing says "the letter ___". */
+function questionLine(r){
+  const t = r.activity.target;
+  if(r.index === 0) return 'find.' + t;
+  return 'find.' + t + '.' + (((r.index - 1) % (LETTER_LINES.find.length - 1)) + 1);
+}
+
 /* Ask the round's question. The tiles open for tapping as soon as the
    question starts, so a quick child is never kept waiting. */
 function askRound(run){
@@ -3335,18 +3518,20 @@ function askRound(run){
   if(!r || r.resolved || session.run !== run) return Promise.resolve();
   setLocked(false);
   armReprompt(run);
-  return Voice.say('find.' + r.activity.target).then(() => {
+  r.askLine = questionLine(r);
+  return Voice.say(r.askLine).then(() => {
     if(r.guided && !r.resolved && session.run === run) tileClass(r.answer, 'is-hint');
   });
 }
 
+/* Repeat means "say that again": the same words, not a new phrasing. */
 function repeatPrompt(){
   unlockAudio();
   const run = session.run;
   if(!run || !run.round || run.round.resolved || currentScene !== 'mission') return;
   if(session.locked){ Voice.stop(); return; }         // still in the intro: skip to the question
   armReprompt(run);
-  Voice.say('find.' + run.round.activity.target);
+  Voice.say(run.round.askLine || questionLine(run.round));
 }
 
 /* If nothing is tapped for a while, Pip asks again — twice at most, and it
@@ -3358,7 +3543,9 @@ function armReprompt(run){
     if(session.run !== run || !r || r.resolved || currentScene !== 'mission' || overlayOpen()) return;
     if(r.reprompts >= TIMING.maxReprompts) return;
     r.reprompts += 1;
-    Voice.say('find.' + r.activity.target).then(() => { if(session.run === run) armReprompt(run); });
+    /* "Listen. Find…", then "Take your time. Find…": a nudge, not a replay. */
+    Voice.say('again.' + r.activity.target + '.' + (r.reprompts - 1))
+      .then(() => { if(session.run === run) armReprompt(run); });
   }, TIMING.reprompt);
 }
 function disarmReprompt(){ if(session.idleTimer){ clearTimeout(session.idleTimer); session.idleTimer = null; } }
@@ -3387,7 +3574,7 @@ function choose(i){
       saveEvidence();
     }
     renderProgress(run);
-    const praise = 'found.' + r.activity.target + '.' + ((run.results.length - 1) % PRAISE.length);
+    const praise = 'found.' + r.activity.target + '.' + ((session.praiseAt++) % LETTER_LINES.found.length);
     return Promise.all([Voice.say(praise), delay(TIMING.praiseMin)])
       .then(() => (session.run === run ? nextStep(run) : null));
   }
@@ -3399,7 +3586,8 @@ function choose(i){
     tileClass(r.answer, 'is-hint');
     return Voice.sequence(['show.' + r.activity.target]);
   }
-  return Voice.sequence(['feedback.almost', 'find.' + r.activity.target])
+  /* A rotating "almost", then the question in its plainest words. */
+  return Voice.sequence([familyLine('feedback.almost', session.said.almost++), 'find.' + r.activity.target])
     .then(() => { if(session.run === run && !r.resolved) armReprompt(run); });
 }
 
@@ -3425,7 +3613,11 @@ function finishMission(run){
   if(s.awarded){ journey.stars = s.ledger; saveStars(); }
   if(session.run === run) session.run = null;
   const after = destinationProgress(m.destinationId, journey.completions);
-  return celebrate({ mission: m, stars: s.awarded ? m.reward.stars : 0, restoredNow: after.restored && !before.restored });
+  const restoredNow = after.restored && !before.restored;
+  /* Remembered for the flight home: "look, the Moon is shining" is news
+     exactly once — on the return from the mission that relit it. */
+  session.justRelit = restoredNow;
+  return celebrate({ mission: m, stars: s.awarded ? m.reward.stars : 0, restoredNow: restoredNow });
 }
 
 /* ---- Celebration ---- */
@@ -3457,7 +3649,7 @@ function celebrate(o){
     }, reduced ? 0 : TIMING.starFirst + i * TIMING.starEvery);
   }
   const d = DESTINATIONS[o.mission.destinationId];
-  return Voice.sequence([o.restoredNow ? d.story.restored : d.story.shining,
+  return Voice.sequence([o.restoredNow ? d.story.restored : familyLine(d.story.shining, journey.completions.length),
                          o.stars ? 'stars.found.' + o.stars : null]);
 }
 
@@ -3476,7 +3668,10 @@ function returnToEarth(){
   Sfx.play('launch');
   return travel('home', {}).then(() => {
     session.busy = false;
-    const lines = [destinationProgress('moon', journey.completions).restored ? 'guide.moonShining' : 'guide.home'];
+    const relit = session.justRelit;
+    session.justRelit = false;
+    const lines = [relit ? 'guide.moonShining'
+                         : familyLine('guide.home', journey.completions.length + session.said.home++)];
     if(affordablePaints().length && !storyFlag('heard.dockHint')){
       lines.push('guide.dockHint');
       setStoryFlag('heard.dockHint');
@@ -3524,7 +3719,18 @@ function openDock(){
   session.dockPick = currentPaint();
   showScene('dock');
   renderDockScene();
-  Voice.say('dock.welcome');
+  session.hintGiven = false;
+  disarmIdleHint();
+  /* The welcome explains the Dock, so it is said on the first visit each
+     time the app is opened. After that the Dock is quiet unless the child
+     pauses without trying a color. Remembered in the session, not saved:
+     the Dock writes stars and rocket, and nothing else. */
+  if(!session.dockWelcomed){
+    session.dockWelcomed = true;
+    Voice.say('dock.welcome').then(() => { if(currentScene === 'dock') armIdleHint(); });
+  } else {
+    armIdleHint();
+  }
 }
 
 function renderDockScene(){
@@ -3573,6 +3779,8 @@ function pickPaint(id){
   if(currentScene !== 'dock' || !cosmeticById(id)) return;
   unlockAudio();
   session.dockPick = id;
+  session.hintGiven = true;           // trying a color is the thing the hint would ask for
+  disarmIdleHint();
   Sfx.play('tap');
   renderDockScene();
   Voice.say('paint.' + id);
@@ -3656,6 +3864,7 @@ function cancelGateHold(){
 function openGrownups(){
   Voice.stop();
   disarmReprompt();
+  disarmIdleHint();
   renderGrownups();
   pushOverlayHistory();
   openOverlay('grownupOverlay');
@@ -3729,7 +3938,10 @@ function renderGrownups(){
     note.textContent = !soundPrefs.voice
       ? 'Letter missions are built on hearing a letter\'s name. With spoken instructions off, the letter is shown on screen instead and those answers are not counted as practice.'
       : Voice.available()
-        ? 'Spoken instructions currently use this device\'s built-in speech voice. It is a temporary stand-in for recorded narration.'
+        ? 'Voice in use: ' + (Voice.label() || 'the device default') + '. Spoken instructions currently use this ' +
+          'device\'s built-in speech voice, a temporary stand-in for recorded narration. For a more natural voice, ' +
+          'download a Premium or Enhanced English (US) voice in Settings → Accessibility → Spoken Content → Voices; ' +
+          'the app uses the best one installed.'
         : 'This device has no built-in speech voice, so letter missions show the letter on screen instead.';
   }
   document.querySelectorAll('#motionSeg button').forEach(b => {
@@ -3781,6 +3993,8 @@ function wireProduct(){
   const unlock = () => unlockAudio();
   document.addEventListener('touchend', unlock, true);
   document.addEventListener('click', unlock, true);
+  /* Any touch means the child is doing something, so an idle hint waits. */
+  document.addEventListener('pointerdown', noteActivity, true);
 
   const gate = document.getElementById('gateBtn');
   if(gate){
@@ -3800,7 +4014,7 @@ function wireProduct(){
   /* Leaving the app mid-sentence must not leave Pip talking to an empty
      room, or a hold half-way to the grown-ups area. */
   document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'hidden'){ Voice.stop(); disarmReprompt(); cancelGateHold(); }
+    if(document.visibilityState === 'hidden'){ Voice.stop(); disarmReprompt(); disarmIdleHint(); cancelGateHold(); }
   });
 
   try{
@@ -3814,7 +4028,7 @@ function wireProduct(){
       if(currentScene !== 'mission' || !run || !run.round || run.round.resolved || overlayOpen()) return;
       if(session.locked){ askRound(run); return; }
       armReprompt(run);
-      Voice.say('find.' + run.round.activity.target);
+      Voice.say(run.round.askLine || questionLine(run.round));
     };
     if(mq && typeof mq.addEventListener === 'function') mq.addEventListener('change', onTurn);
     else if(mq && typeof mq.addListener === 'function') mq.addListener(onTurn);

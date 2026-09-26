@@ -59,18 +59,24 @@ exist.
 
 1. Pip says *"Find the letter em."* The bubble reads **"Find the letter!"**
    and never shows the letter, because showing "Find M" beside a tile that
-   says M would turn hearing a name into matching two shapes.
+   says M would turn hearing a name into matching two shapes. Later rounds
+   ask in other words (*"Where is the letter em?"*), but always name "the
+   letter".
 2. Three tiles show three uppercase letters. The child taps one.
 3. **Correct:** the tile pops, gains a green ring and a check mark, and Pip
-   says *"Yes! That's the letter em."* Confirming the name reinforces the
-   connection being taught.
+   praises and names it: *"Yes! That's the letter em."*, *"Great job! You
+   found the letter em."* Confirming the name reinforces the connection
+   being taught.
 4. **First wrong tap:** that tile wiggles and steps aside (dimmed and
-   smaller), and Pip says *"Almost! Listen again. Find the letter em."*
+   smaller), and Pip says *"Almost! Listen again. Find the letter em."* The
+   question comes back in its plainest words.
 5. **Second wrong tap:** that tile steps aside too, and the answer glows:
    *"Here it is! This is the letter em. Tap it!"* The only tile left is the
    answer, so **every round can be finished**.
-6. If nothing is tapped for 10 seconds, Pip asks again, at most twice. This
-   never counts against the child.
+6. If nothing is tapped for 10 seconds, Pip nudges (*"Listen. Find the
+   letter em."*), then once more (*"Take your time…"*), then waits. This
+   never counts against the child. The Repeat button says the question
+   again in the same words.
 
 **The guided first round.** The first round of the mission teaches the tap
 itself: after the question, a ring pulses around the answer. It is not
@@ -80,6 +86,37 @@ recorded as evidence of anything.
 caption falls back to showing the letter ("Find M"), which turns the round
 into visual matching. Those rounds are **not recorded as recognition
 evidence**, and the grown-ups area explains why.
+
+### When Pip speaks
+
+The first real-iPad test found the device voice robotic and repetitive: the
+same sentences, in the same words, on every visit. That is how a child learns
+to stop listening to a guide. Pip therefore speaks by **fixed rules**:
+
+1. **An instruction is given once.** After that Pip stays quiet, and offers a
+   hint only when the child seems stuck: no tap for 12 seconds on Earth or in
+   the Rocket Dock. It gives at most one hint per visit, and never during a
+   mission, where the 10-second nudges above do that job.
+2. **A recurring moment rotates its words.** Launching, arriving, finishing,
+   coming home, each question, each praise and each "almost" has several
+   phrasings, and the same phrasing is never used twice in a row.
+3. **A moment with nothing new to say gets no line.** The Dock welcome is
+   said on the first visit each time the app is opened, and later visits are
+   quiet. "Look, the Moon is shining!" is said once, on the flight home from
+   the mission that relit it.
+4. **Pip finishes its sentences.** A tap asking for the line already playing
+   does not restart it, and tapping Pip mid-sentence does not cut Pip off.
+
+The choice of line is deterministic: it comes from counts, never from chance,
+and never from an AI. A contract plays whole journeys and fails if any rule is
+broken.
+
+**The voice itself** is the device's speech synthesiser. It is a temporary
+stand-in until recorded narration exists. The app chooses the most natural
+US English voice installed: Premium, then Enhanced, then standard. It never
+chooses a novelty voice, and it does not pitch-shift the voice, because
+pitch-shifting was what made it sound most robotic. The grown-ups area names
+the voice in use, and explains how to download a better one.
 
 ### Difficulty: which wrong choices appear
 
