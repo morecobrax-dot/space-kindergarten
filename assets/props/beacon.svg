@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 280"><!-- PLACEHOLDER art for Space Kindergarten. Drawn in-repo; replace with final clay artwork. -->
+<defs>
+<linearGradient id="tower" x1="0" x2="1"><stop offset="0" stop-color="#F1ECFF"/><stop offset="0.55" stop-color="#C6B9F7"/><stop offset="1" stop-color="#9483E0"/></linearGradient>
+<linearGradient id="roof" x1="0" x2="1"><stop offset="0" stop-color="#FFA995"/><stop offset="1" stop-color="#E4605A"/></linearGradient>
+</defs>
+<ellipse cx="80" cy="264" rx="72" ry="13" fill="#6D59C8" opacity="0.55"/>
+<path d="M46 260L57 112Q58 106 64 106L96 106Q102 106 103 112L114 260Q114 266 108 266L52 266Q46 266 46 260Z" fill="url(#tower)"/>
+<path d="M53 160L107 160L108.6 178L51.4 178Z" fill="#FF8F7A"/>
+<path d="M49 214L111 214L112.6 232L47.4 232Z" fill="#FF8F7A"/>
+<path d="M69 266L69 244Q80 232 91 244L91 266Z" fill="#5B4DB0"/>
+<rect x="44" y="96" width="72" height="16" rx="7" fill="#7E6CD6"/>
+<rect x="55" y="52" width="50" height="48" rx="13" fill="#3A3F86"/>
+<rect x="61" y="58" width="38" height="36" rx="9" fill="#8C84C8"/>
+<path d="M68 64L68 88" stroke="#B9B2E6" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+<path d="M48 56Q80 16 112 56Z" fill="url(#roof)"/>
+<circle cx="80" cy="22" r="7" fill="#FFA995"/>
+<path d="M58 118L60 250" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.5"/>
+</svg>

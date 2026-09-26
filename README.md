@@ -1,61 +1,40 @@
-# app-starter
+# Space Kindergarten *(working title)*
 
-An opinionated foundation for local-first, installable mobile web applications.
+A space-adventure learning game for kindergarten children, aged about five to
+six, on iPad. A child starts on Earth, launches a rocket, travels to the Moon,
+finds letters to relight its beacon, earns stars, and spends them on rocket
+paint. Learning comes first; the adventure is what makes it fun.
 
-It exists so that building a new product means answering *"what should this
-product do?"* rather than solving mobile navigation, overlays, safe areas,
-forms, storage namespacing and PWA installation again from scratch.
-
----
+**Status: Phase 1, a vertical slice.** It contains one complete Moon mission
+of six uppercase letter-recognition rounds, plus the full loop around it. All
+artwork is a placeholder, and spoken instructions use the device's own speech
+voice as a temporary stand-in for recorded narration. See
+[docs/PRODUCT.md](docs/PRODUCT.md) for what is and is not built.
 
 ## What it is
 
-One HTML file, one service worker, one manifest, two icons. No framework, no
-build step, no dependencies. `npm` is used only for the test and config
-tooling — the app itself runs by opening `index.html`.
+- **One HTML file, one service worker, one manifest.** No framework, no build
+  step, no dependencies, no backend. `npm` is used only for tests and config
+  tooling.
+- **Local-first.** Progress lives on the device, under this app's own
+  namespace.
+- **Private.** No accounts, no ads, no analytics, no network calls, and no
+  links out of the child's world.
+- **Landscape-first on iPad.** Pre-readers can use it through voice, pictures
+  and very large targets.
 
 ```
-index.html              the entire application: tokens, shell, engine, demo
-sw.js                   offline shell, cache identity derived from APP_CONFIG
+index.html              the whole app: tokens, scenes, engine, content, audio
+sw.js                   offline cache; name and precache list derived
 manifest.webmanifest    install metadata, derived from APP_CONFIG
-icon-192/512.png        placeholder icons — replace them
-scripts/config.js       sync / verify static files against APP_CONFIG
-scripts/contamination.js permanent domain-residue guard
-test/harness.js         loads the app into a Node vm with a DOM stub
-test/contracts.js       the contract suite
-test/run.js             the runner
+assets/                 every picture, each registered in ASSET_REGISTRY
+icon-192/512.png        home-screen icons (placeholder)
+docs/                   product, learning, art, content and asset docs
+references/             moodboard rules (the images are git-ignored)
+scripts/config.js       sync / verify derived files against the app
+scripts/contamination.js residue guard inherited from the starter
+test/                   Node harness and the contract suite
 ```
-
-## What it includes
-
-- **App shell** — header, bottom navigation, full-page detail flows, safe-area
-  handling on all four edges, landscape and text-scaling behaviour that has
-  been through real devices.
-- **One overlay engine** — a single `MutationObserver` owning background scroll
-  lock, focus trapping and restoration, open-order stacking and ARIA state, for
-  every sheet and page. Adding a surface cannot forget any of it.
-- **Namespaced storage** — one adapter, every key prefixed with `APP_ID`,
-  honest reporting when a write cannot land, versioned migrations, and the rule
-  that absent data stays absent.
-- **Toast and confirmation** — non-blocking feedback and one confirmation
-  sheet. No `alert()`, `confirm()` or `prompt()` anywhere, enforced by a test.
-- **A design system that is enforced** — four token layers, with contracts that
-  fail the build on a raw `font-family` or an off-scale `font-size`.
-- **PWA** — installable, offline-capable, fully relative paths, and a cache
-  identity that cannot collide with another app on the same origin.
-- **A demo domain** — a small `Item` collection proving list, detail, create,
-  edit, delete, validate, persist, confirm and empty state.
-- **Contracts** — a few hundred assertions defending the foundation, not
-  thousands defending a domain.
-
-## What it deliberately does not include
-
-No authentication, no backend, no database, no account system, no API layer, no
-router, no state-management library, no component framework, no CSS framework,
-no icon package, no charting, no date library, no analytics.
-
-Those belong to a product, not to a foundation. Add them when a product
-actually needs them.
 
 ## Run it
 
@@ -63,8 +42,8 @@ actually needs them.
 npx --yes http-server -p 8181 -c-1 .
 ```
 
-Then open `http://localhost:8181`. A service worker needs `http(s)`, so opening
-the file directly works but will not exercise offline behaviour.
+Then open `http://localhost:8181` in landscape. Opening `index.html` directly
+also works, but without the service worker.
 
 ## Verify it
 
@@ -72,27 +51,21 @@ the file directly works but will not exercise offline behaviour.
 npm run verify
 ```
 
-That is the one command to remember. It runs the contract suite, checks that
-the static PWA files still match `APP_CONFIG`, and scans for domain residue.
-Run it before every commit and every deploy.
+That one command runs the contracts, checks the derived files against
+`index.html`, and scans for residue. It must be green before every commit.
 
 ```bash
 npm test              # contracts only
-npm run config:verify # identity drift only
-npm run contamination # residue scan only
-npm run config:sync   # write derived values into the static files
+npm run config:sync   # rewrite derived files (head, manifest, sw.js, package.json, asset manifest)
 ```
 
-## Start a new product
+## Documentation
 
-Read [NEW-PROJECT.md](NEW-PROJECT.md). The short version: set `APP_ID`, run
-`npm run config:sync`, replace the demo domain.
-
-## The rest of the documentation
-
-- [PRODUCT-DESIGN.md](PRODUCT-DESIGN.md) — the UX and visual rules this
-  foundation encodes, and the anti-patterns it refuses.
-- [STARTER-ARCHITECTURE.md](STARTER-ARCHITECTURE.md) — how the pieces fit and
-  where new domain code goes.
-- [NEW-PROJECT.md](NEW-PROJECT.md) — turning this into a real product.
-- [CLAUDE.md](CLAUDE.md) — development method for AI coding sessions.
+- [docs/PRODUCT.md](docs/PRODUCT.md): what the product is, Phase 1 scope, and what is placeholder
+- [docs/LEARNING-DESIGN.md](docs/LEARNING-DESIGN.md): how the learning works and why
+- [docs/ART-DIRECTION.md](docs/ART-DIRECTION.md): the visual target, the palette, and Pip
+- [docs/CONTENT-SOURCES.md](docs/CONTENT-SOURCES.md) and [docs/CONTENT-REVIEW.md](docs/CONTENT-REVIEW.md): where the content came from, and what a person must check
+- [docs/ASSET-MANIFEST.md](docs/ASSET-MANIFEST.md): every picture and its provenance (generated)
+- [ARCHITECTURE.md](ARCHITECTURE.md): how the code fits together and where new work goes
+- [PRODUCT-DESIGN.md](PRODUCT-DESIGN.md): the UI rules inherited from the foundation
+- [CLAUDE.md](CLAUDE.md): the development method for AI coding sessions

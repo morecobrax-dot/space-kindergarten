@@ -10,6 +10,13 @@ judgment is what code review is for.
 
 ## Mobile first, on real devices
 
+> **Space Kindergarten overrides this for the child's world:** it is designed
+> **iPad landscape first**. Child controls are at least `--touch-kid` (76px),
+> and the one primary action is `--touch-hero` (112px). Portrait shows a "turn
+> your iPad" prompt, because iPadOS ignores the manifest's orientation lock
+> for home-screen web apps. The grown-ups pages still follow the rules below,
+> in either orientation. See the product rules in CLAUDE.md.
+
 Design for a phone held in one hand, then let it widen. A desktop screenshot
 proves nothing: the failures are the notch, the home indicator, the software
 keyboard, the rotation, and the thumb.

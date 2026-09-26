@@ -31,7 +31,7 @@ const SUITES = [
   C.testOverlays,
   C.testToast,
   C.testConfirmation,
-  C.testForms,
+  C.testErase,
   C.testMobile,
   C.testDesignSystem,
   C.testPWA,
@@ -40,13 +40,26 @@ const SUITES = [
   C.testStress,
   C.testSourcesOfTruth,
   C.testPortability,
-  C.testContamination
+  C.testContamination,
+  /* The product's own contracts run last: they are meaningless if the
+     foundation beneath them is broken, and a failure there should be the
+     first thing reported rather than the twentieth. */
+  C.testContent,
+  C.testLearningEngine,
+  C.testStarLedger,
+  C.testCosmeticIsolation,
+  C.testPersistence,
+  C.testAudio,
+  C.testAssets,
+  C.testPrivacy,
+  C.testChildJourney,
+  C.testMotion
 ];
 
 async function main(){
   const started = Date.now();
   console.log('\n' + '='.repeat(64));
-  console.log('  STARTER CONTRACTS — tier: ' + TIER);
+  console.log('  CONTRACTS — tier: ' + TIER);
   console.log('='.repeat(64));
 
   for(const suite of SUITES){

@@ -1,0 +1,9 @@
+# Moodboard images are third-party, stock or watermarked artwork. They are
+# direction only, never production assets, and must never be committed or
+# deployed — a published repository or GitHub Pages site would redistribute
+# them. See references/README.md.
+references/visual/*
+
+node_modules/
+.DS_Store
+Thumbs.db

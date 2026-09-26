@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><!-- PLACEHOLDER art for Space Kindergarten. Drawn in-repo; replace with final clay artwork. -->
+<defs>
+<radialGradient id="rock" cx="0.36" cy="0.3" r="0.8"><stop offset="0" stop-color="#F6F2FF"/><stop offset="0.5" stop-color="#D2C6FB"/><stop offset="0.9" stop-color="#A08DE8"/><stop offset="1" stop-color="#8A76DA"/></radialGradient>
+<radialGradient id="shade" cx="0.36" cy="0.3" r="0.85"><stop offset="0.55" stop-color="#2A1B6E" stop-opacity="0"/><stop offset="1" stop-color="#2A1B6E" stop-opacity="0.45"/></radialGradient>
+<radialGradient id="shine" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.5"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+<clipPath id="ball"><circle cx="200" cy="200" r="170"/></clipPath>
+</defs>
+<circle cx="200" cy="200" r="184" fill="#C9BCFF" opacity="0.16"/>
+<circle cx="200" cy="200" r="170" fill="url(#rock)"/>
+<g clip-path="url(#ball)"><ellipse cx="150" cy="145" rx="36" ry="29" fill="#B6A5F0"/><ellipse cx="150" cy="148" rx="27.4" ry="20.3" fill="#9A86E0"/><path d="M114 144A36 29 0 0 1 186 144" fill="none" stroke="#F4F0FF" stroke-width="3" opacity="0.75"/><ellipse cx="262" cy="239" rx="44" ry="35" fill="#B6A5F0"/><ellipse cx="262" cy="242" rx="33.4" ry="24.5" fill="#9A86E0"/><path d="M218 238A44 35 0 0 1 306 238" fill="none" stroke="#F4F0FF" stroke-width="3" opacity="0.75"/><ellipse cx="132" cy="265" rx="24" ry="19" fill="#B6A5F0"/><ellipse cx="132" cy="268" rx="18.2" ry="13.3" fill="#9A86E0"/><path d="M108 264A24 19 0 0 1 156 264" fill="none" stroke="#F4F0FF" stroke-width="3" opacity="0.75"/><ellipse cx="268" cy="121" rx="19" ry="15" fill="#B6A5F0"/><ellipse cx="268" cy="124" rx="14.4" ry="10.5" fill="#9A86E0"/><path d="M249 120A19 15 0 0 1 287 120" fill="none" stroke="#F4F0FF" stroke-width="3" opacity="0.75"/><ellipse cx="212" cy="321" rx="18" ry="14" fill="#B6A5F0"/><ellipse cx="212" cy="324" rx="13.7" ry="9.8" fill="#9A86E0"/><path d="M194 320A18 14 0 0 1 230 320" fill="none" stroke="#F4F0FF" stroke-width="3" opacity="0.75"/><ellipse cx="318" cy="303" rx="14" ry="11" fill="#B6A5F0"/><ellipse cx="318" cy="306" rx="10.6" ry="7.7" fill="#9A86E0"/><path d="M304 302A14 11 0 0 1 332 302" fill="none" stroke="#F4F0FF" stroke-width="3" opacity="0.75"/><circle cx="200" cy="200" r="170" fill="url(#shade)"/></g>
+<ellipse cx="146" cy="118" rx="62" ry="38" fill="url(#shine)" transform="rotate(-32 146 118)"/>
+<path d="M56 150A170 170 0 0 1 150 38" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.55"/>
+</svg>

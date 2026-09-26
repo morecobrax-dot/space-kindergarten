@@ -16,16 +16,35 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'app-starter-v0.1.0';
+const CACHE_NAME = 'space-kindergarten-v0.1.0';
 /* APP-CACHE-END */
 
+/* The precache list is derived too — from ASSET_REGISTRY in index.html — by
+ * the same `npm run config:sync`. cache.addAll() is all-or-nothing: one
+ * missing file and nothing is cached, so the app silently stops working
+ * offline. Deriving the list, and refusing to sync when a registered file
+ * does not exist, is what keeps that from happening. */
+/* APP-ASSETS-BEGIN */
 const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './assets/backgrounds/space.svg',
+  './assets/backgrounds/moon-ground.svg',
+  './assets/planets/earth.svg',
+  './assets/planets/moon.svg',
+  './assets/props/beacon.svg',
+  './assets/props/star.svg',
+  './assets/rocket/rocket-classic.svg',
+  './assets/rocket/rocket-sky.svg',
+  './assets/rocket/rocket-sunny.svg',
+  './assets/rocket/rocket-lime.svg',
+  './assets/rocket/flame.svg',
+  './assets/characters/pip.svg',
   './icon-192.png',
   './icon-512.png'
 ];
+/* APP-ASSETS-END */
 
 self.addEventListener('install', event => {
   event.waitUntil(

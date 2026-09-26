@@ -18,7 +18,13 @@
    ========================================================= */
 'use strict';
 const fs = require('fs');
+const path = require('path');
 const H = require('../test/harness.js');
+
+const ASSET_MANIFEST_PATH = path.join(H.ROOT, 'docs', 'ASSET-MANIFEST.md');
+
+/* The shell every install needs, ahead of the registered artwork. */
+const SHELL = ['./', './index.html', './manifest.webmanifest'];
 
 const MODE = (process.argv[2] || 'verify').toLowerCase();
 
@@ -46,17 +52,58 @@ function replaceRegion(text, beginMark, endMark, replacement, file){
 }
 
 /* ---------- read the source of truth ---------- */
+/* The values the Web App Manifest spec allows. Anything else is refused
+   rather than written, so a typo cannot silently unlock every orientation. */
+const ORIENTATIONS = ['any', 'natural', 'landscape', 'landscape-primary', 'landscape-secondary',
+                      'portrait', 'portrait-primary', 'portrait-secondary'];
+
 function loadConfig(){
   const app = H.loadApp();
   const cfg = app.ctx.APP_CONFIG;
   const err = app.ctx.validateAppId(cfg.id);
   if(err) throw new Error(err);
+  if(ORIENTATIONS.indexOf(cfg.orientation) === -1){
+    throw new Error('APP_CONFIG.orientation must be one of: ' + ORIENTATIONS.join(', ') +
+                    '. Got: ' + cfg.orientation);
+  }
+  const registry = app.ctx.ASSET_REGISTRY || [];
+  /* A registered file that does not exist would make the service worker's
+     precache fail as a whole. Refuse loudly here instead. */
+  const missing = registry.filter(a => !fs.existsSync(path.join(H.ROOT, a.path)));
+  if(missing.length){
+    throw new Error('ASSET_REGISTRY names files that do not exist: ' + missing.map(a => a.path).join(', '));
+  }
   return {
     cfg,
+    registry,
     version: app.ctx.APP_VERSION,
     cacheName: app.ctx.CACHE_NAMESPACE,
     storagePrefix: app.ctx.STORAGE_NAMESPACE
   };
+}
+
+function precacheList(c){
+  const out = SHELL.slice();
+  c.registry.forEach(a => { const p = './' + a.path; if(out.indexOf(p) === -1) out.push(p); });
+  return out;
+}
+
+function mdCell(s){ return String(s == null ? '' : s).replace(/\|/g, '\\|'); }
+function assetTable(c){
+  const rows = c.registry.map(a => '| `' + mdCell(a.id) + '` | `' + mdCell(a.path) + '` | ' + mdCell(a.state) + ' | ' +
+    mdCell(a.format) + ' | ' + mdCell(a.dimensions) + ' | ' + mdCell(a.purpose) + ' | ' +
+    mdCell(a.source) + ' | ' + mdCell(a.license) + ' |');
+  const counts = {};
+  c.registry.forEach(a => { counts[a.state] = (counts[a.state] || 0) + 1; });
+  const summary = Object.keys(counts).sort().map(k => counts[k] + ' ' + k).join(', ');
+  return [
+    ' — derived from ASSET_REGISTRY by `npm run config:sync`. Do not hand-edit. -->',
+    '',
+    '**' + c.registry.length + ' registered assets: ' + summary + '.**',
+    '',
+    '| Id | Path | State | Format | Size | Purpose | Source | Licence |',
+    '|---|---|---|---|---|---|---|---|'
+  ].concat(rows).join('\n');
 }
 
 /* ---------- what each static file should contain ---------- */
@@ -94,6 +141,21 @@ function targets(c){
       build: () => "const CACHE_NAME = '" + cacheName + "';"
     },
     {
+      file: H.SW_PATH,
+      label: 'sw.js precache list',
+      region: ['/* APP-ASSETS-BEGIN */', '/* APP-ASSETS-END */'],
+      build: () => 'const ASSETS = [\n' + precacheList(c).map(p => "  '" + p + "'").join(',\n') + '\n];'
+    },
+    {
+      /* The human-readable register of every picture: what it is, where it
+         came from, who owns it, and whether it is final. Derived, so the
+         documentation can never claim an asset the app does not ship. */
+      file: ASSET_MANIFEST_PATH,
+      label: 'docs/ASSET-MANIFEST.md',
+      region: ['<!-- ASSET-TABLE-BEGIN', '<!-- ASSET-TABLE-END'],
+      build: () => assetTable(c)
+    },
+    {
       file: H.MANIFEST_PATH,
       label: 'manifest.webmanifest',
       json: true,
@@ -102,6 +164,7 @@ function targets(c){
           name: cfg.name,
           short_name: cfg.shortName,
           description: cfg.description,
+          orientation: cfg.orientation,
           background_color: cfg.backgroundColor,
           theme_color: cfg.themeColor
         });
@@ -193,4 +256,4 @@ if(require.main === module){
   catch(e){ console.error('config:' + MODE + '  ERROR — ' + e.message); process.exit(1); }
 }
 
-module.exports = { loadConfig, targets, esc };
+module.exports = { loadConfig, targets, esc, precacheList, ASSET_MANIFEST_PATH };

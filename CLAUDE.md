@@ -3,24 +3,23 @@
 Instructions for AI coding sessions in this repository. These override default
 behaviour.
 
-Read [STARTER-ARCHITECTURE.md](STARTER-ARCHITECTURE.md) before changing
-architecture, and [PRODUCT-DESIGN.md](PRODUCT-DESIGN.md) before changing
-anything a user sees.
+This is **Space Kindergarten**, a kindergarten literacy game for iPad, built
+from the app-starter foundation. Read [ARCHITECTURE.md](ARCHITECTURE.md)
+before changing architecture, [PRODUCT-DESIGN.md](PRODUCT-DESIGN.md) and the
+product rules at the end of this file before changing anything a user sees,
+and [docs/LEARNING-DESIGN.md](docs/LEARNING-DESIGN.md) before changing
+anything a child learns from.
 
 ---
 
-## Before implementing a new product
+## Before implementing a feature
 
-If you are starting a product from this foundation, in this order:
-
-1. Read [PRODUCT-DESIGN.md](PRODUCT-DESIGN.md) — the rules the UI must obey.
-2. Read [STARTER-ARCHITECTURE.md](STARTER-ARCHITECTURE.md) — what already
-   exists, so you do not rebuild it.
-3. Read the product's own requirements. If there aren't any written down, ask
-   for them before writing code.
-4. Follow [NEW-PROJECT.md](NEW-PROJECT.md) step by step.
-5. **Separate foundation from domain before you type.** Name which parts of the
-   change are product-specific and which are genuinely reusable.
+1. Read [docs/PRODUCT.md](docs/PRODUCT.md) for what is built, what is
+   deliberately not built yet, and what is placeholder.
+2. Read [ARCHITECTURE.md](ARCHITECTURE.md) for what already exists, so you do
+   not rebuild it.
+3. **Separate foundation from product before you type.** Name which parts of
+   the change are product-specific and which are genuinely reusable.
 
 ### The foundation-modification rule
 
@@ -100,8 +99,11 @@ AUDIT → UNDERSTAND → IMPLEMENT → ADVERSARIAL VERIFY → DIFF AUDIT → SHI
 
 ## Product rules
 
-9. **Mobile first.** Design for a phone, then let it widen.
-10. **≥44px actionable touch targets.** The visible mark may be smaller.
+9. **iPad landscape first** for everything a child sees (this product
+   overrides the starter's "mobile first"). Grown-up pages must also work in
+   portrait.
+10. **≥44px actionable touch targets** for grown-ups, **≥`--touch-kid`
+    (76px)** for anything a child presses. The visible mark may be smaller.
 11. **≥16px editable inputs**, or iOS Safari zooms and does not zoom back.
 12. **Respect safe areas** on all four edges, through the `--inset-*` tokens.
 13. **Respect `prefers-reduced-motion`** on every animation, not most of them.
@@ -146,3 +148,72 @@ AUDIT → UNDERSTAND → IMPLEMENT → ADVERSARIAL VERIFY → DIFF AUDIT → SHI
 28. **Stop at the requested phase.** Finish it completely, report, and wait.
     Do not start the next phase, do not "while I'm here", do not polish the
     demo into a product.
+
+---
+
+# Space Kindergarten's own rules
+
+These come from the product spec and from defects found while building
+Phase 1. Each one has a reason; keep it with the rule.
+
+## Learning comes first
+
+29. **The screen never gives the answer away.** A question's caption says
+    "Find the letter!", never "Find M". Showing the letter turns hearing a name
+    into matching two shapes. The one exception is `visual`, used only when
+    nothing can be heard, and those rounds are not recorded as evidence.
+30. **Every round can be finished, and nothing costs a star.** Wrong choices
+    step aside; the second miss shows the answer. The star ledger is never
+    touched by `answerRound`.
+31. **Stars are for taking part.** A mission pays a fixed reward. Never scale
+    it by accuracy, never show a score to a child, and never label a child
+    behind or weak, including in the grown-ups area.
+32. **Adaptation stays deterministic.** The rules are three first-try answers
+    up, any help down, and a level recomputed from stored answers. No model,
+    no LLM, nothing a grown-up could not follow on paper.
+33. **No phonics on the device voice.** Letter *names* are acceptable on the
+    temporary synthesiser; letter *sounds*, blending and CVC need recordings.
+34. **Never claim educational authority.** Record sources in
+    `docs/CONTENT-SOURCES.md` and add every authored item to
+    `docs/CONTENT-REVIEW.md`.
+
+## Content and assets
+
+35. **Content is data.** Missions, letters, lines and cosmetics live in the
+    CONTENT section, and `validateContent()` must stay empty. Scenes never
+    name a mission id, a letter or a skill.
+36. **Every picture goes through `ASSET_REGISTRY`,** with source, licence and
+    state. Scenes ask for an id. Run `npm run config:sync` after any asset
+    change; it regenerates the precache list and `docs/ASSET-MANIFEST.md`.
+37. **Nothing from `references/` is ever shipped, traced or committed.** The
+    moodboard is stock and third-party art; it is git-ignored and a contract
+    guards it.
+38. **Never present placeholder art as final.** Registry states are
+    PLACEHOLDER, DRAFT and FINAL, and only a person promotes art to FINAL.
+
+## Data safety
+
+39. **Five keys, five owners.** The mission writes completions, stars (earn)
+    and evidence; the Rocket Dock writes stars (spend) and rocket. The Dock
+    must never write learning data, and a contract enforces it.
+40. **Earn and spend are append-only ledger entries** keyed by run and by
+    cosmetic. Never store a balance or an owned list.
+41. **Never overwrite what cannot be read.** An unreadable value is copied to
+    `sys.backup.unreadable.<key>` first. Never "reset" a child's progress to
+    recover from a bug.
+42. **No backend, accounts, analytics, ads, purchases, chat or outbound
+    links.** A contract forbids network APIs. Privacy is local-first.
+
+## Children and iPads
+
+43. **Speak first, then show.** Every child-facing line goes through `Voice`
+    with a script in `VOICE_CUES`. Keep on-screen text to a few words.
+44. **One primary action per child screen,** and it wears the warm yellow.
+    Nothing else may.
+45. **Never make a child wait on a silent voice.** A line that has not begun
+    within `speechStartGrace` falls back to caption pacing.
+46. **Reduce Motion is honoured twice:** by the device preference and by the
+    grown-ups setting. JavaScript motion checks `motionReduced()`, and a
+    flight's resting state is its destination.
+47. **Nothing on this machine is an iPad.** Browser QA uses emulated
+    viewports. Say what was not physically tested, every time.

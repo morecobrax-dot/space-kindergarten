@@ -282,7 +282,17 @@ function buildDom(src){
     const onM = attrText.match(/\bonclick="([^"]+)"/);
     const roleM = attrText.match(/\brole="([^"]+)"/);
     found.push({ tag, id: idM ? idM[1] : null, cls: clsM ? clsM[1] : '',
-                 onclick: onM ? onM[1] : null, role: roleM ? roleM[1] : null, at: m.index });
+                 onclick: onM ? onM[1] : null, role: roleM ? roleM[1] : null, at: m.index,
+                 attrs: attrText });
+  }
+  /* Every data-* attribute, not a list of the ones some product once used:
+     a new attribute must not silently read as undefined under test. */
+  function readData(attrText, el){
+    [...String(attrText).matchAll(/\bdata-([a-z0-9-]+)="([^"]*)"/g)].forEach(d => {
+      const key = d[1].replace(/-([a-z])/g, (_, ch) => ch.toUpperCase());
+      el.dataset[key] = d[2];
+      el.setAttribute('data-' + d[1], d[2]);
+    });
   }
   /* Nearest preceding element with an id and a container class becomes scope. */
   const containers = found.filter(f => f.id && /overlay|view|list|segmented|tabbar|host|panel|grid/.test(f.cls + ' ' + f.id));
@@ -290,6 +300,7 @@ function buildDom(src){
     if(!f.id) return;
     const el = mkEl(f.tag, f.id);
     f.cls.split(/\s+/).filter(Boolean).forEach(c => el.classList.add(c));
+    readData(f.attrs, el);
     /* onclick matters: the overlay engine reads a surface's declared close
        path out of this attribute rather than inventing one. */
     if(f.onclick) el.setAttribute('onclick', f.onclick);
@@ -306,12 +317,7 @@ function buildDom(src){
     if(/\bid="/.test(attrAll)) continue;
     const el = mkEl(m[1], '');
     m[2].split(/\s+/).filter(Boolean).forEach(c => el.classList.add(c));
-    const dataTab = attrAll.match(/data-tab="([^"]+)"/);
-    if(dataTab) el.dataset.tab = dataTab[1];
-    const dataFilter = attrAll.match(/data-filter="([^"]+)"/);
-    if(dataFilter) el.dataset.filter = dataFilter[1];
-    const dataStatus = attrAll.match(/data-status="([^"]+)"/);
-    if(dataStatus) el.dataset.status = dataStatus[1];
+    readData(attrAll, el);
     const onclick = attrAll.match(/onclick="([^"]+)"/);
     if(onclick) el.setAttribute('onclick', onclick[1]);
     const owner = containers.filter(c => c.at < m.index).pop();
@@ -329,14 +335,19 @@ function buildDom(src){
    against one shared localStorage.
    ========================================================= */
 const BRIDGE = [
+  /* foundation */
   'APP_CONFIG', 'APP_UPDATES', 'APP_VERSION', 'APP_ID_PATTERN',
   'STORAGE_NAMESPACE', 'CACHE_NAMESPACE', 'KEYS',
-  'Store', 'DATA_SCHEMA_VERSION', 'MIGRATIONS', 'migrationWarning', 'Domain',
-  'items', 'itemFilter', 'editingItemId', 'detailItemId', 'formStatus',
-  'ITEM_STATUSES', 'STATUS_LABEL', 'currentTab',
+  'Store', 'DATA_SCHEMA_VERSION', 'MIGRATIONS', 'migrationWarning', 'Domain', 'currentScene',
   'TOAST_MS', 'MAX_TOASTS', 'TOAST_VARIANTS',
   'OVERLAY_Z_BASE', '_openSheetStack', '_sheetOpeners', '_lockDepth', '_lockedScrollY',
-  '_historyDepth', '_pendingSelfPops', '_confirmResolve'
+  '_historyDepth', '_pendingSelfPops', '_confirmResolve',
+  /* product: assets and content */
+  'ASSET_STATES', 'ASSET_REGISTRY', 'SKILLS', 'LETTERS', 'LETTER_FAMILIES',
+  'DESTINATIONS', 'JOURNEY_ORDER', 'MISSIONS', 'COSMETICS', 'VOICE_CUES', 'VOICE_RECORDINGS', 'PRAISE',
+  /* product: engine, state and audio */
+  'ACTIVITY_TYPES', 'TIER_STEP_UP', 'RECENT_LIMIT', 'TIMING', 'GLYPHS',
+  'journey', 'session', 'soundPrefs', 'motionPref', 'storageState', 'Voice', 'Sfx'
 ];
 
 function loadApp(opts){
@@ -391,6 +402,11 @@ function loadApp(opts){
     matchMedia: () => ({ matches: false, addEventListener(){}, removeEventListener(){} }),
     MutationObserver: undefined
   };
+  /* Browser capabilities a contract needs to control — a speech engine that
+     records what it was asked to say, a reduced-motion preference — are
+     passed in rather than faked globally, so every other contract runs
+     against the plain, capability-less environment. */
+  if(o.windowExtras) Object.assign(sandbox.window, o.windowExtras);
   sandbox.globalThis = sandbox;
   sandbox.localStorage = storage;
 

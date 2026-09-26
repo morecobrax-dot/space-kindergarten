@@ -1,14 +1,14 @@
 {
-  "name": "App Starter",
-  "short_name": "Starter",
-  "description": "An opinionated, offline-capable mobile app foundation.",
+  "name": "Space Kindergarten",
+  "short_name": "Space Kinder",
+  "description": "A space adventure where kindergarten explorers practice their letters.",
   "id": "./",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0B0F16",
-  "theme_color": "#0B0F16",
+  "orientation": "landscape",
+  "background_color": "#0B1030",
+  "theme_color": "#0B1030",
   "icons": [
     {
       "src": "icon-192.png",
