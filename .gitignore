@@ -7,3 +7,7 @@ references/visual/*
 node_modules/
 .DS_Store
 Thumbs.db
+
+# Master renders from tools/art/render.js: lossless and large. Only the
+# encoded files in assets/ ship.
+tools/art/out/

@@ -75,7 +75,7 @@ These are not built yet:
 - handwriting
 - student profiles
 - recorded narration
-- final artwork
+- final (signed-off) artwork: the current pictures are draft renders
 - ambient music
 - Capacitor or native packaging
 
@@ -91,13 +91,19 @@ These are never planned:
 - chat
 - AI
 
-## What is placeholder (and says so)
+## What is placeholder or draft (and says so)
 
-- **All artwork:** every file in `assets/` and both icons. Each is marked
-  `PLACEHOLDER` in the registry and in
-  [ASSET-MANIFEST.md](ASSET-MANIFEST.md), and the grown-ups area says the
-  pictures are temporary. The target is sculpted clay; see
-  [ART-DIRECTION.md](ART-DIRECTION.md).
+- **All artwork is DRAFT.** Every file in `assets/`, and both icons, is a
+  clay render made in this repository by `tools/art`.
+  - Each is marked `DRAFT` in the registry and in
+    [ASSET-MANIFEST.md](ASSET-MANIFEST.md).
+  - The grown-ups area says the pictures are early drafts.
+  - They are real, consistent artwork: sculpted shapes, shaded as clay under
+    one light. They were not made by an artist, though, and none is signed
+    off.
+  - [ART-DIRECTION.md](ART-DIRECTION.md) sets the look.
+    [ASSET-BRIEFS.md](ASSET-BRIEFS.md) says what a final version of each must
+    match, so final art can replace the drafts one file at a time.
 - **The voice:** the device's built-in speech synthesiser, labelled as a
   temporary stand-in in the grown-ups area and in code. Every line already has
   a script (`VOICE_CUES`) ready for a voice actor.

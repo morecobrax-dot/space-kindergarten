@@ -6,9 +6,11 @@ finds letters to relight its beacon, earns stars, and spends them on rocket
 paint. Learning comes first; the adventure is what makes it fun.
 
 **Status: Phase 1, a vertical slice.** It contains one complete Moon mission
-of six uppercase letter-recognition rounds, plus the full loop around it. All
-artwork is a placeholder, and spoken instructions use the device's own speech
-voice as a temporary stand-in for recorded narration. See
+of six uppercase letter-recognition rounds, plus the full loop around it.
+
+The artwork is a set of draft clay renders made in this repository by
+`tools/art`. Spoken instructions use the device's own speech voice as a
+temporary stand-in for recorded narration. See
 [docs/PRODUCT.md](docs/PRODUCT.md) for what is and is not built.
 
 ## What it is
@@ -27,8 +29,9 @@ voice as a temporary stand-in for recorded narration. See
 index.html              the whole app: tokens, scenes, engine, content, audio
 sw.js                   offline cache; name and precache list derived
 manifest.webmanifest    install metadata, derived from APP_CONFIG
-assets/                 every picture, each registered in ASSET_REGISTRY
-icon-192/512.png        home-screen icons (placeholder)
+assets/                 every picture (WebP), each registered in ASSET_REGISTRY
+icon-192/512.png        home-screen icons (draft clay renders)
+tools/art/              the clay renderer that makes every picture (see its README)
 docs/                   product, learning, art, content and asset docs
 references/             moodboard rules (the images are git-ignored)
 scripts/config.js       sync / verify derived files against the app

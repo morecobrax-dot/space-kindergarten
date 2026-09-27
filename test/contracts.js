@@ -56,6 +56,19 @@ function fnBody(src, name){
   return '';
 }
 
+/* Width and height from a PNG or WebP header, without decoding it. */
+function imageSize(file){
+  const b = fs.readFileSync(file);
+  if(b.length > 24 && b.readUInt32BE(0) === 0x89504E47) return [b.readUInt32BE(16), b.readUInt32BE(20)];
+  if(b.length > 30 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP'){
+    const kind = b.toString('ascii', 12, 16);
+    if(kind === 'VP8X') return [1 + b.readUIntLE(24, 3), 1 + b.readUIntLE(27, 3)];
+    if(kind === 'VP8 ') return [b.readUInt16LE(26) & 0x3FFF, b.readUInt16LE(28) & 0x3FFF];
+    if(kind === 'VP8L'){ const bits = b.readUInt32LE(21); return [1 + (bits & 0x3FFF), 1 + ((bits >>> 14) & 0x3FFF)]; }
+  }
+  return null;
+}
+
 /* Timings collapse to zero so a whole journey runs in milliseconds. The
    values themselves are asserted elsewhere; here only the order matters. */
 function fast(c){
@@ -1489,6 +1502,24 @@ function testCosmeticIsolation(){
     c.equippedCosmetic({ paint: 'paint-gold' }, ledger, 'paint') === 'paint-classic');
   T('and nothing at all', c.equippedCosmetic(null, [], 'paint') === 'paint-classic');
 
+  sub('a paint is a colour, not a picture — so paints scale');
+  const paints = c.COSMETICS.filter(x => x.slot === 'paint');
+  const tokens = css();
+  T('no paint has a picture of its own', paints.every(p => !('asset' in p)));
+  T('every paint names a colour token that exists', paints.every(p => new RegExp('--' + p.tint + ':\\s*#').test(tokens)),
+    paints.filter(p => !new RegExp('--' + p.tint + ':\\s*#').test(tokens)).map(p => p.id).join(','));
+  const bodyPath = c.assetSrc('rocket.body'), maskPath = c.assetSrc('rocket.paintMask');
+  T('every paint draws the same rocket through the same paint mask',
+    paints.every(p => { const h = c.rocketHtml(p.id, false); return h.indexOf(bodyPath) !== -1 && h.indexOf(maskPath) !== -1 && h.indexOf('var(--' + p.tint + ')') !== -1; }));
+  T('the paint is multiplied, the way a matte surface takes colour, inside the rocket only',
+    /\.rocket-paint\{[^}]*mix-blend-mode: multiply/.test(tokens) && /\.rocket\{[^}]*isolation: isolate/.test(tokens));
+  T('adding a paint needs no new file: a made-up paint still draws a rocket', (() => {
+    c.COSMETICS.push({ id: 'paint-test', slot: 'paint', name: 'Test', cost: 9, tint: 'paint-sky' });
+    const h = c.rocketHtml('paint-test', false);
+    c.COSMETICS.pop();
+    return h.indexOf(bodyPath) !== -1 && h.indexOf('var(--paint-sky)') !== -1;
+  })());
+
   sub('the Dock has no write path to learning');
   const dockCode = ['openDock', 'renderDockScene', 'pickPaint', 'dockAction', 'popDockRocket', 'leaveDock']
     .map(n => fnBody(src, n)).join('\n');
@@ -1736,8 +1767,42 @@ function testAssets(){
     reg.every(a => a.purpose && a.source && a.license && a.format && a.dimensions && c.ASSET_STATES.indexOf(a.state) !== -1));
   T('every registered file exists', reg.every(a => fs.existsSync(path.join(H.ROOT, a.path))),
     reg.filter(a => !fs.existsSync(path.join(H.ROOT, a.path))).map(a => a.path).join(','));
-  T('placeholders are marked as placeholders — none claims to be final yet',
-    reg.every(a => a.state === 'PLACEHOLDER'));
+  T('nothing claims to be FINAL: only a person signs art off', reg.every(a => a.state !== 'FINAL'));
+  T('every draft says what made it', reg.filter(a => a.state === 'DRAFT').every(a => /tools\/art/.test(a.source)));
+  const JOBS = require(path.join(H.ROOT, 'tools', 'art', 'jobs.js'));
+  const targets = [];
+  JOBS.forEach(j => { targets.push(j.target); if(j.paintMask) targets.push(j.paintMask.target); });
+  T('every rendered picture has a render job, so it can be made again', reg.filter(a => a.state === 'DRAFT').every(a => targets.indexOf(a.path) !== -1),
+    reg.filter(a => a.state === 'DRAFT' && targets.indexOf(a.path) === -1).map(a => a.path).join(','));
+  T('and every render job ships a registered picture', targets.every(t => reg.some(a => a.path === t)),
+    targets.filter(t => !reg.some(a => a.path === t)).join(','));
+
+  sub('small enough for an iPad on a slow connection');
+  T('pictures ship as WebP; only the Home Screen icons are PNG, because iOS requires it',
+    reg.every(a => a.format === 'webp' || (a.format === 'png' && /^icon-\d+\.png$/.test(a.path))));
+  const sizes = {};
+  reg.forEach(a => { sizes[a.id] = fs.statSync(path.join(H.ROOT, a.path)).size; });
+  const wrongSize = reg.filter(a => { const d = imageSize(path.join(H.ROOT, a.path)); return !d || d.join('×') !== a.dimensions; });
+  T('the registry states each picture\'s real size', wrongSize.length === 0,
+    wrongSize.map(a => a.id + ' ' + (imageSize(path.join(H.ROOT, a.path)) || ['?']).join('×') + ' vs ' + a.dimensions).join(', '));
+  const heavy = reg.filter(a => sizes[a.id] > 260 * 1024);
+  T('no single picture is over 260 KB', heavy.length === 0, heavy.map(a => a.id + ' ' + Math.round(sizes[a.id] / 1024) + 'KB').join(','));
+  const total = Object.keys(sizes).reduce((s, k) => s + sizes[k], 0);
+  T('the whole picture set is under 1.2 MB, so offline install stays quick', total < 1.2 * 1024 * 1024, Math.round(total / 1024) + 'KB');
+  const firstScreen = ['bg.space', 'planet.earth', 'planet.moon', 'planet.moonLit', 'rocket.body', 'rocket.paintMask', 'character.pip', 'prop.star'];
+  const first = firstScreen.reduce((s, id) => s + (sizes[id] || 0), 0);
+  T('the first Earth screen needs under 700 KB of pictures', first < 700 * 1024, Math.round(first / 1024) + 'KB');
+
+  sub('one studio: every picture comes from the same renderer and the same light');
+  const artDir = path.join(H.ROOT, 'tools', 'art');
+  const sceneFiles = fs.readdirSync(path.join(artDir, 'scenes')).filter(f => /\.js$/.test(f));
+  const sceneSrc = sceneFiles.map(f => fs.readFileSync(path.join(artDir, 'scenes', f), 'utf8')).join('\n');
+  T('the light rig is declared once, in the renderer', /const RIG = \{/.test(fs.readFileSync(path.join(artDir, 'clay.js'), 'utf8')));
+  T('no scene brings its own key or rim light, so nothing is lit from another direction',
+    !/\bRIG\s*=|\bRIG\.\w+\s*=|\bdir\s*:/.test(stripComments(sceneSrc)));
+  const toolSrc = ['clay.js', 'render.js', 'encode.js', 'jobs.js'].map(f => fs.readFileSync(path.join(artDir, f), 'utf8')).join('\n') + sceneSrc;
+  T('the renderer never reads the moodboard', !/references/.test(stripComments(toolSrc)));
+  T('master renders are never committed', /tools\/art\/out\//.test(fs.readFileSync(path.join(H.ROOT, '.gitignore'), 'utf8')));
 
   sub('nothing is shipped that is not registered');
   const files = [];
@@ -2130,8 +2195,112 @@ async function testDialogue(){
   c.TIMING.reprompt = 1e9;
 }
 
+/* =========================================================
+   CONTRACT 31 — THE CLAY WORLD STAYS READABLE, AND LINED UP
+   Phase 1.2 made the world clay. Art must never make the learning
+   harder to read, and the app's lights must sit where the renders
+   put the things they light.
+   ========================================================= */
+function luminance(hexColour){
+  const n = parseInt(hexColour.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+function cssRule(sheet, selector){
+  const at = sheet.indexOf(selector + '{');
+  return at === -1 ? '' : sheet.slice(at, sheet.indexOf('}', at) + 1);
+}
+function cssPercent(rule, prop){
+  const m = rule.match(new RegExp('(?:^|[\\s;{])' + prop + ':\\s*([\\d.]+)%'));
+  return m ? Number(m[1]) : NaN;
+}
+/* Where a point in a scene lands in its picture, through the scene's own
+   camera: the numbers the CSS anchors must agree with. */
+function projectInScene(sceneName, variant, p){
+  const Cl = require(path.join(H.ROOT, 'tools', 'art', 'clay.js'));
+  const s = require(path.join(H.ROOT, 'tools', 'art', 'scenes', sceneName + '.js')).build(variant);
+  const cam = s.camera;
+  const f = Cl.norm3([cam.target[0] - cam.pos[0], cam.target[1] - cam.pos[1], cam.target[2] - cam.pos[2]]);
+  const r = Cl.norm3(Cl.cross3(f, [0, 1, 0]));
+  const u = Cl.cross3(r, f);
+  const th = Math.tan(cam.fov * Math.PI / 360), aspect = s.width / s.height;
+  const d = [p[0] - cam.pos[0], p[1] - cam.pos[1], p[2] - cam.pos[2]];
+  const z = Cl.dot3(d, f);
+  return [(Cl.dot3(d, r) / z / (th * aspect) + 1) * 50, (1 - Cl.dot3(d, u) / z / th) * 50];
+}
+
+async function testClayWorld(){
+  section('CONTRACT 31 — the clay world stays readable, and its lights stay on their lamps');
+  const app = H.loadApp();
+  const c = app.ctx;
+  const sheet = css();
+
+  sub('learning clarity comes before art');
+  const tile = cssRule(sheet, '.choice');
+  T('a letter tile has no picture or texture behind its letter', tile.length > 0 && !/url\(|background-image/.test(tile));
+  T('its surface and ink come from tokens', /background: var\(--tile-surface\)/.test(tile) && /color: var\(--tile-ink\)/.test(tile));
+  const surf = (sheet.match(/--brand-lavender:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
+  const ink = (sheet.match(/--brand-ink:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
+  const ratio = surf && ink ? (luminance(surf) + 0.05) / (luminance(ink) + 0.05) : 0;
+  T('the letters keep a contrast of at least 7:1 against their tile', ratio >= 7, ratio.toFixed(1) + ':1');
+
+  sub('restoring the Moon is a change a child can see from home');
+  const moon = c.DESTINATIONS.moon;
+  T('the Moon has a restored picture as well as a waiting one', !!c.assetEntry(moon.restoredAsset) && moon.restoredAsset !== moon.asset);
+  c.renderEarth();
+  const moonHtml = app.dom.document.getElementById('earthMoon').innerHTML;
+  T('home draws both, so relighting can crossfade', moonHtml.indexOf(c.assetSrc(moon.asset)) !== -1 && moonHtml.indexOf(c.assetSrc(moon.restoredAsset)) !== -1);
+  T('and the restored one shows once the Moon is restored', /\.earth-moon\.is-restored \.moon-lit\{\s*opacity: 1;/.test(sheet));
+  T('the beacon lights up the same way in the celebration',
+    /artImg\('prop\.beaconLit'/.test(js()) && /\.celebrate-beacon\.is-lit \.beacon-on\{\s*opacity: 1;/.test(sheet));
+
+  /* The payoff happens where the child can see it: home from the relighting
+     mission, the Moon is dark for a beat and then lights up. */
+  const shared = new Map();
+  const sp = fakeSpeech();
+  const j = H.loadApp({ sharedStorage: shared, windowExtras: sp.extras });
+  const jc = fast(j.ctx);
+  jc.TIMING.relight = 30;
+  const moonHost = () => j.dom.document.getElementById('earthMoon');
+  await (async () => {
+    await jc.startAdventure();
+    await jc.launch();
+    await playMission(jc);
+    await jc.flyHome();
+    T('home from the relighting mission, the Moon is dark at first', jc.currentScene === 'earth' && !moonHost().classList.contains('is-restored'));
+    await wait(80);
+    T('then it lights up while the child watches', moonHost().classList.contains('is-restored'));
+    await jc.launch();
+    await playMission(jc);
+    await jc.flyHome();
+    T('on later trips home it is simply lit', moonHost().classList.contains('is-restored'));
+  })();
+
+  sub('characters move like stop-motion; navigation never does');
+  T('Pip holds each pose for a frame', /steps\(\d+\)/.test(cssRule(sheet, '.pip')));
+  T('so does the rocket waiting on Earth', /rocket-idle [\d.]+s steps\(\d+\)/.test(sheet));
+  T('a scene change stays smooth', !/steps\(/.test(cssRule(sheet, '.scene.active')));
+
+  sub('the app\'s lights sit on the renders\' lamps');
+  const pipRule = cssRule(sheet, '.pip-light');
+  const ball = projectInScene('pip', undefined, [0.045, 0.83, 0]);
+  T('Pip\'s speaking light is on the antenna ball', Math.abs(cssPercent(pipRule, 'left') - ball[0]) < 0.6 && Math.abs(cssPercent(pipRule, 'top') - ball[1]) < 0.6,
+    'css ' + cssPercent(pipRule, 'left') + '%,' + cssPercent(pipRule, 'top') + '% vs render ' + ball.map(v => v.toFixed(1)).join('%,') + '%');
+  const moonRule = cssRule(sheet, '.moon-light');
+  const lamp = projectInScene('moon', 'dim', [0.238 * 1.128, 0.381 * 1.128, 0.894 * 1.128]);
+  T('the Moon\'s beacon glow is on its lamp', Math.abs(cssPercent(moonRule, 'left') - lamp[0]) < 0.8 && Math.abs(cssPercent(moonRule, 'top') - lamp[1]) < 0.8,
+    'css ' + cssPercent(moonRule, 'left') + '%,' + cssPercent(moonRule, 'top') + '% vs render ' + lamp.map(v => v.toFixed(1)).join('%,') + '%');
+  const beaconRule = cssRule(sheet, '.beacon-lamp');
+  const blamp = projectInScene('beacon', 'on', [0, 1.4, 0]);
+  T('the lighthouse glow is on its lamp', Math.abs(cssPercent(beaconRule, 'top') - blamp[1]) < 0.8, 'css ' + cssPercent(beaconRule, 'top') + '% vs render ' + blamp[1].toFixed(1) + '%');
+  const flameRule = cssRule(sheet, '.rocket-flame');
+  const nozzle = projectInScene('rocket', undefined, [0, -1.065, 0]);
+  T('the flame hangs from the nozzle, centred', Math.abs(cssPercent(flameRule, 'left') + cssPercent(flameRule, 'width') / 2 - 50) < 0.6 &&
+    Math.abs(cssPercent(flameRule, 'top') - nozzle[1]) < 3, 'flame top ' + cssPercent(flameRule, 'top') + '% vs nozzle ' + nozzle[1].toFixed(1) + '%');
+}
+
 module.exports = {
-  T, section, sub, results, reset, testPortability,
+  T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
   testNavigation, testOverlays, testToast, testConfirmation, testErase,
   testMobile, testDesignSystem, testPWA, testRelease, testStress,

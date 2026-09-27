@@ -188,8 +188,10 @@ Phase 1. Each one has a reason; keep it with the rule.
 37. **Nothing from `references/` is ever shipped, traced or committed.** The
     moodboard is stock and third-party art; it is git-ignored and a contract
     guards it.
-38. **Never present placeholder art as final.** Registry states are
+38. **Never present placeholder or draft art as final.** Registry states are
     PLACEHOLDER, DRAFT and FINAL, and only a person promotes art to FINAL.
+    The current pictures are DRAFT clay renders. `docs/ASSET-BRIEFS.md`
+    says what final art must match.
 
 ## Data safety
 
@@ -217,3 +219,26 @@ Phase 1. Each one has a reason; keep it with the rule.
     flight's resting state is its destination.
 47. **Nothing on this machine is an iPad.** Browser QA uses emulated
     viewports. Say what was not physically tested, every time.
+
+## The clay world
+
+48. **Every picture is rendered by `tools/art`, under one light.** Change a
+    scene file and re-render; never retouch a render by hand. The rig in
+    `tools/art/clay.js` is the only light, and a contract fails if a scene
+    brings its own. A render that warns it touches its frame edge is not
+    shipped: the app would show a cut line.
+49. **A paint is a colour token, not a picture.** A new paint is a
+    `--paint-*` token and a `COSMETICS` line. Never add one rocket image per
+    colour, and never tint anything else in CSS.
+50. **Clay is for the world, not the controls.** Buttons, tiles and panels
+    stay clean UI whose depth follows the key light: highlight up and to the
+    left, lip and shadow down and to the right. Nothing textured ever sits
+    behind a letter. Learning clarity comes before art.
+51. **Characters move like stop-motion; navigation never does.** Idle
+    character motion steps with `steps()` at about ten frames a second.
+    Transitions stay smooth and fast, and nothing a child waits for imitates
+    stop-motion. Reduce Motion turns all of it off.
+52. **Keep the anchors.** CSS positions the antenna light, the flame, the
+    beacon glow and the rocket's landing spot by fixed points in the
+    renders (`docs/ASSET-BRIEFS.md`). A scene change that moves one updates
+    the CSS in the same change.

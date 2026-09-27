@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.1.1';
+const CACHE_NAME = 'space-kindergarten-v0.2.0';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -29,18 +29,19 @@ const ASSETS = [
   './',
   './index.html',
   './manifest.webmanifest',
-  './assets/backgrounds/space.svg',
-  './assets/backgrounds/moon-ground.svg',
-  './assets/planets/earth.svg',
-  './assets/planets/moon.svg',
-  './assets/props/beacon.svg',
-  './assets/props/star.svg',
-  './assets/rocket/rocket-classic.svg',
-  './assets/rocket/rocket-sky.svg',
-  './assets/rocket/rocket-sunny.svg',
-  './assets/rocket/rocket-lime.svg',
-  './assets/rocket/flame.svg',
-  './assets/characters/pip.svg',
+  './assets/backgrounds/space.webp',
+  './assets/backgrounds/moon-ground.webp',
+  './assets/planets/earth.webp',
+  './assets/planets/moon.webp',
+  './assets/planets/moon-lit.webp',
+  './assets/props/beacon.webp',
+  './assets/props/beacon-lit.webp',
+  './assets/props/star.webp',
+  './assets/props/pad.webp',
+  './assets/rocket/rocket.webp',
+  './assets/rocket/rocket-paint.webp',
+  './assets/rocket/flame.webp',
+  './assets/characters/pip.webp',
   './icon-192.png',
   './icon-512.png'
 ];

@@ -8,7 +8,7 @@
 <title>Space Kindergarten</title>
 <meta name="description" content="A space adventure where kindergarten explorers practice their letters.">
 <meta name="apple-mobile-web-app-title" content="Space Kinder">
-<meta name="theme-color" content="#0B1030">
+<meta name="theme-color" content="#070B22">
 <!-- APP-META-END -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -47,7 +47,7 @@
   /* The ground and the surfaces that sit on it. These are literal values,
      not computed from --brand-ground, because the steps between them were
      chosen for contrast rather than for arithmetic. */
-  --brand-ground: #0B1030;
+  --brand-ground: #070B22;
   --brand-surface: #161C4A;
   --brand-surface-raised: #222A6A;
   --brand-surface-sunken: #080B24;
@@ -110,7 +110,7 @@
   --bubble: var(--brand-cream);
   --bubble-ink: var(--brand-ink);
   --kid-button: var(--surface-raised);
-  --kid-panel: rgba(22,28,74,0.8);
+  --kid-panel: rgba(14,19,58,0.84);
   --glow-accent: rgba(63,208,255,0.55);
   --glow-action: rgba(255,210,74,0.65);
   --glow-success: rgba(139,224,122,0.6);
@@ -160,11 +160,15 @@
   --shadow-lg: 0 10px 28px rgba(0,0,0,0.38);
   --shadow-accent: 0 2px 12px rgba(63,208,255,0.22);
   /* Touchable things carry a darker lower lip and a light top edge, so
-     they read as objects to press rather than as painted rectangles. */
-  --shadow-kid: inset 0 -6px 0 rgba(3,5,22,0.35), inset 0 2px 0 rgba(255,255,255,0.12), 0 10px 22px rgba(3,5,22,0.4);
-  --shadow-tile: inset 0 -10px 0 var(--brand-lavender-edge), inset 0 3px 0 rgba(255,255,255,0.9), 0 16px 30px rgba(3,5,22,0.5);
-  --shadow-action: inset 0 -8px 0 var(--brand-sun-edge), inset 0 3px 0 rgba(255,255,255,0.55), 0 14px 32px rgba(255,154,46,0.32);
-  --shadow-repeat: inset 0 -7px 0 rgba(3,5,22,0.25), inset 0 3px 0 rgba(255,255,255,0.4), 0 12px 26px rgba(63,208,255,0.3);
+     they read as objects to press rather than as painted rectangles. They
+     are lit by the same world as the clay: the highlight sits up and to
+     the left, the lip and the shadow fall down and to the right, and dark
+     controls catch a thread of the cyan rim light on their right edge.
+     Clean surfaces, not clay texture: learning clarity comes first. */
+  --shadow-kid: inset -2px -6px 0 rgba(3,5,22,0.38), inset 2px 3px 0 rgba(255,255,255,0.13), inset -1px 0 0 rgba(96,196,255,0.26), 6px 12px 22px rgba(2,3,16,0.5);
+  --shadow-tile: inset -3px -10px 0 var(--brand-lavender-edge), inset 3px 4px 0 rgba(255,255,255,0.9), 12px 20px 14px -6px rgba(8,5,32,0.58), 4px 28px 44px rgba(3,5,22,0.36);
+  --shadow-action: inset -2px -8px 0 var(--brand-sun-edge), inset 2px 3px 0 rgba(255,255,255,0.55), 6px 14px 30px rgba(255,154,46,0.3), 5px 10px 14px rgba(2,3,16,0.34);
+  --shadow-repeat: inset -2px -7px 0 rgba(3,5,22,0.25), inset 2px 3px 0 rgba(255,255,255,0.4), 6px 12px 26px rgba(63,208,255,0.28), 5px 10px 14px rgba(2,3,16,0.34);
 
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -201,12 +205,20 @@
   /* ---- 4 · DOMAIN ----------------------------------------------
      The world's own colours. Each destination gets a controlled
      identity; docs/ART-DIRECTION.md holds the palette for planets that
-     are not built yet, so no token exists before something uses it. */
-  --planet-earth-glow: rgba(92,200,255,0.34);
-  --planet-moon-glow: rgba(201,188,255,0.5);
-  --beacon-light: #FFF3B0;
-  --beacon-glow: rgba(255,236,150,0.85);
+     are not built yet, so no token exists before something uses it.
+     The pictures carry their own light (tools/art); these tokens only
+     add what must move or change at run time. */
+  --beacon-glow: rgba(255,226,150,0.55);
   --pip-light-on: #F2FCFF;
+  /* Contact shadows fall down and to the right, away from the world's key
+     light in the upper left, as they do in every render. */
+  --contact-shadow: rgba(6,4,26,0.62);
+  /* Rocket paints: multiplied through the render's white-clay paint areas,
+     so each reads as the colour of the clay, shaded by the same light. */
+  --paint-classic: #EE5A45;
+  --paint-sky: #45AEF2;
+  --paint-sunny: #FFC93E;
+  --paint-lime: #7DD65A;
 }
 
 /* =========================================================
@@ -618,26 +630,35 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select{
 /* ---- Pip, the guide ---- */
 .pip{
   position: relative; display: block; flex-shrink: 0;
-  width: var(--pip-size, 18vh); aspect-ratio: 240 / 220;
+  width: var(--pip-size, 18vh); aspect-ratio: 720 / 660;
   padding: 0; border: none; background: none;
-  animation: pip-bob 3.4s ease-in-out infinite;
+  /* Stop-motion, not tweening: each pose is held for a frame, at about
+     ten frames a second, as a hand-posed clay figure would be. Only the
+     characters move this way; navigation stays smooth. */
+  animation: pip-bob 3.2s steps(32) infinite;
 }
 button.pip{ cursor: pointer; }
 .pip-figure{ position: absolute; inset: 0; display: block; }
 /* The antenna light glows while Pip is speaking — the visual half of
-   every spoken line, so a child can tell sound is coming from Pip. */
+   every spoken line, so a child can tell sound is coming from Pip. It
+   sits exactly on the glass ball of the render. */
 .pip-light{
-  position: absolute; left: 50%; top: 10.9%; width: 10.5%; aspect-ratio: 1;
+  position: absolute; left: 51.9%; top: 18.1%; width: 6.4%; aspect-ratio: 1;
   border-radius: 50%; transform: translate(-50%, -50%);
   background: transparent;
   transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 html[data-speaking="true"] .pip-light{
   background: var(--pip-light-on);
-  box-shadow: 0 0 0 4px var(--glow-accent), 0 0 28px 12px var(--glow-accent);
+  box-shadow: 0 0 0 3px var(--glow-accent), 0 0 24px 10px var(--glow-accent);
   animation: pip-talk 0.6s ease-in-out infinite alternate;
 }
-@keyframes pip-bob{ 0%, 100%{ transform: translateY(0); } 50%{ transform: translateY(-7px); } }
+@keyframes pip-bob{
+  0%, 100%{ transform: translateY(0) rotate(0deg); }
+  25%{ transform: translateY(-4px) rotate(-1.6deg); }
+  50%{ transform: translateY(-8px) rotate(0deg); }
+  75%{ transform: translateY(-4px) rotate(1.6deg); }
+}
 @keyframes pip-talk{ from{ opacity: 0.7; } to{ opacity: 1; } }
 
 /* What Pip is saying, in a few words. Never the answer. */
@@ -653,14 +674,30 @@ html[data-speaking="true"] .pip-light{
 
 .guide{ position: absolute; display: flex; align-items: center; gap: var(--space-md); }
 
-/* ---- Rocket: body, and a flame only while flying ---- */
-.rocket{ position: relative; display: block; height: 100%; aspect-ratio: 200 / 340; }
+/* ---- Rocket: one render, a paint layer, and a flame only while flying ----
+   The paint layer is the paint's colour cut to the paint mask and
+   multiplied over the white-clay parts of the render. `isolation` keeps
+   the multiply inside the rocket, whatever it is flying over. */
+.rocket{ position: relative; display: block; height: 100%; aspect-ratio: 640 / 1088; isolation: isolate; }
 .rocket .rocket-art{ position: relative; z-index: 1; }
+.rocket-paint{
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: var(--paint); mix-blend-mode: multiply;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
 .rocket-flame{
-  position: absolute; left: 36%; top: 83%; width: 28%; height: auto; z-index: 0;
+  position: absolute; left: 34.5%; top: 86%; width: 31%; height: auto; z-index: 0;
   transform-origin: 50% 0; animation: flame 0.16s ease-in-out infinite alternate;
 }
-@keyframes flame{ from{ transform: scaleY(0.82); opacity: 0.9; } to{ transform: scaleY(1.08); opacity: 1; } }
+@keyframes flame{ from{ transform: scaleY(0.86); opacity: 0.92; } to{ transform: scaleY(1.06); opacity: 1; } }
+/* A hand-animated rocket never sits perfectly still: a tiny sway, held on
+   each frame the way stop-motion is, at about ten frames a second. */
+@keyframes rocket-idle{
+  0%, 100%{ transform: rotate(0deg); }
+  30%{ transform: rotate(-1.4deg); }
+  62%{ transform: rotate(1deg); }
+}
 
 /* ---- Welcome ---- */
 .scene-welcome .scene-ui{
@@ -671,7 +708,7 @@ html[data-speaking="true"] .pip-light{
   font-size: var(--fs-section); font-weight: 800; letter-spacing: 0.04em;
   color: var(--text-dim); text-transform: uppercase;
 }
-.welcome-stage{ display: flex; align-items: center; gap: var(--space-2xl); --pip-size: 32vh; }
+.welcome-stage{ display: flex; align-items: center; gap: var(--space-2xl); --pip-size: 38vh; }
 .play-btn{
   position: relative; width: calc(var(--touch-hero) * 1.45); height: calc(var(--touch-hero) * 1.45);
   border: none; border-radius: 50%; cursor: pointer;
@@ -689,42 +726,55 @@ html[data-speaking="true"] .pip-light{
 .play-btn[aria-disabled="true"]::after{ display: none; }
 
 /* ---- Earth ---- */
+/* The Earth render carries its own atmosphere and light; nothing is
+   filtered here, which also keeps the biggest picture cheap to draw. */
 .earth-planet{
   position: absolute; left: -5vh; bottom: -16vh;
   width: min(84vh, 62vw); aspect-ratio: 1;
-  filter: drop-shadow(0 0 40px var(--planet-earth-glow));
 }
 .earth-rocket{
   position: absolute; left: 55%; top: -10%; height: 42%;
   padding: 0; border: none; background: none; cursor: pointer;
-  transform: rotate(16deg); transform-origin: 50% 100%;
+  transform: rotate(16deg); transform-origin: 50% 88%;
   transition: transform var(--dur-fast) var(--ease-bounce);
 }
 .earth-rocket:active{ transform: rotate(16deg) scale(0.95); }
+/* Where the rocket stands on the land: its contact shadow. */
+.earth-rocket::before{
+  content: ''; position: absolute; left: 14%; right: -6%; top: 83%; height: 11%; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--contact-shadow), transparent);
+}
+.earth-rocket .rocket{ animation: rocket-idle 4.8s steps(40) infinite; transform-origin: 50% 88%; }
 .earth-moon{
   /* Low and in enough that its destination ring clears the star count in
      the corner — two things a child might tap must never overlap. */
   position: absolute; right: calc(12vw + var(--inset-right)); top: calc(17vh + var(--inset-top));
   width: 19vh; aspect-ratio: 1;
-  filter: drop-shadow(0 0 22px var(--planet-moon-glow));
 }
+.earth-moon .planet-art{ position: absolute; inset: 0; }
+/* Relit: the warm render fades in over the cool one. */
+.earth-moon .moon-lit{ opacity: 0; transition: opacity 1.2s var(--ease); }
+.earth-moon.is-restored .moon-lit{ opacity: 1; }
 /* The current destination wears a slow ring, so the eye goes from the
    rocket, along the path, to where the adventure is going. */
 .earth-moon::before{
   content: ''; position: absolute; inset: -14%; border-radius: 50%;
   border: 4px dashed var(--path-line); animation: spin-slow 24s linear infinite;
 }
+/* The beacon's own light is in the relit render; this is only its slow
+   breath, so a restored Moon looks alive from home. */
 .moon-light{
-  position: absolute; left: 60%; top: 34%; width: 22%; aspect-ratio: 1; border-radius: 50%;
+  /* on the lamp of the beacon in the render (projected by tools/art) */
+  position: absolute; left: 63.3%; top: 29.5%; width: 34%; aspect-ratio: 1; border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, var(--beacon-light) 0 26%, transparent 70%);
-  opacity: 0.18;
+  /* one soft gradient, no box-shadow: a shadow glows only outside the
+     element and left a dim ring between the two */
+  background: radial-gradient(circle, var(--beacon-glow) 0%, transparent 68%);
+  opacity: 0; transition: opacity 1.2s var(--ease);
 }
-/* Relit is the progress a child should see from home: a clear warm light,
-   not a hint of one. */
 .earth-moon.is-restored .moon-light{
-  width: 30%; opacity: 1; box-shadow: 0 0 40px 20px var(--beacon-glow);
-  animation: beacon-pulse 2.4s ease-in-out infinite;
+  opacity: 0.75;
+  animation: beacon-pulse 2.8s ease-in-out infinite;
 }
 @keyframes spin-slow{ to{ transform: rotate(360deg); } }
 @keyframes beacon-pulse{ 0%, 100%{ transform: translate(-50%, -50%) scale(1); } 50%{ transform: translate(-50%, -50%) scale(1.12); } }
@@ -757,7 +807,7 @@ html[data-speaking="true"] .pip-light{
   background: var(--warning); box-shadow: 0 0 0 3px var(--bg);
 }
 
-.earth-guide{ right: 0; bottom: calc(var(--touch-hero) + var(--space-2xl)); --pip-size: 17vh; }
+.earth-guide{ right: 0; bottom: calc(var(--touch-hero) + var(--space-2xl)); --pip-size: 21vh; }
 .earth-actions{
   position: absolute; right: 0; bottom: 0;
   display: flex; align-items: flex-end; gap: var(--space-xl);
@@ -780,9 +830,15 @@ html[data-speaking="true"] .pip-light{
 .travel-home .t-rocket{ transform: rotate(-120deg); }
 
 /* ---- Mission ---- */
-.mission-ground{ position: absolute; left: 0; right: 0; bottom: 0; height: 36vh; }
+/* The letters stand on the Moon: the ground is tall enough that the tiles'
+   feet are on its surface, not floating over a strip. */
+.mission-ground{ position: absolute; left: 0; right: 0; bottom: 0; height: 48vh; }
 .mission-ground .ground-art{ object-fit: cover; object-position: top center; }
-.mission-earth{ position: absolute; right: 6vw; top: calc(15vh + var(--inset-top)); width: 9vh; aspect-ratio: 1; opacity: 0.95; }
+/* Home, far behind: small, and a little soft, as a lens would see it. */
+.mission-earth{
+  position: absolute; right: 6vw; top: calc(14vh + var(--inset-top)); width: 10vh; aspect-ratio: 1;
+  filter: blur(0.6px) saturate(0.85); opacity: 0.92;
+}
 .mission-top{
   position: absolute; top: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg);
@@ -799,7 +855,7 @@ html[data-speaking="true"] .pip-light{
   position: absolute; top: calc(var(--touch-kid) + var(--space-xl)); left: 0; right: 0; bottom: 0;
   display: grid; grid-template-columns: minmax(200px, 26vw) 1fr; gap: var(--space-xl); align-items: center;
 }
-.mission-guide{ display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); --pip-size: 19vh; }
+.mission-guide{ display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); --pip-size: 23vh; }
 .mission-guide .bubble{ max-width: 26vw; }
 .repeat-btn{
   width: 104px; height: 104px; border: none; border-radius: 50%; cursor: pointer;
@@ -860,21 +916,26 @@ html[data-speaking="true"] .pip-light{
 @keyframes ripple{ from{ transform: scale(0.97); opacity: 1; } to{ transform: scale(1.07); opacity: 0.5; } }
 
 /* ---- Celebration ---- */
-.celebrate-ground{ position: absolute; left: 0; right: 0; bottom: 0; height: 30vh; }
+.celebrate-ground{ position: absolute; left: 0; right: 0; bottom: 0; height: 34vh; }
 .celebrate-ground .ground-art{ object-fit: cover; object-position: top center; }
 .celebrate-beacon{
-  position: absolute; left: 50%; bottom: 17vh; height: 46vh; aspect-ratio: 160 / 280;
+  position: absolute; left: 50%; bottom: 5vh; height: 64vh; aspect-ratio: 512 / 896;
   transform: translateX(-50%);
 }
+.celebrate-beacon .beacon-art{ position: absolute; inset: 0; }
+/* The lit render fades in over the dark one: the moment the mission pays off. */
+.celebrate-beacon .beacon-on{ opacity: 0; transition: opacity 0.7s var(--ease); }
+.celebrate-beacon.is-lit .beacon-on{ opacity: 1; }
+/* The lamp's glow is in the render; this is its breath. */
 .beacon-lamp{
-  position: absolute; left: 50%; top: 27%; width: 44%; aspect-ratio: 1; border-radius: 50%;
+  position: absolute; left: 50%; top: 24%; width: 80%; aspect-ratio: 1; border-radius: 50%;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, var(--beacon-light) 0 30%, transparent 70%);
-  opacity: 0; transition: opacity 0.6s var(--ease), box-shadow 0.6s var(--ease);
+  background: radial-gradient(circle, var(--beacon-glow) 0%, transparent 66%);
+  opacity: 0; transition: opacity 0.7s var(--ease);
 }
 .celebrate-beacon.is-lit .beacon-lamp{
-  opacity: 1; box-shadow: 0 0 60px 30px var(--beacon-glow);
-  animation: beacon-pulse 2.4s ease-in-out infinite;
+  opacity: 0.7;
+  animation: beacon-pulse 2.6s ease-in-out infinite;
 }
 .celebrate-center{
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
@@ -889,16 +950,19 @@ html[data-speaking="true"] .pip-light{
 .reward-star.is-earned{ opacity: 1; transform: none; animation: star-in 0.55s var(--ease-bounce) both; }
 .reward-star-art{ width: 100%; height: 100%; display: block; }
 @keyframes star-in{ from{ transform: scale(0.2) rotate(-40deg); opacity: 0; } to{ transform: none; opacity: 1; } }
-.celebrate-guide{ left: 0; bottom: 0; --pip-size: 20vh; }
+.celebrate-guide{ left: 0; bottom: 0; --pip-size: 24vh; }
 .celebrate-home{ position: absolute; right: 0; bottom: 0; }
 .celebrate-home[aria-disabled="true"]{ filter: none; }
 
 /* ---- Rocket Dock ---- */
-.dock-pad{
-  position: absolute; left: 12vw; bottom: 9vh; width: 38vw; height: 7vh; border-radius: 50%;
-  background: var(--kid-panel); box-shadow: inset 0 0 0 6px var(--border-quiet), 0 0 40px var(--glow-accent);
+.dock-pad{ position: absolute; left: 16vw; bottom: 5vh; width: 38vw; aspect-ratio: 1200 / 480; }
+.pad-art{ display: block; width: 100%; height: 100%; }
+.dock-rocket{ position: absolute; left: 35vw; bottom: 12vh; height: 64vh; transform: translateX(-50%); }
+/* The rocket's contact shadow on the pad. */
+.dock-rocket::before{
+  content: ''; position: absolute; left: 18%; right: 4%; top: 84%; height: 9%; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--contact-shadow), transparent);
 }
-.dock-rocket{ position: absolute; left: 31vw; bottom: 12vh; height: 64vh; transform: translateX(-50%); }
 .dock-rocket.is-new .rocket{ animation: pop 0.6s var(--ease-bounce) both; }
 .dock-back{ position: absolute; top: 0; left: 0; }
 .dock-panel{
@@ -919,15 +983,14 @@ html[data-speaking="true"] .pip-light{
 .swatch[aria-checked="true"]{
   box-shadow: var(--shadow-kid), 0 0 0 5px var(--accent), 0 0 26px var(--glow-accent);
 }
-.swatch-rocket{ height: 62%; transform: rotate(14deg); }
-.swatch-rocket .rocket-art{ height: 100%; width: auto; }
+.swatch-rocket{ display: block; height: 66%; transform: rotate(14deg); }
 .swatch.is-locked .swatch-rocket{ filter: saturate(0.5) brightness(0.8); }
 .swatch-tag{
   display: inline-flex; align-items: center; gap: var(--space-xs); min-height: 26px;
   font-size: var(--fs-kid-label); font-weight: 900; line-height: 1;
 }
 .swatch-tag-star{ width: 26px; height: 26px; display: block; }
-.dock-guide{ left: 0; bottom: 0; --pip-size: 15vh; }
+.dock-guide{ left: 0; bottom: 0; --pip-size: 19vh; }
 .star-inline{ width: 40px; height: 40px; display: block; }
 
 /* ---- Child sheet: "Go back to Earth?" ---- */
@@ -1211,7 +1274,7 @@ body.scroll-locked{
   <!-- ROCKET DOCK — tap a paint, see it at once, then choose it. -->
   <main class="scene scene-dock" id="scene-dock" aria-label="Rocket Dock">
     <div class="world">
-      <div class="dock-pad" aria-hidden="true"></div>
+      <div class="dock-pad" id="dockPad" aria-hidden="true"></div>
       <div class="dock-rocket" id="dockRocket" aria-hidden="true"></div>
     </div>
     <div class="scene-ui">
@@ -1399,8 +1462,8 @@ const APP_CONFIG = {
   name: 'Space Kindergarten',
   shortName: 'Space Kinder',
   description: 'A space adventure where kindergarten explorers practice their letters.',
-  themeColor: '#0B1030',
-  backgroundColor: '#0B1030',
+  themeColor: '#070B22',
+  backgroundColor: '#070B22',
   /* Landscape-first for iPad. Note that iPadOS ignores an orientation lock for
      home-screen web apps, which is why the child scenes carry their own
      "turn your iPad" prompt rather than trusting this value. */
@@ -1447,6 +1510,23 @@ function validateAppId(id){
    history starts at its own first flight.
    ========================================================= */
 const APP_UPDATES = [
+  {
+    id: 'v0-2-0',
+    version: '0.2.0',
+    title: 'A handmade clay world',
+    date: '2026-09-26',
+    summary: 'Earth, the Moon, the rocket, Pip and the stars are now sculpted clay, all lit by the same light.',
+    newFeatures: [],
+    improvements: [
+      'Earth, the Moon, the rocket, Pip, the stars and the beacon look like clay models on a miniature set',
+      'You can see the Moon change from home once its beacon is relit: it glows warm',
+      'The letter game takes place on the Moon itself, with the letters standing on its surface',
+      'Buttons and letter tiles have gentle depth, and the letters are as clear as before',
+      'Pip and the rocket move like a hand-animated model; Reduce Motion still turns this off',
+      'Every rocket paint is the same sculpted rocket in a new colour, so each looks equally finished'
+    ],
+    fixes: []
+  },
   {
     id: 'v0-1-1',
     version: '0.1.1',
@@ -2092,39 +2172,46 @@ function renderAll(){
    ---------------------------------------------------------
    Every picture the app loads, and its provenance. Nothing else
    writes an asset path: scenes ask for an id. That is what makes
-   swapping a placeholder for final clay artwork a one-line change
+   swapping draft art for final clay artwork a one-line change
    here — and what lets `npm run config:sync` derive the offline
    cache list and docs/ASSET-MANIFEST.md from this table, so the
    three cannot drift.
+
+   Every picture is rendered by tools/art from a scene file in this
+   repository: sculpted as shapes, shaded as clay under one shared
+   light. They are DRAFT — real artwork, not signed off. Only a
+   person promotes art to FINAL (docs/ASSET-BRIEFS.md says what a
+   final version of each must match).
 
    A moodboard image can never appear here: references/ is not a
    place the app may load from, and a contract refuses any path
    outside assets/ and the app icons.
    --------------------------------------------------------- */
 const ASSET_STATES = ['PLACEHOLDER', 'DRAFT', 'FINAL'];
-const PLACEHOLDER_SOURCE = 'Drawn in this repository as a stand-in, 2026-09-26';
+const RENDER_SOURCE = 'Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26';
 
-function placeholderAsset(id, path, dimensions, purpose){
+function renderedAsset(id, path, dimensions, purpose){
   return { id: id, path: path, format: path.slice(path.lastIndexOf('.') + 1),
            dimensions: dimensions, purpose: purpose,
-           source: PLACEHOLDER_SOURCE, license: 'Project-owned', state: 'PLACEHOLDER' };
+           source: RENDER_SOURCE, license: 'Project-owned', state: 'DRAFT' };
 }
 
 const ASSET_REGISTRY = [
-  placeholderAsset('bg.space',       'assets/backgrounds/space.svg',       '1600×1000', 'Starfield behind every child scene'),
-  placeholderAsset('bg.moonGround',  'assets/backgrounds/moon-ground.svg', '1600×420',  'Moon surface under the mission and the celebration'),
-  placeholderAsset('planet.earth',   'assets/planets/earth.svg',           '600×600',   'Home base: the Earth hero and the start of every flight'),
-  placeholderAsset('planet.moon',    'assets/planets/moon.svg',            '400×400',   'The first destination, in Earth\'s sky and in flight'),
-  placeholderAsset('prop.beacon',    'assets/props/beacon.svg',            '160×280',   'The Moon\'s beacon, lit when its mission is complete'),
-  placeholderAsset('prop.star',      'assets/props/star.svg',              '100×100',   'The star a child earns and spends'),
-  placeholderAsset('rocket.classic', 'assets/rocket/rocket-classic.svg',   '200×340',   'Rocket in the paint every explorer starts with'),
-  placeholderAsset('rocket.sky',     'assets/rocket/rocket-sky.svg',       '200×340',   'Rocket in sky-blue paint (cosmetic)'),
-  placeholderAsset('rocket.sunny',   'assets/rocket/rocket-sunny.svg',     '200×340',   'Rocket in sunny-yellow paint (cosmetic)'),
-  placeholderAsset('rocket.lime',    'assets/rocket/rocket-lime.svg',      '200×340',   'Rocket in lime-green paint (cosmetic)'),
-  placeholderAsset('rocket.flame',   'assets/rocket/flame.svg',            '100×150',   'Engine flame while flying'),
-  placeholderAsset('character.pip',  'assets/characters/pip.svg',          '240×220',   'Pip, the guide — an original satellite-buddy design'),
-  placeholderAsset('icon.192',       'icon-192.png',                       '192×192',   'Home-screen icon'),
-  placeholderAsset('icon.512',       'icon-512.png',                       '512×512',   'Install and splash icon')
+  renderedAsset('bg.space',          'assets/backgrounds/space.webp',       '2400×1600', 'Deep space behind every child scene'),
+  renderedAsset('bg.moonGround',     'assets/backgrounds/moon-ground.webp', '2400×800',  'Moon surface under the mission and the celebration'),
+  renderedAsset('planet.earth',      'assets/planets/earth.webp',           '1400×1400', 'Home base: the Earth hero and the start of every flight'),
+  renderedAsset('planet.moon',       'assets/planets/moon.webp',            '800×800',   'The first destination, waiting: cool, its beacon dark'),
+  renderedAsset('planet.moonLit',    'assets/planets/moon-lit.webp',        '800×800',   'The Moon once restored: its beacon lit, warm light in the craters'),
+  renderedAsset('prop.beacon',       'assets/props/beacon.webp',            '512×896',   'The Moon\'s beacon before its mission is complete'),
+  renderedAsset('prop.beaconLit',    'assets/props/beacon-lit.webp',        '512×896',   'The Moon\'s beacon, lit by a finished mission'),
+  renderedAsset('prop.star',         'assets/props/star.webp',              '256×256',   'The star a child earns and spends'),
+  renderedAsset('prop.pad',          'assets/props/pad.webp',               '1200×480',  'The Rocket Dock\'s launch pad'),
+  renderedAsset('rocket.body',       'assets/rocket/rocket.webp',           '640×1088',  'The rocket, with its painted parts in white clay'),
+  renderedAsset('rocket.paintMask',  'assets/rocket/rocket-paint.webp',     '640×1088',  'Where paint goes on the rocket: every paint colour is multiplied through it'),
+  renderedAsset('rocket.flame',      'assets/rocket/flame.webp',            '256×384',   'Engine flame while flying'),
+  renderedAsset('character.pip',     'assets/characters/pip.webp',          '720×660',   'Pip, the guide — an original satellite-buddy design'),
+  renderedAsset('icon.192',          'icon-192.png',                        '192×192',   'Home-screen icon'),
+  renderedAsset('icon.512',          'icon-512.png',                        '512×512',   'Install and splash icon')
 ];
 
 function assetEntry(id){
@@ -2218,7 +2305,8 @@ const LETTERS = {
 const DESTINATIONS = {
   earth: { id: 'earth', kind: 'home', asset: 'planet.earth' },
   moon: {
-    id: 'moon', kind: 'destination', asset: 'planet.moon',
+    /* Every destination has two pictures: waiting, and restored. */
+    id: 'moon', kind: 'destination', asset: 'planet.moon', restoredAsset: 'planet.moonLit',
     primarySkill: 'letter-recognition', reviewSkills: [],
     missions: ['moon-1'],
     unlock: null,                                  // the first stop is always open
@@ -2257,12 +2345,15 @@ const MISSIONS = {
 };
 
 /* Purely cosmetic. No item changes how anything plays, none can be bought
-   with money, none is random, and none ever runs out. */
+   with money, none is random, and none ever runs out.
+   A paint is a colour, not a picture: `tint` names a colour token
+   (--paint-*), and the one rocket render takes it through its paint mask.
+   A new paint is a token and a line here — no new artwork. */
 const COSMETICS = [
-  { id: 'paint-classic', slot: 'paint', name: 'Classic red',  cost: 0, asset: 'rocket.classic', starter: true },
-  { id: 'paint-sky',     slot: 'paint', name: 'Sky blue',     cost: 3, asset: 'rocket.sky' },
-  { id: 'paint-sunny',   slot: 'paint', name: 'Sunny yellow', cost: 5, asset: 'rocket.sunny' },
-  { id: 'paint-lime',    slot: 'paint', name: 'Lime green',   cost: 6, asset: 'rocket.lime' }
+  { id: 'paint-classic', slot: 'paint', name: 'Classic red',  cost: 0, tint: 'paint-classic', starter: true },
+  { id: 'paint-sky',     slot: 'paint', name: 'Sky blue',     cost: 3, tint: 'paint-sky' },
+  { id: 'paint-sunny',   slot: 'paint', name: 'Sunny yellow', cost: 5, tint: 'paint-sunny' },
+  { id: 'paint-lime',    slot: 'paint', name: 'Lime green',   cost: 6, tint: 'paint-lime' }
 ];
 
 /* Every spoken line. `text` is what may appear on screen: a few words,
@@ -2435,6 +2526,7 @@ function validateContent(){
     const d = DESTINATIONS[id];
     if(!assetEntry(d.asset)) flag('destination ' + id + ' has no picture');
     if(d.kind === 'destination'){
+      if(!assetEntry(d.restoredAsset)) flag('destination ' + id + ' has no restored picture');
       if(JOURNEY_ORDER.indexOf(id) === -1) flag('destination ' + id + ' is not on the journey');
       if(!SKILLS[d.primarySkill]) flag('destination ' + id + ' has unknown primary skill');
       Object.keys(d.story || {}).forEach(k => { if(!lineExists(d.story[k])) flag('destination ' + id + ' story line ' + k + ' is missing'); });
@@ -2447,7 +2539,7 @@ function validateContent(){
     if(seen[c.id]) flag('cosmetic ' + c.id + ' is declared twice');
     seen[c.id] = true;
     if(!(Number.isInteger(c.cost) && c.cost >= 0)) flag('cosmetic ' + c.id + ' has an impossible price');
-    if(!assetEntry(c.asset)) flag('cosmetic ' + c.id + ' has no picture');
+    if(c.slot === 'paint' && !/^paint-[a-z]+$/.test(c.tint || '')) flag('paint ' + c.id + ' names no colour token');
     if(!voiceCue('paint.' + c.id)) flag('cosmetic ' + c.id + ' has no spoken name');
   });
   const starters = {};
@@ -2887,6 +2979,7 @@ const TIMING = {
   travel: 1100, travelFirst: 2600, travelReduced: 320, travelSettle: 40,
   praiseMin: 950, betweenRounds: 260, celebrateGuard: 1100, starEvery: 420, starFirst: 450,
   reprompt: 10000, maxReprompts: 2, gateHold: 3000,
+  relight: 600,                                    // home after the relight: a beat, then the Moon lights up
   idleHint: 12000,                                 // a pause this long on Earth or in the Dock earns one hint
   captionBase: 900, captionPerChar: 55,            // pacing when nothing can be heard
   speechStartGrace: 1200,                          // a voice that has not begun by now is not coming
@@ -3224,10 +3317,18 @@ function pipHtml(){
   return '<span class="pip-figure">' + artImg('character.pip', 'pip-art') +
          '<span class="pip-light" aria-hidden="true"></span></span>';
 }
+/* The rocket is one render with its painted parts in white clay. The paint
+   layer is the paint's colour, cut to the paint mask and multiplied over
+   the render — exactly how a matte surface takes a colour, so the shading,
+   seams and contact shadows of the render all survive the paint. */
 function rocketHtml(paintId, flying){
   const c = cosmeticById(paintId) || starterCosmetic('paint');
-  return '<span class="rocket">' + (flying ? artImg('rocket.flame', 'rocket-flame') : '') +
-         artImg(c.asset, 'rocket-art') + '</span>';
+  const mask = 'url(' + assetSrc('rocket.paintMask') + ')';
+  return '<span class="rocket" style="--paint: var(--' + escapeAttr(c.tint) + ')">' +
+           (flying ? artImg('rocket.flame', 'rocket-flame') : '') +
+           artImg('rocket.body', 'rocket-art') +
+           '<span class="rocket-paint" style="-webkit-mask-image: ' + escapeAttr(mask) + '; mask-image: ' + escapeAttr(mask) + '"></span>' +
+         '</span>';
 }
 function setHtml(id, html){ const el = document.getElementById(id); if(el) el.innerHTML = html; return el; }
 function setStarCount(id, n, bump){
@@ -3279,7 +3380,11 @@ function renderEarth(){
   setHtml('earthPlanet', artImg('planet.earth', 'planet-art') +
     '<button class="earth-rocket" onclick="launch()" aria-label="Your rocket. Tap to fly to the Moon.">' +
       rocketHtml(currentPaint(), false) + '</button>');
-  const moonEl = setHtml('earthMoon', artImg('planet.moon', 'planet-art') + '<span class="moon-light"></span>');
+  /* Both states are drawn; restoring the Moon crossfades from one to the
+     other, so relighting it is a change a child sees happen. */
+  const moonEl = setHtml('earthMoon', artImg(DESTINATIONS.moon.asset, 'planet-art moon-dim') +
+                                      artImg(DESTINATIONS.moon.restoredAsset, 'planet-art moon-lit') +
+                                      '<span class="moon-light"></span>');
   if(moonEl) moonEl.classList.toggle('is-restored', moon.restored);
   setHtml('earthPip', pipHtml());
   setStarCount('earthStars', starBalance(journey.stars));
@@ -3361,10 +3466,12 @@ function launch(){
 function travelSceneHtml(direction){
   let streaks = '';
   ['16%', '30%', '47%', '62%', '78%', '88%'].forEach(y => { streaks += '<span class="t-streak" style="--y:' + y + '"></span>'; });
+  const moon = DESTINATIONS.moon;
+  const moonArt = destinationProgress('moon', journey.completions).restored ? moon.restoredAsset : moon.asset;
   return '<div class="world travel-' + direction + '">' +
     artImg('bg.space', 't-stars') + streaks +
     '<div class="t-earth">' + artImg('planet.earth', 'planet-art') + '</div>' +
-    '<div class="t-moon">' + artImg('planet.moon', 'planet-art') + '</div>' +
+    '<div class="t-moon">' + artImg(moonArt, 'planet-art') + '</div>' +
     '<div class="t-rocket">' + rocketHtml(currentPaint(), true) + '</div>' +
   '</div>';
 }
@@ -3627,7 +3734,9 @@ function celebrate(o){
   const total = starBalance(journey.stars);
   const start = total - o.stars;
   setHtml('celebrateGround', artImg('bg.moonGround', 'ground-art'));
-  const beacon = setHtml('celebrateBeacon', artImg('prop.beacon', 'beacon-art') + '<span class="beacon-lamp"></span>');
+  const beacon = setHtml('celebrateBeacon', artImg('prop.beacon', 'beacon-art beacon-off') +
+                                            artImg('prop.beaconLit', 'beacon-art beacon-on') +
+                                            '<span class="beacon-lamp"></span>');
   if(beacon) beacon.classList.remove('is-lit');
   setHtml('celebratePip', pipHtml());
   let stars = '';
@@ -3676,8 +3785,23 @@ function returnToEarth(){
       lines.push('guide.dockHint');
       setStoryFlag('heard.dockHint');
     }
-    return goEarth(lines);
+    const shown = goEarth(lines);
+    if(relit) showRelight();
+    return shown;
   });
+}
+
+/* Home from the mission that relit the Moon: it is drawn dark for a beat,
+   then lights up in front of the child, rather than already being lit —
+   the payoff happens where they can see it. */
+function showRelight(){
+  const m = document.getElementById('earthMoon');
+  if(!m) return;
+  m.classList.remove('is-restored');
+  void m.offsetWidth;                 // settle the dark state, so the change animates
+  setTimeout(() => {
+    if(currentScene === 'earth' && destinationProgress('moon', journey.completions).restored) m.classList.add('is-restored');
+  }, motionReduced() ? 0 : TIMING.relight);
 }
 
 /* ---- Leaving a mission early ---- */
@@ -3739,6 +3863,7 @@ function renderDockScene(){
   const balance = starBalance(journey.stars);
   const worn = currentPaint();
 
+  setHtml('dockPad', artImg('prop.pad', 'pad-art'));
   setHtml('dockRocket', rocketHtml(pick.id, false));
   setHtml('dockPip', pipHtml());
   setHtml('dockBackBtn', '<span class="kid-icon-disc">' + glyph('back', 40) + '</span><span class="kid-icon-label">Earth</span>');
@@ -3752,7 +3877,7 @@ function renderDockScene(){
     const label = c.name + (has ? (c.id === worn ? ', on your rocket' : ', yours') : ', costs ' + c.cost + (c.cost === 1 ? ' star' : ' stars'));
     return '<button class="swatch' + (has ? '' : ' is-locked') + '" role="radio" aria-checked="' + (c.id === pick.id) + '" ' +
            'aria-label="' + escapeAttr(label) + '" onclick="pickPaint(\'' + c.id + '\')">' +
-             '<span class="swatch-rocket">' + artImg(c.asset, 'rocket-art') + '</span>' + tag +
+             '<span class="swatch-rocket">' + rocketHtml(c.id, false) + '</span>' + tag +
            '</button>';
   }).join(''));
 
@@ -3963,7 +4088,7 @@ function renderGrownups(){
     detailRow('On the Home Screen', storageState.standalone ? 'Yes' : 'No') +
     '<p class="field-hint" style="margin-top:var(--space-md)">Privacy: no accounts, no ads, no tracking, and nothing is sent anywhere. Progress stays on this device.</p>' +
     '<p class="field-hint">Safari may clear a website\'s saved progress after about a week without a visit. Adding the app to the Home Screen avoids that; exporting a backup keeps a copy you control.</p>' +
-    '<p class="field-hint">Artwork: the pictures are temporary placeholders while the final artwork is made.</p>');
+    '<p class="field-hint">Artwork: the pictures are early drafts, rendered for this app, and may still change before they are final.</p>');
 }
 
 function toggleVoice(){
