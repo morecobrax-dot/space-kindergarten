@@ -347,10 +347,11 @@ const BRIDGE = [
   'DESTINATIONS', 'JOURNEY_ORDER', 'MISSIONS', 'COSMETICS', 'VOICE_CUES', 'VOICE_RECORDINGS', 'LETTER_LINES',
   'SPEECH_STYLE', 'VOICE_AVOID', 'WORDS', 'MAX_BEATS', 'RHYME_LINES', 'BEAT_LINES', 'NUMBER_WORDS',
   'COSMETIC_SLOTS', 'AUDIO_TYPES', 'SPEECH_PAUSES', 'PHONEMES', 'SYNTH_SOUNDS', 'SOUND_LINES', 'BUILD_LINES', 'SFX_NOTES',
+  'LOWER_FAMILIES', 'WRITING_LINES', 'LETTER_FORMS', 'PRINT', 'WORD_LISTS', 'SIGHT_LINES', 'WRITE_LINES', 'TRACE', 'ASSET_LOADS',
   /* product: engine, state and audio */
   'ACTIVITY_TYPES', 'GAME_VIEWS', 'TIER_STEP_UP', 'RECENT_LIMIT', 'TIMING', 'GLYPHS',
   'journey', 'session', 'soundPrefs', 'motionPref', 'storageState', 'Voice', 'Sfx', 'AudioOut', 'DevVoice', 'MediaVoice', 'SYNTH_GAP', 'SOUND_CLASS',
-  'ambient', 'ROCKET_FOOT'
+  'ambient', 'ROCKET_FOOT', 'writeInput', 'WRITE_FRAME'
 ];
 
 function loadApp(opts){

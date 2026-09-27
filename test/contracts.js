@@ -78,7 +78,8 @@ function fast(c){
     betweenRounds: 0, celebrateGuard: 0, starEvery: 0, starFirst: 0, starFlight: 0,
     reprompt: 1e9, idleHint: 1e9, captionBase: 0, captionPerChar: 0,
     speechStartGrace: 5, speechSafetyBase: 40, speechSafetyPerChar: 0,
-    relight: 0, beatPause: 0, beatSettle: 0, beatBounce: 0
+    relight: 0, beatPause: 0, beatSettle: 0, beatBounce: 0,
+    writeDemo: 0, writeDemoGap: 0, writeHint: 0
   });
   return c;
 }
@@ -137,6 +138,10 @@ async function playMission(c, opts){
       await buildWord(c, wrongNow && !c.session.build.guide);
       continue;
     }
+    if(r.activity.type === 'letter-trace'){
+      await traceLetter(c, wrongNow);
+      continue;
+    }
     if(wrongNow){
       const wrong = r.options.map((_, i) => i).find(i => i !== r.answer && r.out.indexOf(i) === -1);
       await c.choose(wrong);
@@ -148,6 +153,28 @@ async function playMission(c, opts){
 /* Fills the word's empty slots the way a child taps: the right letters in
    order, or (wrongly) with the first two swapped. Resolves when the word
    has been answered, or when there was nothing to tap. */
+/* Traces the letter on the slate, stroke by stroke along its own path, in
+   letter units, the way a finger would: down at the start, along, up. A
+   wandering trace first strays far off the first stroke once (that stroke
+   restarts, and the letter counts as helped). */
+async function traceLetter(c, wander){
+  const w = c.session.write;
+  if(!w || !w.plan){ await wait(2); return; }
+  if(wander && !w.plan[0].dot){
+    const p0 = w.plan[0].pts[0];
+    c.writeDown(p0);
+    c.writeMove([p0[0] + 0.9, p0[1] + 0.2]);
+    c.writeUp();
+  }
+  for(let i = w.t.stroke; i < w.plan.length && !w.t.done && c.session.write === w; i++){
+    const s = w.plan[i];
+    c.writeDown(s.pts[0]);
+    for(let k = 2; k < s.pts.length; k += 2) c.writeMove(s.pts[k]);
+    if(!s.dot) c.writeMove(s.pts[s.pts.length - 1]);
+    c.writeUp();
+  }
+  await wait(2);
+}
 async function buildWord(c, wrongly){
   const r = c.session.run.round, b = c.session.build;
   const order = r.answer.slice();
@@ -983,8 +1010,16 @@ function testRelease(){
                              (u.fixes || []).length > 0));
 
   sub('a minimal history, not an inherited one');
-  T('a short history: this product\'s own releases, not an inherited list', c.APP_UPDATES.length <= 6 &&
-    c.APP_UPDATES[c.APP_UPDATES.length - 1].id === 'v0-1-0', String(c.APP_UPDATES.length));
+  /* The starter's own list once came along with it. This product's history
+     starts at its own first flight, and every entry is a later release of it:
+     versions strictly descend to 0.1.0, so nothing older can hide below. */
+  const semver = v => v.split('.').map(Number);
+  const newer = (a, b) => { const x = semver(a), y = semver(b); for(let i = 0; i < 3; i++){ if(x[i] !== y[i]) return x[i] > y[i]; } return false; };
+  T('this product\'s own releases, not an inherited list: they end at its first flight',
+    c.APP_UPDATES[c.APP_UPDATES.length - 1].id === 'v0-1-0', c.APP_UPDATES[c.APP_UPDATES.length - 1].id);
+  T('and each entry is a newer release than the one below it',
+    c.APP_UPDATES.every((u, i) => i === c.APP_UPDATES.length - 1 || newer(u.version, c.APP_UPDATES[i + 1].version)),
+    c.APP_UPDATES.map(u => u.version).join(' > '));
   T('the authoring rules travel with the data', /AUTHORING A NEW ENTRY/.test(js()));
   T('and it says new products replace it', /New products replace this array wholesale/.test(js()));
 
@@ -1045,7 +1080,9 @@ async function testStress(){
   T('twenty missions were recorded', c.journey.completions.length === 20, String(c.journey.completions.length));
   T('exactly twenty earnings, one per run', c.journey.stars.filter(e => e.kind === 'earn').length === 20);
   T('and the balance is exactly what those twenty missions pay', c.starBalance(c.journey.stars) === pays, c.starBalance(c.journey.stars) + ' vs ' + pays);
-  T('every mission on the journey came round', new Set(played).size === Object.keys(c.MISSIONS).length, [...new Set(played)].join(','));
+  const games = new Set(played.map(id => c.MISSIONS[id].activities[0].type)), worlds = new Set(played.map(id => c.MISSIONS[id].destinationId));
+  T('every world and every game on the journey came round', c.JOURNEY_ORDER.every(d => worlds.has(d)) &&
+    Object.keys(c.ACTIVITY_TYPES).every(g => games.has(g)), [...new Set(played)].join(','));
   T('no mission is left running', c.session.run === null);
   /* everything these missions could ask — a review round asks one of its
      candidates — and one record for each at most */
@@ -1359,8 +1396,13 @@ function testContent(){
   m.activities.push({ type: 'find-letter', target: 'Ω', form: 'upper' });
   T('an unknown letter is caught', c.validateContent().some(p => /unknown letter/.test(p)));
   m.activities.pop();
+  c.LETTERS.I.ambiguous = true;
   m.activities.push({ type: 'find-letter', target: 'I', form: 'upper' });
-  T('an ambiguous letter is caught', c.validateContent().some(p => /ambiguous/.test(p)));
+  T('a letter marked ambiguous is caught (none is, in the school print)', c.validateContent().some(p => /cannot be told apart/.test(p)));
+  m.activities.pop();
+  delete c.LETTERS.I.ambiguous;
+  m.activities.push({ type: 'find-letter', target: 'M', form: 'middle' });
+  T('a letter case that does not exist is caught', c.validateContent().some(p => /big \(upper\) or little \(lower\)/.test(p)));
   m.activities.pop();
   m.activities.push({ type: 'find-letter', target: 'b', form: 'lower' });
   T('lowercase is caught while only uppercase is taught', c.validateContent().some(p => /uppercase/.test(p) || /unknown letter/.test(p)));
@@ -1368,34 +1410,45 @@ function testContent(){
   m.activities.push({ type: 'trace-letter', target: 'M', form: 'upper' });
   T('an activity type nobody built is caught', c.validateContent().some(p => /unknown type/.test(p)));
   m.activities.pop();
-  const oldSkill = m.skillId; m.skillId = 'sight-words';
+  c.SKILLS.spelling = { label: 'Spelling', short: 'Spelling', status: 'planned' };
+  const oldSkill = m.skillId; m.skillId = 'spelling';
   T('a mission for a skill that is only planned is caught', c.validateContent().some(p => /not built/.test(p)));
   m.skillId = oldSkill;
+  delete c.SKILLS.spelling;
   const oldChoices = m.choices; m.choices = 7;
   T('too many choices for a kindergartener is caught', c.validateContent().some(p => /choices/.test(p)));
   m.choices = oldChoices;
   T('the mission is back to sound', JSON.stringify(m) === saved && c.validateContent().length === 0);
 
-  sub('the journey is real, and still small: the Moon, Mercury, then Mars');
+  sub('the journey: letters and writing on the Moon, then Mercury, Mars and Jupiter');
   const ids = Object.keys(c.MISSIONS);
   const by = sk => ids.filter(id => c.MISSIONS[id].skillId === sk).sort().join();
-  T('letters on the Moon, rhymes and beats on Mercury, sounds and words on Mars: two or three missions a game',
-    ids.length === 11 && by('letter-recognition') === 'moon-1,moon-2,moon-3' && by('rhyming') === 'mercury-1,mercury-3' &&
-    by('syllables') === 'mercury-2,mercury-4' && by('beginning-sounds') === 'mars-1,mars-3' && by('cvc') === 'mars-2,mars-4', ids.join(','));
+  T('letters and writing on the Moon, rhymes and beats on Mercury, sounds and words on Mars, sight words on Jupiter: 2 to 5 missions a game',
+    ids.length === 20 && by('letter-recognition') === 'moon-1,moon-2,moon-3,moon-4,moon-5' && by('handwriting') === 'writer-1,writer-2,writer-3' &&
+    by('rhyming') === 'mercury-1,mercury-3' && by('syllables') === 'mercury-2,mercury-4' && by('beginning-sounds') === 'mars-1,mars-3' &&
+    by('cvc') === 'mars-2,mars-4' && by('sight-words') === 'jupiter-1,jupiter-2,jupiter-3,jupiter-4', ids.join(','));
   T('each holds 5 to 8 interactions', ids.every(id => c.MISSIONS[id].activities.length >= 5 && c.MISSIONS[id].activities.length <= 8));
-  T('letters are taught uppercase only', ids.every(id => c.MISSIONS[id].activities.every(a => a.type !== 'find-letter' || a.form === 'upper')));
-  /* the first mission of each game (in journey order) teaches the tap in
-     its first round; once a game is known, no round is guided */
-  const firstOfGame = {};
-  c.JOURNEY_ORDER.forEach(d => c.DESTINATIONS[d].missions.forEach(id => { const g = c.MISSIONS[id].activities[0].type; if(!firstOfGame[g]) firstOfGame[g] = id; }));
-  T('each game\'s first mission teaches the tap in its first round, and no other round anywhere is guided', ids.every(id => {
-    const acts = c.MISSIONS[id].activities, g = acts[0].type;
-    return firstOfGame[g] === id ? acts[0].guided === true && acts.filter(a => a.guided).length === 1 : acts.every(a => !a.guided);
-  }), JSON.stringify(firstOfGame));
-  T('all seven learning areas are named; five are built — not sight words or handwriting',
-    Object.keys(c.SKILLS).length === 7 &&
-    Object.keys(c.SKILLS).filter(k => c.SKILLS[k].status === 'active').sort().join() === 'beginning-sounds,cvc,letter-recognition,rhyming,syllables');
-  T('the journey is the Moon, Mercury, then Mars', c.JOURNEY_ORDER.join() === 'moon,mercury,mars');
+  const moonOrder = c.DESTINATIONS.moon.missions;
+  const littleAt = moonOrder.filter(id => c.MISSIONS[id].activities.some(a => a.form === 'lower'));
+  T('big letters come first: every little-letter mission comes after the big-letter ones on the Moon',
+    littleAt.every(id => ['moon-1', 'moon-2', 'moon-3'].every(big => moonOrder.indexOf(big) < moonOrder.indexOf(id))), littleAt.join(','));
+  T('and little letters are written after they are found', moonOrder.indexOf('writer-3') > moonOrder.indexOf('moon-4'));
+  /* the first mission of each task (its howTo, in journey order) teaches
+     it in its first round; after that no round is guided — except Moon
+     Writer, where every letter is first written with its whole path shown */
+  const firstOfTask = {};
+  c.JOURNEY_ORDER.forEach(d => c.DESTINATIONS[d].missions.forEach(id => { const h = c.MISSIONS[id].howTo; if(!firstOfTask[h]) firstOfTask[h] = id; }));
+  T('each task\'s first mission guides its first round, and no other round is guided but a trace shown whole', ids.every(id => {
+    const acts = c.MISSIONS[id].activities;
+    if(acts[0].type === 'letter-trace') return acts.every(a => !!a.guided === (a.help === 'full'));
+    return firstOfTask[c.MISSIONS[id].howTo] === id ? acts[0].guided === true && acts.filter(a => a.guided).length === 1 : acts.every(a => !a.guided);
+  }), JSON.stringify(firstOfTask));
+  T('all seven learning areas are named, and all seven are built',
+    Object.keys(c.SKILLS).length === 7 && Object.keys(c.SKILLS).every(k => c.SKILLS[k].status === 'active'));
+  T('the journey is the Moon, Mercury, Mars, then Jupiter', c.JOURNEY_ORDER.join() === 'moon,mercury,mars,jupiter');
+  T('Jupiter opens only when Mars is full of sounds again', c.DESTINATIONS.jupiter.unlock && c.DESTINATIONS.jupiter.unlock.after === 'mars' &&
+    !c.destinationUnlocked('jupiter', [{ id: 'x', missionId: 'mars-1', completedAt: 't' }]) &&
+    c.destinationUnlocked('jupiter', ['mars-1', 'mars-2'].map(id => ({ id: id, missionId: id, completedAt: 't' }))));
   T('Mercury opens only when the Moon shines', c.DESTINATIONS.mercury.unlock && c.DESTINATIONS.mercury.unlock.after === 'moon' &&
     !c.destinationUnlocked('mercury', []) && c.destinationUnlocked('mercury', [{ id: 'x', missionId: 'moon-1', completedAt: 't' }]));
   T('Mars opens only when Mercury\'s signal is clear', c.DESTINATIONS.mars.unlock && c.DESTINATIONS.mars.unlock.after === 'mercury' &&
@@ -1403,7 +1456,7 @@ function testContent(){
     c.destinationUnlocked('mars', ['mercury-1', 'mercury-2'].map(id => ({ id: id, missionId: id, completedAt: 't' }))));
   const planned = Object.keys(c.DESTINATIONS).filter(id => c.DESTINATIONS[id].kind === 'planned');
   T('the rest of the route is declared, and pretends to nothing: no pictures, no missions, never drawn',
-    planned.length >= 5 && planned.every(id => !c.DESTINATIONS[id].asset && !(c.DESTINATIONS[id].missions || []).length &&
+    planned.length >= 3 && planned.every(id => !c.DESTINATIONS[id].asset && !(c.DESTINATIONS[id].missions || []).length &&
       c.JOURNEY_ORDER.indexOf(id) === -1 && !c.destinationUnlocked(id, [])), planned.join(','));
   T('every destination is home, on the journey, planned, or the space station',
     Object.keys(c.DESTINATIONS).every(id => id === 'earth' || c.JOURNEY_ORDER.indexOf(id) !== -1 ||
@@ -1936,8 +1989,16 @@ function testAssets(){
     wrongSize.map(a => a.id + ' ' + (imageSize(path.join(H.ROOT, a.path)) || ['?']).join('×') + ' vs ' + a.dimensions).join(', '));
   const heavy = reg.filter(a => sizes[a.id] > 260 * 1024);
   T('no single picture is over 260 KB', heavy.length === 0, heavy.map(a => a.id + ' ' + Math.round(sizes[a.id] / 1024) + 'KB').join(','));
-  const total = Object.keys(sizes).reduce((s, k) => s + sizes[k], 0);
-  T('the whole picture set is under 1.2 MB, so offline install stays quick', total < 1.2 * 1024 * 1024, Math.round(total / 1024) + 'KB');
+  const sum = list => list.reduce((s, a) => s + sizes[a.id], 0);
+  const core = reg.filter(a => a.load === 'core');
+  T('the pictures the offline cache installs are under 1.2 MB, so installing stays quick', sum(core) < 1.2 * 1024 * 1024, Math.round(sum(core) / 1024) + 'KB');
+  const worlds = [...new Set(reg.map(a => c.assetWorld(a)).filter(Boolean))];
+  T('a world added later carries its own budget: under 300 KB each', worlds.length >= 1 &&
+    worlds.every(w => sum(reg.filter(a => c.assetWorld(a) === w)) < 300 * 1024), worlds.map(w => w + ' ' + Math.round(sum(reg.filter(a => c.assetWorld(a) === w)) / 1024) + 'KB').join(', '));
+  T('every picture is in the core, installed only with the app, or waits for a world on the journey',
+    reg.every(a => c.ASSET_LOADS.indexOf(a.load) !== -1 || c.JOURNEY_ORDER.indexOf(a.load) !== -1));
+  T('the Home Screen icons are the only pictures fetched at install and never by the page', reg.filter(a => a.load === 'install').every(a => /^icon-\d+\.png$/.test(a.path)) &&
+    reg.filter(a => /^icon-/.test(a.path)).every(a => a.load === 'install'));
   const firstScreen = ['bg.space', 'bg.starsFar', 'bg.starsNear', 'horizon.earth', 'planet.moon', 'planet.moonLit', 'rocket.body', 'rocket.paintMask', 'rocket.flame', 'character.pip', 'prop.star'];
   const first = firstScreen.reduce((s, id) => s + (sizes[id] || 0), 0);
   T('the first Earth screen needs under 700 KB of pictures', first < 700 * 1024, Math.round(first / 1024) + 'KB');
@@ -1978,7 +2039,16 @@ function testAssets(){
 
   sub('derived from the registry, so they cannot drift');
   const sw = H.readSW();
-  T('the service worker precaches every registered file', reg.every(a => sw.indexOf("'./" + a.path + "'") !== -1));
+  T('the service worker precaches every core picture', reg.filter(a => a.load === 'core').every(a => sw.indexOf("'./" + a.path + "'") !== -1));
+  T('and nothing that waits: not the icons, not a world that is not yet near', reg.filter(a => a.load !== 'core').every(a => sw.indexOf("'./" + a.path + "'") === -1));
+  T('the precache list config:sync writes holds the core pictures and nothing that waits', (() => {
+    const list = require('../scripts/config.js').precacheList({ registry: reg });
+    return reg.filter(a => a.load === 'core').every(a => list.indexOf('./' + a.path) !== -1) &&
+      reg.filter(a => a.load !== 'core').every(a => list.indexOf('./' + a.path) === -1);
+  })());
+  T('an update carries a world\'s pictures, fetched when it came near, into the new cache before the old one goes',
+    /function carryPictures\(older\)/.test(sw) && /carryPictures\(older\)\.then\(\(\) => Promise\.all\(older\.map\(k => caches\.delete\(k\)\)\)\)/.test(sw) &&
+    /!precached\.has\(req\.url\) && new URL\(req\.url\)\.pathname\.indexOf\('\/assets\/'\) !== -1/.test(sw));
   const manifest = fs.readFileSync(path.join(H.ROOT, 'docs', 'ASSET-MANIFEST.md'), 'utf8');
   T('the asset manifest lists every registered file', reg.every(a => manifest.indexOf('`' + a.path + '`') !== -1));
   T('and is marked as generated', /Do not hand-edit/.test(manifest));
@@ -2068,8 +2138,8 @@ async function testChildJourney(){
   T('where the beacon is relit', lines.some(s => /beacon is shining again/.test(s)) && /class="marker is-lit" id="marker-beacon"/.test(props()));
   T('and the stars announced', lines.some(s => /You found 3 stars!/.test(s)));
   T('the next route is shown from the Moon, and named', lines.some(s => /That is Mercury/.test(s)) && /id="sky-mercury"/.test(sky()));
-  T('nothing is left to play here, so the way forward is the yellow way home',
-    d.getElementById('scene-planet').classList.contains('is-done') && c.markerNext('moon') === null);
+  T('the visit that restores the Moon shows its other game too: the writing slate is next, and Pip points at it',
+    !d.getElementById('scene-planet').classList.contains('is-done') && c.markerNext('moon') === 'writer-1' && lines.some(s => /writing slate/.test(s)));
 
   sub('what was recorded');
   T('one completion', c.journey.completions.length === 1);
@@ -2133,6 +2203,7 @@ async function testChildJourney(){
   const sp2 = fakeSpeech();
   const third = H.loadApp({ sharedStorage: shared, windowExtras: sp2.extras });
   const t = fast(third.ctx);
+  seedDone(t, ['writer-1', 'moon-2', 'moon-3', 'writer-2', 'moon-4', 'moon-5', 'writer-3']);
   t.pickDestination('moon');
   T('tapping the Moon in the sky chooses it for Launch, and Pip says what is there', t.launchTarget() === 'moon' &&
     /The Moon! That's where we find letters/.test(sp2.said[sp2.said.length - 1]));
@@ -2145,7 +2216,7 @@ async function testChildJourney(){
   T('the task is not explained again once it has been done', !sp2.said.some(s => /I'll say a letter/.test(s)));
   await playMission(t);
   T('a replay earns stars too — practice is taking part', t.starBalance(t.journey.stars) === 3);
-  T('and is recorded as its own run', t.journey.completions.length === 2);
+  T('and is recorded as its own run', t.journey.completions.filter(x => x.missionId === 'moon-1').length === 2);
 
   sub('leaving a mission early');
   await t.flyHome();
@@ -2164,7 +2235,7 @@ async function testChildJourney(){
   await t.goHomeFromMission();
   T('"go home" flies back to Earth', t.currentScene === 'earth' && t.session.run === null && t.session.place === 'earth');
   T('no stars are given for an unfinished mission — and none taken', t.starBalance(t.journey.stars) === starsBefore);
-  T('no completion is recorded for it', t.journey.completions.length === 2);
+  T('no completion is recorded for it', t.journey.completions.filter(x => !/^seed_/.test(x.id)).length === 2);
   void found;
 }
 
@@ -2296,6 +2367,9 @@ async function testDialogue(){
   sub('an instruction is given once, then Pip waits to be needed');
   await c.startAdventure();
   T('arriving on Earth the first time explains the Launch button', sp.said.filter(isHint).length === 1);
+  /* the Moon's other missions done, so its four visits are big letters:
+     moon-1 to moon-3, then moon-1 again */
+  seedDone(c, ['writer-1', 'writer-2', 'writer-3', 'moon-4', 'moon-5']);
   const missions = [], trips = [], ran = [];
   for(let i = 0; i < 4; i++){
     const at = sp.said.length;
@@ -2411,7 +2485,8 @@ async function testDialogue(){
   mark = sp.said.length;
   await wait(150);
   const nudge = sp.said.slice(mark);
-  T('a child who waits on a planet is shown the marker', nudge.length === 1 && nudge[0] === line('marker.beacon'), nudge.join(' / '));
+  T('a child who waits on a planet is shown the marker to tap', nudge.length === 1 &&
+    nudge[0] === line(c.DESTINATIONS.moon.markers[c.markerOf(c.markerNext('moon'))].call), nudge.join(' / '));
   await wait(120);
   T('once', sp.said.length === mark + 1);
   c.TIMING.idleHint = 1e9;
@@ -2426,7 +2501,9 @@ async function testDialogue(){
   c.closeGrownups();
   await wait(10);                     // back on Earth, and the wait for a hint has begun
   mark = sp.said.length;
-  await launchAndStart(c, 'moon');
+  c.pickDestination('moon');
+  await c.launch();
+  await c.startMission('moon-2');
   await wait(150);
   const inMission = sp.said.slice(mark);
   T('the Earth hint never follows the child into a mission', !inMission.some(isHint), inMission.join(' / '));
@@ -2499,7 +2576,7 @@ async function testClayWorld(){
   const face = cssRule(sheet, '.choice-face');
   T('on a letter stone the letter sits on a clean plate of the same tile surface, never on the clay',
     /background: var\(--tile-surface\)/.test(face) && /color: var\(--tile-ink\)/.test(face) && !/url\(|background-image/.test(face) &&
-    /'<span class="choice-face" aria-hidden="true"><span class="choice-glyph">' \+ L \+/.test(js()));
+    /'<span class="choice-face" aria-hidden="true"><span class="choice-glyph" data-letter="' \+ inCase\(L, a\.form\) \+ '">' \+ printSvg\(/.test(js()));
   const surf = (sheet.match(/--brand-lavender:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
   const ink = (sheet.match(/--brand-ink:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
   const ratio = surf && ink ? (luminance(surf) + 0.05) / (luminance(ink) + 0.05) : 0;
@@ -2660,8 +2737,8 @@ async function testWorldStage(){
   T('a planet in the sky is big enough for a small finger', c.JOURNEY_ORDER.every(id => c.DESTINATIONS[id].sky.size >= 10));
   T('the scenes never write a horizon, a planet or a marker picture by name',
     !/'(horizon|planet|prop)\.[a-z]+[A-Z]?[a-zA-Z]*'/.test(stripComments(fnBody(js(), 'drawPlace') + fnBody(js(), 'skyHtml') + fnBody(js(), 'markerHtml'))));
-  T('every stage picture is fetched and decoded ahead of a flight', /\^\(horizon\|planet\|bg\|prop\|rocket\|character\|place\)\\\./.test(fnBody(js(), 'preloadStage')) &&
-    /img\.decode\(\)/.test(fnBody(js(), 'preloadStage')));
+  T('every stage picture near the journey is fetched and decoded ahead of a flight', /\^\(horizon\|planet\|bg\|prop\|rocket\|character\|place\)\\\./.test(fnBody(js(), 'stageAssets')) &&
+    /img\.decode\(\)/.test(fnBody(js(), 'preloadStage')) && /stageAssets\(journey\.completions\)/.test(fnBody(js(), 'preloadStage')));
 
   sub('one mission at a time');
   c.showScene('welcome');
@@ -2763,7 +2840,8 @@ async function testNewGames(){
      data and this list ever disagree, one of them is wrong. */
   const BEATS = { cake: 1, snake: 1, bee: 1, tree: 1, rock: 1, sock: 1, moon: 1, spoon: 1, star: 1, car: 1, apple: 2, rocket: 2, banana: 3, tomato: 3,
                   map: 1, fan: 1, hat: 1, cat: 1, cap: 1, pan: 1, sun: 1, nut: 1, rug: 1, cup: 1, bus: 1, bug: 1, net: 1, fish: 1,
-                  pumpkin: 2, umbrella: 3, cupcake: 2 };
+                  pumpkin: 2, umbrella: 3, cupcake: 2,
+                  the: 1, and: 1, see: 1, you: 1, to: 1, go: 1, is: 1, it: 1, in: 1, can: 1, we: 1, my: 1 };
   T('every word has a checked beat count', Object.keys(c.WORDS).every(w => BEATS[w] === c.WORDS[w].beats.length),
     Object.keys(c.WORDS).filter(w => BEATS[w] !== c.WORDS[w].beats.length).join(','));
   const PAIRS = [['cake', 'snake'], ['bee', 'tree'], ['rock', 'sock'], ['moon', 'spoon'], ['star', 'car'],
@@ -2773,7 +2851,7 @@ async function testNewGames(){
   const review = fs.readFileSync(path.join(H.ROOT, 'docs', 'CONTENT-REVIEW.md'), 'utf8');
   T('CONTENT-REVIEW.md lists every rhyme pair', PAIRS.every(p => new RegExp(p[0] + '\\s*/\\s*' + p[1], 'i').test(review)),
     PAIRS.filter(p => !new RegExp(p[0] + '\\s*/\\s*' + p[1], 'i').test(review)).map(p => p.join('/')).join(','));
-  T('and every word\'s beat count', Object.keys(BEATS).every(w => new RegExp('\\b' + w + '\\b[^\\n]*\\b' + BEATS[w] + '\\b', 'i').test(review)),
+  T('and every picture word\'s beat count', Object.keys(BEATS).filter(c.hasPicture).every(w => new RegExp('\\b' + w + '\\b[^\\n]*\\b' + BEATS[w] + '\\b', 'i').test(review)),
     Object.keys(BEATS).filter(w => !new RegExp('\\b' + w + '\\b[^\\n]*\\b' + BEATS[w] + '\\b', 'i').test(review)).join(','));
   const learning = fs.readFileSync(path.join(H.ROOT, 'docs', 'LEARNING-DESIGN.md'), 'utf8');
   T('nothing claims approval: the new content is development content, awaiting review',
@@ -2936,7 +3014,7 @@ async function testHud(){
   const flight = c.launch();
   T('a flight: the controls clear as the engine lights', hud().hidden);
   await flight;
-  T('a planet names itself and what it teaches, with the way home', !hud().hidden && hud().left === 'home' && hud().title === 'Moon' && hud().sub === 'Letters' && /Earth/.test(hud().back));
+  T('a planet names itself and what it teaches, with the way home', !hud().hidden && hud().left === 'home' && hud().title === 'Moon' && hud().sub === 'Letters • Writing' && /Earth/.test(hud().back));
   await c.tapMarker('moon-1');
   T('a mission names its game, and what to do — two lines, not a paragraph', hud().title === 'Letter Explorer' && hud().sub === 'Find the letter you hear');
   T('with its progress, in words for a screen reader', /^0 of 6 letters found$/.test(d.getElementById('missionProgress').getAttribute('aria-label')));
@@ -2947,7 +3025,7 @@ async function testHud(){
   c.closeHomeSheet();
   c.__flush();
   await playMission(c);
-  T('back on the planet after the mission, the planet\'s own title returns', hud().title === 'Moon' && hud().sub === 'Letters');
+  T('back on the planet after the mission, the planet\'s own title returns', hud().title === 'Moon' && hud().sub === 'Letters • Writing');
   await c.hudBack();
   T('on a planet, the way back flies home', c.currentScene === 'earth' && c.session.place === 'earth');
   c.pickDestination('mercury');
@@ -2969,7 +3047,8 @@ async function testHud(){
   sub('titles and labels are content, and never the answer');
   const ids = Object.keys(c.MISSIONS);
   T('every lesson has a title, and a task of a few words', ids.every(id => c.MISSIONS[id].title && c.MISSIONS[id].task && c.MISSIONS[id].task.split(' ').length <= 6));
-  T('what a place teaches is derived from its missions\' skills', c.destinationFocus('moon').join() === 'Letters' && c.destinationFocus('mercury').join() === 'Rhymes,Beats');
+  T('what a place teaches is derived from its missions\' skills', c.destinationFocus('moon').join() === 'Letters,Writing' && c.destinationFocus('mercury').join() === 'Rhymes,Beats' &&
+    c.destinationFocus('jupiter').join() === 'Sight words');
   T('so a mission moved to another world takes its label with it', (() => {
     const beats = ['mercury-2', 'mercury-4'];
     beats.forEach(id => { c.MISSIONS[id].skillId = 'letter-recognition'; });
@@ -3007,7 +3086,7 @@ async function testHud(){
     /\.sky-label\{[^}]*opacity: 0;/.test(sheet) && /html\[data-scene="earth"\] \.sky-body\.is-picked \.sky-label\{ opacity: 1;/.test(sheet) &&
     /html\[data-scene="earth"\] \.sky-body\.is-picked \.sky-focus\{ transform: scale\(1\.1\d?\); \}/.test(sheet) &&
     /html\[data-scene="earth"\] \.sky-body\.is-dimmed \.sky-focus\{ transform: scale\(0\.8\d?\);/.test(sheet));
-  T('each planet in the sky carries its label, ready to be shown', /class="sky-label-name">Moon</.test(sky()) && /class="sky-label-focus">Letters</.test(sky()) &&
+  T('each planet in the sky carries its label, ready to be shown', /class="sky-label-name">Moon</.test(sky()) && /class="sky-label-focus">Letters • Writing</.test(sky()) &&
     /class="sky-label-focus">Rhymes • Beats</.test(sky()));
   T('the chosen light is cool: the warm yellow stays Launch\'s', /--focus-glow: rgba\((1[0-9]{2}),(2[0-9]{2}),(2[0-9]{2}),/.test(sheet));
   T('the route is drawn as light under the dots, and lights up when the choice changes',
@@ -3784,7 +3863,7 @@ async function testSoundScout(){
   const praising = p.choose(r0.answer);
   T('found: the screen belongs to the praise', p.session.input === 'wait');
   await wait(1);
-  T('once found, the letter that spells the sound shows on the scanner', /class="signal-letter"[^>]*>M</.test(d.getElementById('gameSignal').innerHTML));
+  T('once found, the letter that spells the sound shows on the scanner', /class="signal-letter"[^>]*data-letter="M"/.test(d.getElementById('gameSignal').innerHTML));
   await praising;
   const praise = rig.events.slice(at, at + 2);
   T('"mmm … Moon!": the sound again, then the picture\'s name', praise[0] === 'ph' && /^tts:.*Moon!/.test(praise[1]), praise.join('|'));
@@ -3940,7 +4019,8 @@ async function testMars(){
   const c = H.loadApp().ctx;
   const has = ids => ids.map((id, i) => ({ id: 'x' + i, missionId: id, completedAt: 't' }));
   sub('restoring');
-  T('the Moon is restored by its first mission, as before', c.destinationProgress('moon', has(['moon-1'])).restored && c.destinationProgress('moon', has(['moon-1'])).total === 3);
+  T('the Moon is restored by its first mission, as before', c.destinationProgress('moon', has(['moon-1'])).restored && c.destinationProgress('moon', has(['moon-1'])).total === 8);
+  T('Jupiter by a Star Words and a Word Orbit', c.destinationProgress('jupiter', has(['jupiter-1', 'jupiter-2'])).restored && !c.destinationProgress('jupiter', has(['jupiter-1', 'jupiter-3'])).restored);
   T('Mercury by its first two, as before', c.destinationProgress('mercury', has(['mercury-1', 'mercury-2'])).restored && !c.destinationProgress('mercury', has(['mercury-1', 'mercury-3'])).restored);
   T('Mars by a Sound Scout and a Word Builder', c.destinationProgress('mars', has(['mars-1', 'mars-2'])).restored && !c.destinationProgress('mars', has(['mars-1', 'mars-3'])).restored);
   T('a marker hosts one game, its missions in order', c.markerOf('moon-3') === 'beacon' && c.markerOf('mercury-3') === 'radar' && c.markerOf('mercury-4') === 'meteors' &&
@@ -3958,21 +4038,25 @@ async function testMars(){
   await p.startAdventure();
   await launchAndStart(p);
   await playMission(p);
-  T('after the relighting mission on the Moon, the way forward is home', p.markerNext('moon') === null && d.getElementById('scene-planet').classList.contains('is-done'));
+  T('after the relighting mission, the same visit shows the Moon\'s other game: the writing slate', p.markerNext('moon') === 'writer-1' &&
+    !d.getElementById('scene-planet').classList.contains('is-done'));
+  await p.tapMarker('slate');
+  await playMission(p);
+  T('with both games met, the way forward is home', p.markerNext('moon') === null && d.getElementById('scene-planet').classList.contains('is-done'));
   await p.flyHome();
   await launchAndStart(p, 'moon');
-  T('the next visit offers the Moon\'s next mission, at the same beacon', p.session.run && p.session.run.missionId === 'moon-2');
-  T('and the game is not explained again', !p.session.said || true);
+  T('the next visit offers the Moon\'s next mission, at the beacon', p.session.run && p.session.run.missionId === 'moon-2');
   await playMission(p);
   await p.flyHome();
   await launchAndStart(p, 'moon');
   T('and then the third', p.session.run && p.session.run.missionId === 'moon-3');
   await playMission(p);
   const props = d.getElementById('place' + p.session.slot + 'Props').innerHTML;
-  T('the beacon\'s lamps show all three played', (props.match(/marker-lamp is-on/g) || []).length === 3, props.slice(0, 200));
+  const lampsOf = key => { const at = props.indexOf('id="marker-' + key + '"'); const seg = props.slice(at, props.indexOf('</button>', at)); return (seg.match(/marker-lamp is-on/g) || []).length; };
+  T('the beacon\'s lamps show three played, the slate\'s one', lampsOf('beacon') === 3 && lampsOf('slate') === 1, props.slice(0, 200));
   await p.flyHome();
   await launchAndStart(p, 'moon');
-  T('after that, the Moon\'s missions come round in turn', p.session.run && p.MISSIONS[p.session.run.missionId].destinationId === 'moon');
+  T('then the next not yet played: the writing slate\'s second', p.session.run && p.session.run.missionId === 'writer-2');
 
   sub('a journey saved by v0.4.0');
   const shared = new Map();
@@ -3986,7 +4070,7 @@ async function testMars(){
   T('its rocket, as it was', u.currentLook().paint === 'paint-sky');
   T('and its practice notes', u.journey.evidence.length === 1 && u.journey.evidence[0].item === 'M');
   T('Mars is open to it', u.destinationUnlocked('mars', u.journey.completions));
-  T('the Moon\'s new missions are waiting at the beacon it relit', u.markerNext('moon') === 'moon-2');
+  T('the Moon\'s new missions are waiting: the writing slate first', u.markerNext('moon') === 'writer-1');
   T('opening on Earth, Mars is shown arriving, once: the new planet in the sky, and a flag remembers it', /class="sky-body is-new[^"]*" id="sky-mars"/.test(up.dom.document.getElementById('place' + u.session.slot + 'Sky').innerHTML) &&
     u.storyFlag('shown.mars'), up.dom.document.getElementById('place' + u.session.slot + 'Sky').innerHTML.slice(0, 300));
   const changed = [...shared.keys()].filter(k => shared.get(k) !== beforeKeys.get(k));
@@ -4081,6 +4165,730 @@ async function testSoundDesign(){
   T('no console errors', app.errors.length === 0, app.errors.join(' | '));
 }
 
+/* =========================================================
+   CONTRACT 46 — ONE SET OF LETTERS, TO READ AND TO WRITE
+   Every letter a child reads is drawn from the strokes a child traces:
+   school print, big and little, from one table (LETTER_FORMS). Its
+   shapes are checked here as geometry.
+   ========================================================= */
+async function testLetterforms(){
+  section('CONTRACT 46 — one set of letters, to read and to write');
+  const c = H.loadApp().ctx;
+  const up = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), low = up.map(L => L.toLowerCase()), all = up.concat(low);
+  const box = ch => c.inkBox(c.LETTER_FORMS[ch]);
+
+  sub('every letter, big and little, in one table');
+  T('all 52 letterforms exist, and none is malformed', all.every(ch => c.LETTER_FORMS[ch] && !c.formProblems(c.LETTER_FORMS[ch])),
+    all.filter(ch => !c.LETTER_FORMS[ch] || c.formProblems(c.LETTER_FORMS[ch])).join(','));
+  T('a letter is one record, keyed by its capital, with its little shape on it', up.every(L => c.LETTERS[L] && c.LETTERS[L].lower &&
+    c.LOWER_FAMILIES.indexOf(c.LETTERS[L].lower.family) !== -1 && c.LETTERS[L].lower.lookalikes.every(x => c.LETTERS[x])) && !c.LETTERS.m);
+  T('big letters stand between the top line and the baseline', up.filter(L => L !== 'Q').every(L => box(L).y0 > -0.1 && box(L).y1 < 1.1));
+  T('small letters sit between the midline and the baseline', 'acemnorsuvwxz'.split('').every(ch => box(ch).y0 > 0.4 && box(ch).y1 < 1.1));
+  T('tall letters reach up to the top line', 'bdfhklt'.split('').every(ch => box(ch).y0 < 0.2));
+  T('tails hang below the baseline', 'gjpqy'.split('').every(ch => box(ch).y1 > 1.3));
+  T('i and j have their dots, and no other letter has one', all.filter(ch => c.LETTER_FORMS[ch].some(c.isDot)).join('') === 'ij');
+  T('no two letters are drawn alike', new Set(all.map(ch => c.LETTER_FORMS[ch].map(c.strokePathD).join('|') + c.LETTER_FORMS[ch].filter(c.isDot).length)).size === 52);
+
+  sub('school shapes, the way a child is taught to write them');
+  const a = c.LETTER_FORMS.a, g = c.LETTER_FORMS.g;
+  T('"a" is single-storey: a round bowl, then a stick down its right side', a.length === 2 && a[0].length === 1 && a[0][0][0] === 'A' &&
+    Math.abs(a[0][0][6] - a[0][0][5]) === 360 && a[1].length === 1 && a[1][0][0] === 'L' && a[1][0][1] === a[1][0][3]);
+  T('"g" is single-storey: the same bowl, then a stick with a tail', g.length === 2 && g[0][0][0] === 'A' && Math.abs(g[0][0][6] - g[0][0][5]) === 360 &&
+    g[1][0][0] === 'L' && g[1][g[1].length - 1][0] === 'A');
+  T('a big I has its bars, so it is never taken for a little l', c.LETTER_FORMS.I.length === 3 && c.LETTER_FORMS.l.length === 1 &&
+    (box('I').x1 - box('I').x0) > 3 * (box('l').x1 - box('l').x0) && !c.LETTERS.I.ambiguous);
+  T('circles start near one o\'clock and go counterclockwise, "like c"', 'acdgoq'.split('').every(ch => {
+    const sg = c.LETTER_FORMS[ch][0][0];
+    return sg[0] === 'A' && sg[5] >= -70 && sg[5] <= -20 && sg[6] < sg[5];
+  }));
+  T('sticks are pulled down: every stroke that is one upright line starts at its top', all.every(ch => c.LETTER_FORMS[ch].every(st =>
+    !(st.length === 1 && st[0][0] === 'L' && st[0][1] === st[0][3]) || st[0][2] < st[0][4])));
+  T('a stroke never lifts between its segments', all.every(ch => c.LETTER_FORMS[ch].every(st => st.every((sg, k) => {
+    if(k === 0) return true;
+    const a0 = c.segmentPoints(st[k - 1], 1), b0 = c.segmentPoints(sg, 1)[0];
+    return Math.hypot(a0[a0.length - 1][0] - b0[0], a0[a0.length - 1][1] - b0[1]) < 0.011;
+  }))));
+  T('a malformed letterform is caught, never drawn or traced', [
+    [], [[]], [[['L', 0, 0, NaN, 1]]], [[['Z', 0, 0]]], [[['L', 0, 0, 0, 1], ['L', 0.5, 0.5, 1, 1]]], [[['A', 0, 0, 0, 0.2, 0, 90]]],
+    [[['L', 0, 0, 0, 9]]], [[['D', 0, 0], ['L', 0, 0, 0, 1]]]
+  ].every(f => !!c.formProblems(f) && c.tracePlan(f) === null));
+
+  sub('the print: letters drawn from their letterforms, never typed');
+  const vb = svg => svg.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number);
+  const frame = c.printFrame(['b', 'd', 'p']);
+  const boxes = ['b', 'd', 'p'].map(ch => vb(c.printSvg(ch, frame)));
+  T('a round shares one frame: every choice one size, on one baseline', boxes.every(b => b[1] === boxes[0][1] && b[2] === boxes[0][2] && b[3] === boxes[0][3]));
+  T('a little letter framed with its big partner looks little', (() => {
+    const f = c.printFrame(['m', 'n', 'w', 'M']);
+    return f.y0 < 0 && f.y1 > 1 && box('m').y0 > 0.4;
+  })());
+  T('a word is its letters, laid out in order, evenly apart', (() => {
+    const lay = c.printLayout('the');
+    return lay.parts.map(p => p.ch).join('') === 'the' && lay.parts.every((p, i) => i === 0 || Math.abs((p.dx + p.box.x0) - (lay.parts[i - 1].dx + lay.parts[i - 1].box.x1) - c.PRINT.gap) < 1e-9);
+  })());
+  T('the print is drawn in the tile\'s own ink, round-ended, and hidden from screen readers (the button carries the name)',
+    /stroke="currentColor"/.test(c.printSvg('M')) && /stroke-linecap="round"/.test(c.printSvg('M')) && /aria-hidden="true"/.test(c.printSvg('M')));
+  const src = stripComments(js());
+  T('every letter a child reads is printed: Letter Explorer\'s stones, Word Builder\'s pieces, the scanner\'s letter, a sight word',
+    /printSvg\(inCase\(L, a\.form\), frame\)/.test(src) && /printSvg\(L, frame\)/.test(fnBody(js(), 'drawBuild')) &&
+    /printSvg\(L\)/.test(fnBody(js(), 'showSoundLetter')) && /printSvg\(w, frame\)/.test(fnBody(js(), 'sightChoicesHtml')));
+  T('the letter sizes that were set for the UI font are no longer used for a letter', !/choice-glyph">' \+ L \+/.test(src));
+}
+
+/* =========================================================
+   CONTRACT 47 — BIG LETTERS, LITTLE LETTERS, AND PARTNERS
+   Letter Explorer in both cases: little letters are found by name, and
+   partners are matched by eye. A letter's little shape has its own
+   look-alikes. Pip always says "the letter", "the big letter" or "the
+   little letter": never a bare name.
+   ========================================================= */
+async function testLetterCases(){
+  section('CONTRACT 47 — big letters, little letters, and their partners');
+  const c = H.loadApp().ctx;
+
+  sub('the engine');
+  const pools = c.distractorPools('B', 'lower');
+  T('a little letter\'s look-alikes are its own: b beside d, p and q — not B beside P and R', ['D', 'P', 'Q'].every(L => pools.lookalike.indexOf(L) !== -1) &&
+    pools.lookalike.indexOf('R') === -1);
+  T('at the easy level, the other little letters are other shapes altogether', (() => {
+    for(let s = 0; s < 30; s++){
+      const out = c.pickDistractors('B', 1, 2, c.seededRandom('b' + s), 'lower');
+      if(out.length !== 2 || out.some(L => c.areLookalikes('B', L, 'lower') || c.LETTERS[L].lower.family === 'tall')) return false;
+    }
+    return true;
+  })());
+  T('above it, a look-alike joins: b meets d, p or q', (() => {
+    for(let s = 0; s < 10; s++){ const out = c.pickDistractors('B', 3, 2, c.seededRandom('h' + s), 'lower'); if(!out.some(L => ['D', 'P', 'Q', 'H'].indexOf(L) !== -1)) return false; }
+    return true;
+  })());
+  T('a little-letter round is built from little-letter shapes: at the easy level no look-alike, and nothing of its family, stands beside it', (() => {
+    return Object.keys(c.LETTERS).filter(L => !c.LETTERS[L].ambiguous).every(L => {
+      for(let k = 0; k < 12; k++){
+        const r = c.ACTIVITY_TYPES['find-letter'].buildRound({ type: 'find-letter', target: L, form: 'lower' }, { tier: 1, choices: 3, rand: c.seededRandom('lower' + L + k) });
+        if(r.options.some(o => o !== L && (c.areLookalikes(L, o, 'lower') || c.LETTERS[o].lower.family === c.LETTERS[L].lower.family))) return false;
+      }
+      return true;
+    });
+  })());
+  const type = c.ACTIVITY_TYPES['find-letter'];
+  T('evidence is kept per case: M big, m little, and M with m as a pair',
+    type.evidenceKey({ target: 'M', form: 'upper' }).form === 'upper' && type.evidenceKey({ target: 'M', form: 'lower' }).form === 'lower' &&
+    type.evidenceKey({ target: 'M', form: 'lower', from: 'upper' }).form === 'match');
+  T('a pair counts without sound — the partner is on the screen — and a little letter asked for by name does not',
+    type.silentOk({ target: 'M', form: 'lower', from: 'upper' }) === true && !type.silentOk({ target: 'M', form: 'lower' }));
+  T('a pair must show the other case', !!type.validate({ target: 'M', form: 'lower', from: 'lower' }) && !type.validate({ target: 'M', form: 'lower', from: 'upper' }));
+  T('a little letter needing help brings its sound back in Sound Scout, as a big one does', (() => {
+    const ev = [{ id: 'letter-recognition.M.lower', skillId: 'letter-recognition', item: 'M', form: 'lower', recent: [0, 0], lastPracticed: 't1' }];
+    const a = c.MISSIONS['mars-3'].activities.find(x => x.review && x.review.indexOf('m') !== -1 && x.review[0] !== 'm');
+    return !!a && c.reviewActivity(a, ev, { asked: [] }).sound === 'm';
+  })());
+  T('a little letter needing help comes back as a little letter, and pairs count toward it', (() => {
+    const ev = [{ id: 'letter-recognition.A.match', skillId: 'letter-recognition', item: 'A', form: 'match', recent: [0, 0], lastPracticed: 't1' },
+                { id: 'letter-recognition.M.upper', skillId: 'letter-recognition', item: 'M', form: 'upper', recent: [0, 0, 0], lastPracticed: 't1' }];
+    const a = c.MISSIONS['moon-5'].activities[5];
+    return c.reviewActivity(a, ev, { asked: [] }).target === 'A';
+  })());
+
+  sub('what Pip says');
+  const L = Object.keys(c.LETTERS);
+  const ids = [];
+  L.forEach(x => ['little.' + x, 'little.' + x + '.2', 'littleAgain.' + x + '.1', 'littleFound.' + x + '.0', 'littleShow.' + x,
+                  'pair.' + x + '.lower', 'pair.' + x + '.upper.1', 'pairAgain.' + x + '.lower.0', 'pairFound.' + x + '.upper.2', 'pairShow.' + x + '.lower'].forEach(id => ids.push([x, id])));
+  const cues = ids.map(([x, id]) => [x, c.voiceCue(id)]);
+  T('every line about a little letter or a pair exists', cues.every(q => !!q[1]));
+  const named = (x, s) => {
+    const name = c.LETTERS[x].speak, re = new RegExp('(\\S+)\\s+' + name + '\\b', 'g');
+    let m, ok = new RegExp('\\b' + name + '\\b').test(s);
+    while((m = re.exec(s))) if(m[1].toLowerCase() !== 'letter') ok = false;
+    return ok;
+  };
+  /* U is "you", which the lines also use ("Can you find…"): it is checked by hand, in CONTENT-REVIEW.md */
+  T('a letter\'s name always follows "letter" — never a bare "bee" (an insect) or "pee"', cues.every(([x, q]) => !q || x === 'U' || named(x, q.speak)),
+    cues.filter(([x, q]) => q && !named(x, q.speak)).slice(0, 3).map(([x, q]) => q.speak).join(' / '));
+  T('on screen a question is the task, never the letter to find', cues.filter(([x, q]) => q && q.type === 'question').every(([x, q]) =>
+    ['Find the little letter!', 'Find its little letter!', 'Find its big letter!'].indexOf(q.text) !== -1));
+
+  sub('playing it');
+  const sp = fakeSpeech();
+  const app = H.loadApp({ windowExtras: sp.extras });
+  const p = fast(app.ctx), d = app.dom.document;
+  await p.startAdventure();
+  seedDone(p, ['moon-1', 'writer-1', 'moon-2', 'moon-3', 'writer-2']);
+  p.pickDestination('moon');
+  await p.launch();
+  const hints = spy(p, 'tileClass');
+  await p.tapMarker('beacon');
+  T('the fourth letter mission is little letters, explained once, though the game is known', p.session.run && p.session.run.missionId === 'moon-4' &&
+    sp.said.filter(s => /a big shape and a little shape/.test(s)).length === 1);
+  const html = d.getElementById('missionChoices').innerHTML;
+  T('its letters are little, printed, one frame for the round', /data-letter="o"/.test(html) && (html.match(/class="print"/g) || []).length === 3);
+  T('and named for a screen reader as little letters', /aria-label="Little letter o"/.test(html));
+  T('its first round is guided: the answer glows', hints.some(x => x[0] === p.session.run.round.answer && x[1] === 'is-hint'));
+  await playMission(p, { wrongRounds: [2] });
+  T('each little letter is recorded as little', p.journey.evidence.filter(e => e.skillId === 'letter-recognition').every(e => e.form === 'lower') &&
+    p.journey.evidence.some(e => e.item === 'S' && e.form === 'lower'));
+  await p.flyHome();
+  p.pickDestination('moon');
+  await p.launch();
+  await p.tapMarker('beacon');
+  T('then big and little partners', p.session.run && p.session.run.missionId === 'moon-5');
+  const sig = d.getElementById('gameSignal').innerHTML;
+  T('the partner stands on a plate above the stones', /class="signal-plate" data-letter="N"/.test(sig) && d.getElementById('missionGame').getAttribute('data-variant') === 'pair');
+  T('Pip names it and asks for its partner', /This is the big letter en\. Find the little letter en!/.test(sp.said[sp.said.length - 1]));
+  T('and the little letters to choose from look little beside it', (() => {
+    const v = d.getElementById('missionChoices').innerHTML.match(/viewBox="([^"]+)"/)[1].split(' ').map(Number);
+    return v[1] < 0 && v[1] + v[3] > 1;
+  })());
+  await playMission(p);
+  T('a pair is recorded as a pair (the guided first one teaches, and is not)', ['P', 'F', 'H', 'B'].every(x => p.journey.evidence.some(e => e.item === x && e.form === 'match')) &&
+    !p.journey.evidence.some(e => e.item === 'N' && e.form === 'match'));
+  T('no console errors', app.errors.length === 0, app.errors.join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 48 — SIGHT WORDS: A RECORDED SOURCE, AND THE WORD IS THE QUESTION
+   Twelve words from the Dolch pre-primer list, recorded as the source and
+   awaiting review. In Star Words the word is heard, never shown before it
+   is found; in Word Orbit it is matched by eye.
+   ========================================================= */
+async function testSightWords(){
+  section('CONTRACT 48 — sight words: a recorded source, and the word is the question');
+  const c = H.loadApp().ctx;
+  /* the Dolch pre-primer list, typed here by hand as the independent check */
+  const DOLCH = ('a and away big blue can come down find for funny go help here I in is it jump little look make me my not one play red run ' +
+                 'said see the three to two up we where yellow you').split(' ');
+
+  sub('the words, and where they come from');
+  const sw = c.sightWords();
+  T('twelve sight words, each naming a recorded list', sw.length === 12 && sw.every(w => c.WORD_LISTS[c.WORDS[w].sight.list]), sw.join(','));
+  T('every one is on the Dolch pre-primer list', sw.every(w => DOLCH.indexOf(w) !== -1) && DOLCH.length === 40);
+  T('no single-letter word yet: "a" and "I" look like the letters found on the Moon', sw.every(w => w.length > 1));
+  T('each says whether it can be sounded out with the letter sounds taught', sw.every(w => typeof c.WORDS[w].sight.decodable === 'boolean') &&
+    c.WORDS.and.sight.decodable && c.WORDS.can.sight.decodable && !c.WORDS.the.sight.decodable && !c.WORDS.you.sight.decodable);
+  T('a sight word has no picture, and no picture game can ever offer one', sw.every(w => !c.WORDS[w].picture) &&
+    Object.keys(c.MISSIONS).every(id => c.MISSIONS[id].activities.every(a => {
+      if(a.type === 'rhyme-pick'){ const pl = c.rhymeDistractorPools(a); return pl.sameStart.concat(pl.other).every(c.hasPicture); }
+      if(a.type === 'sound-pick'){ const pl = c.soundDistractorPools(a); return pl.far.concat(pl.rhyme).every(c.hasPicture); }
+      return true;
+    })) && c.soundWord('s', []) !== 'see');
+  const sources = fs.readFileSync(path.join(H.ROOT, 'docs', 'CONTENT-SOURCES.md'), 'utf8');
+  T('CONTENT-SOURCES.md records the list, and every word drawn from it', /Dolch/.test(sources) && /pre-primer/i.test(sources) &&
+    sw.every(w => new RegExp('`' + w + '`').test(sources)));
+  T('nothing a child or a grown-up sees claims alignment to it', !/Dolch|aligned/i.test(JSON.stringify(c.VOICE_CUES) + JSON.stringify(c.APP_UPDATES)));
+
+  sub('the engine');
+  const rounds = [];
+  ['sight-find', 'sight-match'].forEach(t => sw.forEach(w => [1, 2].forEach(tier => {
+    rounds.push([w, tier, c.ACTIVITY_TYPES[t].buildRound({ type: t, target: w }, { tier: tier, choices: 3, rand: c.seededRandom(t + w + tier) })]);
+  })));
+  T('a round is three different words, one of them the word', rounds.every(([w, tier, r]) => r.options.length === 3 && new Set(r.options).size === 3 && r.options[r.answer] === w));
+  T('at the easy level the others look little like it', rounds.filter(r => r[1] === 1).every(([w, tier, r]) => r.options.every(o => o === w || c.wordLikeness(w, o) <= 2)));
+  T('above it, one looks a lot like it — telling close words apart', rounds.filter(r => r[1] === 2 && c.sightDistractorPools(r[0]).near.length).every(([w, tier, r]) =>
+    r.options.some(o => o !== w && c.wordLikeness(w, o) >= 3)));
+  const NEAR = { the: 'see to', and: 'can', see: 'the', you: '', to: 'the go', go: 'to', is: 'it in', it: 'is in', in: 'is it', can: 'and', we: '', my: '' };
+  T('the look-alike words are exactly those listed for review (CONTENT-REVIEW.md section 23)', sw.every(w =>
+    c.sightDistractorPools(w).near.slice().sort().join(' ') === NEAR[w].split(' ').filter(Boolean).sort().join(' ')),
+    sw.map(w => w + ':' + c.sightDistractorPools(w).near.join('/')).join(' '));
+  T('likeness is counted, the same way every time: "it" and "is" are close, "the" and "and" are not',
+    c.wordLikeness('it', 'is') >= 3 && c.wordLikeness('the', 'to') >= 3 && c.wordLikeness('the', 'and') <= 2);
+  T('the same run makes the same round', JSON.stringify(c.ACTIVITY_TYPES['sight-find'].buildRound({ type: 'sight-find', target: 'the' }, { tier: 2, choices: 3, rand: c.seededRandom('x') })) ===
+    JSON.stringify(c.ACTIVITY_TYPES['sight-find'].buildRound({ type: 'sight-find', target: 'the' }, { tier: 2, choices: 3, rand: c.seededRandom('x') })));
+  T('a sight-word lesson\'s title and task never show a sight word', Object.keys(c.MISSIONS).filter(id => c.MISSIONS[id].skillId === 'sight-words')
+    .every(id => !sw.some(w => new RegExp('\\b' + w + '\\b', 'i').test(c.MISSIONS[id].task + ' ' + c.MISSIONS[id].title))));
+
+  sub('Star Words: the word is heard, never shown before it is found');
+  const rig = audioRig();
+  const app = H.loadApp({ windowExtras: rig.extras });
+  const p = fast(app.ctx), d = app.dom.document;
+  await p.startAdventure();
+  seedDone(p, ['moon-1', 'mercury-1', 'mercury-2', 'mars-1', 'mars-2']);
+  p.saveCompletions();
+  p.pickDestination('jupiter');
+  await p.launch();
+  T('Jupiter is open once Mars is full of sounds, and its sky sign is the one to tap', p.session.place === 'jupiter' && p.markerNext('jupiter') === 'jupiter-1');
+  await p.tapMarker('skysign');
+  const r0 = p.session.run.round;
+  const caption = () => d.getElementById('caption-mission').textContent;
+  const heard = rig.events.filter(e => /^tts:/.test(e)).slice(-2).join('|');
+  T('"Find the word…" — then the word, on its own', /tts:(Find the word|Where is the word|Can you find the word)…\|tts:the\.$/.test(heard), heard);
+  T('the caption says the task and never the word', caption() === 'Find the word!' && !/\bthe\b/i.test(caption().replace(/^Find the word!$/, '')));
+  const tiles = d.getElementById('missionChoices').innerHTML;
+  T('the word Pip said is the word printed on the answer', new RegExp('data-word="' + r0.options[r0.answer] + '"').test(tiles) && r0.options[r0.answer] === 'the' &&
+    (tiles.match(/class="print"/g) || []).length === 3);
+  T('each word is on its own satellite, named for a screen reader', (tiles.match(/class="choice choice-word/g) || []).length === 3 && /aria-label="The word the"/.test(tiles));
+  let answeredEarly = true;
+  for(let i = 0; i < 6 && p.session.run; i++){
+    const r = p.session.run.round;
+    if(!r) break;
+    for(let k = 0; k < 200 && p.session.input !== 'open'; k++) await wait(2);
+    await wait(5);
+    if(!r.resolved && caption() !== 'Find the word!') answeredEarly = false;
+    await p.choose(r.answer);
+    await wait(2);
+  }
+  T('in every round the caption kept the word hidden until it was found', answeredEarly);
+  T('each word found is recorded as heard', p.journey.evidence.filter(e => e.skillId === 'sight-words').every(e => e.form === 'hear'));
+
+  sub('Word Orbit: the same word, found by eye');
+  for(let k = 0; k < 400 && p.currentScene !== 'planet'; k++) await wait(2);
+  await p.tapMarker('orbit');
+  const r1 = p.session.run.round;
+  const hub = d.getElementById('gameSignal').innerHTML;
+  T('the word to match is at the centre, and the same word is on the ring', /class="signal-word" data-word="the"/.test(hub) && r1.options.indexOf('the') !== -1);
+  T('both are printed in the same frame, so they match letter for letter', hub.match(/viewBox="([^"]+)"/)[1].split(' ').slice(1).join() ===
+    d.getElementById('missionChoices').innerHTML.match(/viewBox="([^"]+)"/)[1].split(' ').slice(1).join());
+  T('a match is seen, not heard: it counts with the sound off', c.ACTIVITY_TYPES['sight-match'].silentOk() === true);
+  await playMission(p);
+  T('each word matched is recorded as matched', p.journey.evidence.some(e => e.skillId === 'sight-words' && e.form === 'match'));
+  T('Jupiter is restored by its sky sign and its orbit ring', p.placeRestored('jupiter'));
+
+  sub('with nothing to hear');
+  const q = H.loadApp();
+  const s = fast(q.ctx);
+  s.soundPrefs.voice = false;
+  await s.startAdventure();
+  seedDone(s, ['moon-1', 'mercury-1', 'mercury-2', 'mars-1', 'mars-2']);
+  s.pickDestination('jupiter');
+  await s.launch();
+  await s.tapMarker('skysign');
+  await wait(5);
+  T('the word is shown, so the game can still be played', /Find the word: the/.test(q.dom.document.getElementById('caption-mission').textContent));
+  await playMission(s);
+  T('and nothing is recorded: a word read off the caption is not a sight word known', s.journey.evidence.filter(e => e.skillId === 'sight-words').length === 0);
+
+  sub('review');
+  const ev = [{ id: 'sight-words.you.hear', skillId: 'sight-words', item: 'you', form: 'hear', recent: [0, 0], lastPracticed: 't1' },
+              { id: 'sight-words.the.match', skillId: 'sight-words', item: 'the', form: 'match', recent: [1], lastPracticed: 't0' }];
+  T('the sight word that needed help most comes back, from either game', c.reviewActivity(c.MISSIONS['jupiter-3'].activities[4], ev, { asked: [] }).target === 'you');
+  T('no console errors', app.errors.length === 0 && q.errors.length === 0, app.errors.concat(q.errors).join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 49 — TRACING: THE WAY A LETTER IS MADE, BY GEOMETRY
+   Did the child follow the letter's path, from its start, in its
+   direction? No recognition, no score: forward progress along each
+   stroke within a corridor, and a gentle restart of one stroke only.
+   ========================================================= */
+function testTracing(){
+  section('CONTRACT 49 — tracing: the way a letter is made, checked by geometry');
+  const c = H.loadApp().ctx;
+  const all = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+  const trace = (ch, step, only) => {
+    const plan = c.tracePlan(c.LETTER_FORMS[ch]), t = c.traceStart(plan), evs = [];
+    plan.forEach((s, i) => {
+      if(only !== undefined && i > only) return;
+      evs.push(c.traceDown(plan, t, s.pts[0]));
+      if(s.dot) return;
+      for(let k = step; k < s.pts.length; k += step) evs.push(c.traceMove(plan, t, s.pts[k]));
+      evs.push(c.traceMove(plan, t, s.pts[s.pts.length - 1]));
+      c.traceUp(t);
+    });
+    return { plan: plan, t: t, evs: evs };
+  };
+
+  sub('a whole letter, followed');
+  T('every letter, big and little, can be traced along its own strokes, in order', all.every(ch => trace(ch, 2).t.done), all.filter(ch => !trace(ch, 2).t.done).join(','));
+  T('even by a fast finger, far between its points', all.every(ch => trace(ch, 6).t.done), all.filter(ch => !trace(ch, 6).t.done).join(','));
+  T('each stroke done is said once, and the letter once', (() => { const r = trace('H', 2); return r.evs.filter(e => e === 'stroke').length === 2 && r.evs.filter(e => e === 'letter').length === 1; })());
+
+  sub('only the way the letter is made');
+  const planL = c.tracePlan(c.LETTER_FORMS.L), s0 = planL[0];
+  T('going down anywhere but the start does not begin the stroke', (() => { const t = c.traceStart(planL); return c.traceDown(planL, t, [0.5, 0.2]) === 'away' && !t.down; })());
+  T('starting from the end — tracing backwards — does not begin it either', (() => { const t = c.traceStart(planL); return c.traceDown(planL, t, s0.pts[s0.pts.length - 1]) === 'away'; })());
+  T('moving the wrong way from the start makes no progress', (() => {
+    const t = c.traceStart(planL); c.traceDown(planL, t, s0.pts[0]);
+    for(let k = 1; k < 20; k++) c.traceMove(planL, t, [0, -0.01 * k]);
+    return t.at === 0 && !t.done;
+  })());
+  T('cutting straight across a letter is not its path', (() => {
+    const pO = c.tracePlan(c.LETTER_FORMS.O), t = c.traceStart(pO); c.traceDown(pO, t, pO[0].pts[0]);
+    const far = pO[0].pts[Math.floor(pO[0].pts.length / 2)];
+    c.traceMove(pO, t, far);
+    return c.traceShare(pO, t) < 0.2 && !t.done;
+  })());
+  T('nothing is done until the last point of the last stroke', (() => {
+    const t = c.traceStart(planL); c.traceDown(planL, t, s0.pts[0]);
+    const stop = Math.floor(s0.pts.length * 0.9);
+    for(let k = 1; k <= stop; k++) c.traceMove(planL, t, s0.pts[k]);
+    return !t.done && c.traceShare(planL, t) < 1;
+  })());
+
+  sub('forgiving');
+  T('a finger a little off the path is neither counted nor punished', (() => {
+    const t = c.traceStart(planL); c.traceDown(planL, t, s0.pts[0]);
+    let ev = null;
+    for(let k = 1; k < 6; k++){ ev = c.traceMove(planL, t, [0.22, k * 0.03]) || ev; if(ev === 'wander') break; }
+    return ev !== 'wander' && t.resets === 0 && t.at <= 1;
+  })());
+  T('a finger that wanders well away restarts only that stroke: those before it stay done', (() => {
+    const pH = c.tracePlan(c.LETTER_FORMS.H), t = c.traceStart(pH);
+    c.traceDown(pH, t, pH[0].pts[0]); pH[0].pts.forEach(q => c.traceMove(pH, t, q)); c.traceUp(t);
+    c.traceDown(pH, t, pH[1].pts[0]);
+    let ev = null;
+    for(let k = 1; k < 30 && ev !== 'wander'; k++) ev = c.traceMove(pH, t, [pH[1].pts[0][0] - 0.05 * k, 0.1]);
+    return ev === 'wander' && t.stroke === 1 && t.at === -1 && t.resets === 1 && !t.down;
+  })());
+  T('restarts are counted stroke by stroke: once astray on each of two strokes is not twice on one', (() => {
+    const pH = c.tracePlan(c.LETTER_FORMS.H), t = c.traceStart(pH);
+    const astray = i => { c.traceDown(pH, t, pH[i].pts[0]); let ev = null; for(let k = 1; k < 30 && ev !== 'wander'; k++) ev = c.traceMove(pH, t, [pH[i].pts[0][0] - 0.05 * k, 0.1]); };
+    astray(0);
+    c.traceDown(pH, t, pH[0].pts[0]); pH[0].pts.forEach(q => c.traceMove(pH, t, q)); c.traceUp(t);
+    astray(1);
+    return t.stroke === 1 && t.resets === 1;
+  })());
+  T('a lifted finger carries on from where it stopped', (() => {
+    const t = c.traceStart(planL); c.traceDown(planL, t, s0.pts[0]);
+    const mid = Math.floor(s0.pts.length / 2);
+    for(let k = 1; k <= mid; k++) c.traceMove(planL, t, s0.pts[k]);
+    c.traceUp(t);
+    const back = c.traceDown(planL, t, s0.pts[t.at]);
+    for(let k = mid; k < s0.pts.length; k++) c.traceMove(planL, t, s0.pts[k]);
+    return back === 'start' && t.done;
+  })());
+  T('or goes back to where the stroke begins, and starts that stroke again', (() => {
+    const t = c.traceStart(planL); c.traceDown(planL, t, s0.pts[0]);
+    const mid = Math.floor(s0.pts.length / 2);
+    for(let k = 1; k <= mid; k++) c.traceMove(planL, t, s0.pts[k]);
+    c.traceUp(t);
+    const again = c.traceDown(planL, t, s0.pts[0]);
+    return again === 'start' && t.at === 0 && t.down && t.resets === 0;
+  })());
+  T('but a lifted finger going down anywhere else begins nothing', (() => {
+    const t = c.traceStart(planL); c.traceDown(planL, t, s0.pts[0]);
+    const mid = Math.floor(s0.pts.length / 2);
+    for(let k = 1; k <= mid; k++) c.traceMove(planL, t, s0.pts[k]);
+    c.traceUp(t);
+    const at = t.at;
+    return c.traceDown(planL, t, s0.pts[s0.pts.length - 1]) === 'away' && !t.down && t.at === at;
+  })());
+  T('a dot is a tap near it', (() => { const r = trace('i', 2); return r.t.done && r.evs[r.evs.length - 1] === 'letter'; })());
+
+  T('a finger wiggling in the middle of a little o does not trace it — the corridor is narrower than its radius', (() => {
+    const p = c.tracePlan(c.LETTER_FORMS.o), t = c.traceStart(p);
+    c.traceDown(p, t, p[0].pts[0]);
+    for(let k = 0; k < 40; k++) c.traceMove(p, t, [0.25 + (k % 2 ? 0.02 : -0.02), 0.75 + (k % 3 ? 0.02 : -0.02)]);
+    return !t.done && c.traceShare(p, t) < 0.2 && c.TRACE.tolerance < 0.25 - 0.05;
+  })());
+
+  sub('safe with anything');
+  const pl = c.tracePlan(c.LETTER_FORMS.A), tt = c.traceStart(pl);
+  T('a point that is not a point is ignored, never thrown', c.traceDown(pl, tt, [NaN, 1]) === null && c.traceMove(pl, tt, null) === null &&
+    c.traceDown(null, tt, [0, 0]) === null && c.traceMove(pl, null, [0, 0]) === null && c.traceUp(null) === null);
+  T('a finished letter takes no more', (() => { const r = trace('T', 2); return c.traceDown(r.plan, r.t, r.plan[0].pts[0]) === null; })());
+  T('the same trace is judged the same way every time', JSON.stringify(trace('S', 3).t) === JSON.stringify(trace('S', 3).t));
+  T('there is no score and no recognition: done, or not yet, and help counted', !/score|percent|recogni/i.test(stripComments(fnBody(js(), 'traceMove') + fnBody(js(), 'traceDown'))));
+}
+
+/* =========================================================
+   CONTRACT 50 — MOON WRITER: WATCH, TRACE, TRACE AGAIN
+   Pip writes the letter first; the child traces it with the path
+   shown, then with only its start. A finger or the Pencil, one at a
+   time, on the slate only. A trace is answered by finishing it, and help
+   is counted, never punished.
+   ========================================================= */
+async function testMoonWriter(){
+  section('CONTRACT 50 — Moon Writer: watch, trace, trace again');
+  const sheet = css();
+
+  sub('the slate takes the trace, and only the slate');
+  T('the page never scrolls under a tracing finger, and nothing is selected or long-pressed', /touch-action: none/.test(cssRule(sheet, '.write-pad')) &&
+    /user-select: none/.test(cssRule(sheet, '.write-pad')) && /-webkit-touch-callout: none/.test(cssRule(sheet, '.write-pad')));
+  T('it listens for a pointer going down, moving, lifting and being cancelled — a finger and the Pencil alike',
+    ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'lostpointercapture'].every(e => new RegExp("'" + e + "'").test(fnBody(js(), 'wireWritePad'))));
+  T('what is drawn on it takes no taps of its own', /pointer-events: none/.test(cssRule(sheet, '.w-svg')));
+  T('the slate itself catches a real finger: the scene layer lets taps through, and the slate is not a button',
+    /\.scene-ui\{[^}]*pointer-events: none/.test(sheet.replace(/\/\*[\s\S]*?\*\//g, '')) && /pointer-events: auto/.test(cssRule(sheet, '.write-pad')));
+
+  sub('watch, then trace');
+  const rig = audioRig();
+  const app = H.loadApp({ windowExtras: rig.extras });
+  const p = fast(app.ctx), d = app.dom.document;
+  await p.startAdventure();
+  await launchAndStart(p);
+  await playMission(p);
+  T('the visit that relit the Moon points at its writing slate', p.markerNext('moon') === 'writer-1');
+  const at = rig.events.length;
+  await p.tapMarker('slate');
+  const said = rig.events.slice(at).filter(e => /^tts:/.test(e)).join('|');
+  T('the task is explained once, then Pip writes the letter, then asks', /Let's write letters!/.test(said) &&
+    /This is how we write the big letter el\.[\s\S]*Trace the big letter el\./.test(said), said);
+  const pad = () => d.getElementById('writePad').innerHTML;
+  T('with full help: every stroke\'s lane, the dashed middle, the arrow and the green start', /class="w-lane is-now"/.test(pad()) &&
+    /class="w-dash"/.test(pad()) && /class="w-arrow"/.test(pad()) && /class="w-start"/.test(pad()));
+  T('between the writing lines: top, dashed middle and baseline', /class="w-line"/.test(pad()) && /class="w-mid"/.test(pad()));
+  T('the slate is open to the trace', p.session.input === 'open' && p.writeReady());
+
+  sub('one pointer at a time: a second finger does not draw, and the Pencil beats a resting palm');
+  const el = d.getElementById('writePad');
+  el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 160, height: 195 });
+  const w = p.session.write, view = w.view;
+  const ev = (id, kind, u) => ({ pointerId: id, pointerType: kind, clientX: (u[0] - view[0]) * 100, clientY: (u[1] - view[1]) * 100,
+                                 cancelable: true, preventDefault(){}, currentTarget: { setPointerCapture(){} } });
+  const s0 = w.plan[0];
+  el.dispatch('pointerdown', ev(1, 'touch', s0.pts[0]));
+  T('a finger at the green dot begins the stroke', w.t.down && p.writeInput.id === 1);
+  el.dispatch('pointerdown', ev(2, 'touch', [view[0] + 0.1, 1.5]));
+  el.dispatch('pointermove', ev(2, 'touch', s0.pts[10]));
+  T('a second finger is ignored', p.writeInput.id === 1 && w.t.at < 5);
+  el.dispatch('pointermove', ev(1, 'touch', s0.pts[8]));
+  T('the first finger\'s trace moves on', w.t.at >= 6);
+  el.dispatch('pointerdown', ev(3, 'pen', s0.pts[w.t.at]));
+  T('a Pencil coming down takes over: the touch was a palm', p.writeInput.id === 3 && p.writeInput.type === 'pen' && w.t.down);
+  el.dispatch('pointercancel', ev(3, 'pen', s0.pts[w.t.at]));
+  T('a cancelled pointer just lifts: what was traced stays', !w.t.down && w.t.at >= 6 && p.writeInput.id === null);
+  const dot = (pad().match(/<circle class="w-start" id="writeStart" cx="([-\d.]+)" cy="([-\d.]+)"/) || []).slice(1).map(Number);
+  T('and the green dot moves to where it stopped, which is where it carries on',
+    dot.length === 2 && Math.abs(dot[0] - s0.pts[w.t.at][0]) < 0.002 && Math.abs(dot[1] - s0.pts[w.t.at][1]) < 0.002, dot.join(','));
+  el.dispatch('pointerdown', ev(4, 'pen', s0.pts[w.t.at]));
+  s0.pts.forEach((q, k) => { if(k % 2 === 0) el.dispatch('pointermove', ev(4, 'pen', q)); });
+  el.dispatch('pointermove', ev(4, 'pen', s0.pts[s0.pts.length - 1]));
+  el.dispatch('pointerup', ev(4, 'pen', s0.pts[s0.pts.length - 1]));
+  for(let k = 0; k < 100 && !p.session.run.results.length; k++) await wait(2);
+  T('finishing the trace answers the round — nothing to choose, nothing wrong', p.session.run.results.length === 1);
+  T('the first, fully shown trace is teaching, not evidence', p.session.run.results[0].outcome === null);
+  for(let k = 0; k < 200 && !(p.session.run.index === 1 && p.session.input === 'open'); k++) await wait(2);
+  T('then the same letter again with less help: a faint outline and only its start', /class="w-faint/.test(pad()) && !/w-lane/.test(pad()) &&
+    !/w-dash/.test(pad()) && /class="w-start"/.test(pad()) && p.session.run.round.activity.help === 'light');
+  T('and Pip asks without writing it again', rig.events.slice(-3).some(e => /Now write it again, with less help!|Can you write it on your own\?/.test(e)));
+
+  sub('help is counted, never punished');
+  await traceLetter(p, false);
+  for(let k = 0; k < 200 && !(p.session.run && p.session.run.index === 2 && p.session.input === 'open'); k++) await wait(2);
+  const evL = p.journey.evidence.find(e => e.id === 'handwriting.L.upper');
+  T('traced cleanly with less help: recorded as without help', !!evL && evL.recent.join() === '1');
+  await traceLetter(p, false);
+  for(let k = 0; k < 200 && !(p.session.run && p.session.run.index === 3 && p.session.input === 'open'); k++) await wait(2);
+  const marks = rig.events.length;
+  await traceLetter(p, true);
+  T('a stroke that wandered starts again, alone, and Pip says so gently', rig.events.slice(marks).some(e => /Let's try that line again\./.test(e)) &&
+    !rig.events.slice(marks).some(e => /wrong|no!/i.test(e)));
+  for(let k = 0; k < 200 && !(p.session.run && p.session.run.index === 4 && p.session.input === 'open'); k++) await wait(2);
+  const evT = p.journey.evidence.find(e => e.id === 'handwriting.T.upper');
+  T('that letter is recorded as helped', !!evT && evT.recent.join() === '0');
+  await traceLetter(p, false);
+  for(let k = 0; k < 200 && !(p.session.run && p.session.run.index === 5 && p.session.input === 'open'); k++) await wait(2);
+  p.session.write.t.stroke = 0;
+  const before = p.session.run.round.misses;
+  await p.watchAgain();
+  T('"watch it again" shows the letter again, and counts as help', p.session.run.round.misses === before + 1 && p.session.input === 'open');
+  T('the letter traced with the most help comes back in Moon Writer\'s review', (() => {
+    const ev = [{ id: 'handwriting.L.upper', skillId: 'handwriting', item: 'L', form: 'upper', recent: [1], lastPracticed: 't0' },
+                { id: 'handwriting.T.upper', skillId: 'handwriting', item: 'T', form: 'upper', recent: [0, 0], lastPracticed: 't1' },
+                { id: 'handwriting.H.lower', skillId: 'handwriting', item: 'H', form: 'lower', recent: [0, 0, 0], lastPracticed: 't1' }];
+    const a = p.MISSIONS['writer-2'].activities.find(x => x.review);
+    return p.reviewActivity(a, ev, { asked: [] }).target === 'T';
+  })());
+  const w5 = p.session.write;
+  w5.ink.push([[0, 0], [0, 0.5]]);
+  p.restartLetter();
+  T('"start again" clears the slate for this letter', w5.t.stroke === 0 && w5.t.at === -1 && w5.ink.length === 0);
+  await traceLetter(p, false);
+  for(let k = 0; k < 400 && p.currentScene !== 'planet'; k++) await wait(2);
+  T('the mission finishes when every letter is traced, and pays its stars', p.missionDone('writer-1') && p.starBalance(p.journey.stars) === 6);
+  T('each letter is recorded once, as a big letter traced', ['L', 'T', 'H'].every(x => p.journey.evidence.filter(e => e.id === 'handwriting.' + x + '.upper').length === 1));
+
+  sub('Pip reminds, but never nags');
+  {
+    const nr = audioRig();
+    const n = H.loadApp({ windowExtras: nr.extras });
+    const nc = fast(n.ctx);
+    nc.TIMING.writeHint = 60000;
+    await nc.startAdventure();
+    seedDone(nc, ['moon-1']);
+    nc.pickDestination('moon');
+    await nc.launch();
+    await nc.tapMarker('slate');
+    const from = nr.events.length;
+    for(let k = 0; k < 4; k++){ nc.writeDown([1.2, 1.4]); nc.writeUp(); await wait(2); }
+    T('going down away from the dot again and again: "Start at the green dot" is said once, not every time',
+      nr.events.slice(from).filter(e => /Start at the green dot\./.test(e)).length === 1, nr.events.slice(from).join('|'));
+  }
+
+  sub('with the sound off');
+  {
+    const z = H.loadApp();
+    const zc = fast(z.ctx);
+    zc.soundPrefs.voice = false;
+    await zc.startAdventure();
+    seedDone(zc, ['moon-1']);
+    zc.pickDestination('moon');
+    await zc.launch();
+    await zc.tapMarker('slate');
+    await traceLetter(zc, false);
+    for(let k = 0; k < 200 && !(zc.session.run && zc.session.run.index === 1 && zc.session.input === 'open'); k++) await wait(2);
+    await traceLetter(zc, false);
+    for(let k = 0; k < 200 && !(zc.session.run && zc.session.run.index === 2); k++) await wait(2);
+    T('a trace counts with the sound off: it is seen and done, not heard', zc.journey.evidence.some(e => e.id === 'handwriting.L.upper'));
+  }
+
+  sub('Reduce Motion');
+  T('with Reduce Motion, Pip\'s letter appears stroke by stroke, whole, never drawn along', /motionReduced\(\)/.test(fnBody(js(), 'drawDemo')) &&
+    /if\(isDot\(st\) \|\| reduced \|\|/.test(fnBody(js(), 'demoStroke')) && /stroke-dashoffset', '0'/.test(fnBody(js(), 'demoStroke')));
+
+  sub('a reload in the middle of a letter');
+  const shared = new Map();
+  const m1 = H.loadApp({ sharedStorage: shared });
+  const mc = fast(m1.ctx);
+  await mc.startAdventure();
+  seedDone(mc, ['moon-1', 'writer-1', 'moon-2', 'moon-3']);
+  mc.saveCompletions();
+  mc.pickDestination('moon');
+  await mc.launch();
+  await mc.tapMarker('slate');
+  const mw = mc.session.write;
+  mc.writeDown(mw.plan[0].pts[0]);
+  for(let k = 1; k < mw.plan[0].pts.length / 2; k++) mc.writeMove(mw.plan[0].pts[k]);
+  const again = H.loadApp({ sharedStorage: shared });
+  T('reloaded mid-letter: nothing half-traced is saved, no completion is invented, and the app boots clean',
+    again.errors.length === 0 && !again.ctx.missionDone('writer-2') && again.ctx.journey.evidence.every(e => e.skillId !== 'handwriting') && again.ctx.session.run === null,
+    again.errors.join(' | '));
+
+  sub('a letter that cannot be traced');
+  const b = H.loadApp();
+  const bc = fast(b.ctx);
+  bc.LETTER_FORMS.L = [[['L', 0, 0, NaN, 1]]];
+  T('content validation stops it at boot', bc.validateContent().some(x => /cannot be traced/.test(x)));
+  await bc.startAdventure();
+  seedDone(bc, ['moon-1']);
+  bc.pickDestination('moon');
+  await bc.launch();
+  await bc.tapMarker('slate');
+  for(let k = 0; k < 100 && bc.session.run && bc.session.run.index < 2; k++) await wait(2);
+  T('and if it ever reached a child, it is passed over — never recorded as traced', bc.session.run && bc.session.run.index >= 2 &&
+    bc.session.run.results.slice(0, 2).every(x => x.outcome === null) && !bc.journey.evidence.some(e => e.id === 'handwriting.L.upper'));
+  T('no console errors', app.errors.length === 0 && m1.errors.length === 0, app.errors.concat(m1.errors).join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 51 — JUPITER, AND A JOURNEY THAT GROWS WITHOUT TAKING ANYTHING BACK
+   The fourth world opens after Mars. A place's first visit shows every
+   game it has; once everything open is restored, Launch goes where
+   there is something new. A v0.5.0 journey opens with everything it had.
+   ========================================================= */
+function seedV050(storage, c){
+  const ns = c.STORAGE_NAMESPACE, at = '2026-09-27T10:00:00.000Z';
+  const ids = ['moon-1', 'moon-2', 'moon-3', 'mercury-1', 'mercury-2', 'mercury-3', 'mercury-4', 'mars-1', 'mars-2', 'mars-3', 'mars-4'];
+  const done = ids.map((id, i) => ({ id: 'run_v050_' + i, missionId: id, destinationId: c.MISSIONS[id].destinationId, skillId: c.MISSIONS[id].skillId,
+    startedAt: at, completedAt: at, updatedAt: at, rounds: 6, firstTry: 5, helped: 1, unscored: 0 }));
+  const stars = done.map(x => ({ id: 'earn.' + x.id, kind: 'earn', amount: 3, runId: x.id, at: at, updatedAt: at }))
+    .concat([{ id: 'spend.paint-sky', kind: 'spend', amount: 3, cosmeticId: 'paint-sky', at: at, updatedAt: at }]);
+  const evidence = [
+    { id: 'letter-recognition.M.upper', skillId: 'letter-recognition', item: 'M', form: 'upper', seen: 3, firstTry: 1, recent: [0, 1, 0], lastPracticed: at, updatedAt: at },
+    { id: 'beginning-sounds.m.initial', skillId: 'beginning-sounds', item: 'm', form: 'initial', seen: 2, firstTry: 1, recent: [1, 0], lastPracticed: at, updatedAt: at },
+    { id: 'cvc.map.build', skillId: 'cvc', item: 'map', form: 'build', seen: 1, firstTry: 1, recent: [1], lastPracticed: at, updatedAt: at }];
+  const profile = { id: 'explorer', createdAt: at, updatedAt: at,
+                    story: { 'arrived.moon': at, 'arrived.mercury': at, 'arrived.mars': at, 'shown.mars': at, 'heard.dockHint': at } };
+  const put = (k, v) => storage.setItem(ns + k, JSON.stringify(v));
+  put(c.KEYS.completions, done); put(c.KEYS.stars, stars); put(c.KEYS.evidence, evidence);
+  put(c.KEYS.profile, profile); put(c.KEYS.rocket, { paint: 'paint-sky', updatedAt: at });
+  storage.setItem(ns + c.KEYS.schemaVersion, String(c.DATA_SCHEMA_VERSION));
+}
+async function testJupiter(){
+  section('CONTRACT 51 — Jupiter, and a journey that grows without taking anything back');
+  const c = H.loadApp().ctx;
+  const has = ids => ids.map((id, i) => ({ id: 'x' + i, missionId: id, completedAt: 't' }));
+
+  sub('Jupiter');
+  T('JUPITER / Sight words: a planet says what it teaches', c.focusLabel('jupiter') === 'Sight words');
+  T('its sky sign hosts Star Words, its orbit ring Word Orbit', c.markerOf('jupiter-1') === 'skysign' && c.markerOf('jupiter-3') === 'skysign' &&
+    c.markerOf('jupiter-2') === 'orbit' && c.markerOf('jupiter-4') === 'orbit');
+  T('it hangs in Earth\'s sky clear of the HUD title, big enough for a small finger', c.DESTINATIONS.jupiter.sky.y > 20 && c.DESTINATIONS.jupiter.sky.size >= 10);
+  T('its first trip is the light tunnel, the first arrival beyond the first stop', c.travelPlan({ from: 'earth', to: 'jupiter', first: true, flight: 1 }).motifs.indexOf('tunnel') !== -1);
+  T('it is new in 0.6.0: a child who restored Mars before it existed is shown it arriving', c.DESTINATIONS.jupiter.newIn === '0.6.0');
+
+  sub('where Launch goes');
+  const restoring = ['moon-1', 'mercury-1', 'mercury-2', 'mars-1', 'mars-2', 'jupiter-1', 'jupiter-2'];
+  T('with a place open and not yet restored, the first such', c.currentDestination(has(['moon-1', 'mercury-1', 'mercury-2'])) === 'mars');
+  T('with every open place restored, the first with a mission not yet played — back to the Moon\'s slate and little letters',
+    c.currentDestination(has(restoring)) === 'moon');
+  T('with everything played, the last one open', c.currentDestination(has(Object.keys(c.MISSIONS))) === 'jupiter');
+
+  sub('a place\'s first visit shows every game there');
+  T('on the Moon: the beacon\'s first mission, then the writing slate\'s', (() => {
+    const t = H.loadApp().ctx;
+    t.session.visit = { dest: 'moon', played: true, restoredHere: true };
+    t.journey.completions = has(['moon-1']);
+    const first = t.markerNext('moon');
+    t.journey.completions = has(['moon-1', 'writer-1']);
+    return first === 'writer-1' && t.markerNext('moon') === null;
+  })());
+  T('a later visit, one mission — any not yet played first', (() => {
+    const t = H.loadApp().ctx;
+    t.session.visit = { dest: 'moon', played: false };
+    t.journey.completions = has(['moon-1', 'writer-1']);
+    return t.markerNext('moon') === 'moon-2';
+  })());
+
+  sub('a journey saved by v0.5.0');
+  const shared = new Map();
+  seedV050(H.makeLocalStorage(shared), c);
+  const beforeKeys = new Map(shared);
+  const up = H.loadApp({ sharedStorage: shared });
+  const u = fast(up.ctx);
+  T('it opens with no errors and nothing set aside as unreadable', up.errors.length === 0 && ![...shared.keys()].some(k => /unreadable/.test(k)), up.errors.join(' | '));
+  T('everything it had: eleven missions, the Moon, Mercury and Mars restored', u.journey.completions.length === 11 &&
+    ['moon', 'mercury', 'mars'].every(u.placeRestored));
+  T('its stars, its rocket and its practice notes, unchanged', u.starBalance(u.journey.stars) === 30 && u.currentLook().paint === 'paint-sky' && u.journey.evidence.length === 3);
+  T('nothing it finished is locked again', u.journey.completions.every(x => u.destinationUnlocked(x.destinationId, u.journey.completions)));
+  T('Jupiter is open to it, and Launch goes there', u.destinationUnlocked('jupiter', u.journey.completions) && u.launchTarget() === 'jupiter');
+  T('opening on Earth, Jupiter is shown arriving, once, and a flag remembers it',
+    /class="sky-body is-new[^"]*" id="sky-jupiter"/.test(up.dom.document.getElementById('place' + u.session.slot + 'Sky').innerHTML) && u.storyFlag('shown.jupiter'));
+  const changed = [...shared.keys()].filter(k => shared.get(k) !== beforeKeys.get(k));
+  T('and only the profile learned that it was shown: nothing else was rewritten', changed.length === 1 && changed[0] === u.STORAGE_NAMESPACE + u.KEYS.profile, changed.join(','));
+  const up2 = H.loadApp({ sharedStorage: shared });
+  T('reloaded, it is not shown again', !/is-new/.test(up2.dom.document.getElementById('place' + up2.ctx.session.slot + 'Sky').innerHTML));
+  T('the Moon\'s new missions wait for it: the writing slate first', u.markerNext('moon') === 'writer-1');
+  T('its old evidence feeds the new review: /m/ needing help brings back a Word Builder word that starts with it',
+    u.reviewPick({ type: 'word-build' }, ['fan', 'map', 'hat'], [{ id: 'beginning-sounds.m.initial', recent: [0, 0], lastPracticed: 't' }], []) === 'map');
+}
+
+/* =========================================================
+   CONTRACT 52 — PICTURES BY WHEN THEY ARE NEEDED
+   The offline cache installs the core. A world added later is fetched —
+   and so kept offline — once its route is open or next to open, at every
+   start while it is: never before it is near.
+   ========================================================= */
+function testAssetLoading(){
+  section('CONTRACT 52 — pictures by when they are needed, kept offline once near');
+  const c = H.loadApp().ctx;
+  const has = ids => ids.map((id, i) => ({ id: 'x' + i, missionId: id, completedAt: 't' }));
+  const ofWorld = (list, w) => list.filter(a => c.assetWorld(a) === w);
+  T('a new explorer is not sent Jupiter\'s pictures: its route is far away', ofWorld(c.stageAssets([]), 'jupiter').length === 0);
+  T('while Mars is the next to open, still not', ofWorld(c.stageAssets(has(['moon-1'])), 'jupiter').length === 0);
+  T('once Mars is open, Jupiter is next: its pictures are fetched, and so kept offline before its route opens',
+    ofWorld(c.stageAssets(has(['moon-1', 'mercury-1', 'mercury-2'])), 'jupiter').length === ofWorld(c.ASSET_REGISTRY, 'jupiter').filter(a => /^(horizon|planet|prop)\./.test(a.id)).length);
+  T('the core\'s stage pictures are always fetched', c.ASSET_REGISTRY.filter(a => a.load === 'core' && /^(horizon|planet|bg|prop|rocket|character|place)\./.test(a.id))
+    .every(a => c.stageAssets([]).indexOf(a) !== -1));
+  T('the icons are never fetched by the page', c.stageAssets(has(Object.keys(c.MISSIONS))).every(a => a.load !== 'install'));
+  T('fetched at every start, and whenever a route opens — so a new version\'s cache keeps an open world too',
+    /setTimeout\(preloadStage/.test(js()) && /preloadStage\(\)/.test(fnBody(js(), 'finishMission')));
+  T('and never twice for one picture', /_preloaded\[a\.id\]/.test(fnBody(js(), 'preloadStage')));
+  const manifest = fs.readFileSync(path.join(H.ROOT, 'docs', 'ASSET-MANIFEST.md'), 'utf8');
+  T('ASSET-MANIFEST.md says when each picture is kept offline', /\| Kept offline \|/.test(manifest) && /when Jupiter is near/.test(manifest) && /at install only/.test(manifest));
+}
+
+/* =========================================================
+   CONTRACT 53 — THE GROWN-UPS AREA: SEVEN SKILLS, IN PLAIN COUNTS
+   ========================================================= */
+function testGrownupsSeven(){
+  section('CONTRACT 53 — the grown-ups area: seven skills, in plain counts');
+  const app = H.loadApp();
+  const c = app.ctx, d = app.dom.document;
+  const e = (skill, item, form, recent) => ({ id: skill + '.' + item + '.' + form, skillId: skill, item: item, form: form, seen: recent.length,
+                                              firstTry: recent.filter(x => x === 1).length, recent: recent, lastPracticed: '2026-09-27T10:00:00.000Z' });
+  c.journey.evidence = [e('letter-recognition', 'M', 'upper', [1]), e('letter-recognition', 'M', 'lower', [0, 1]), e('letter-recognition', 'N', 'match', [1]),
+    e('handwriting', 'L', 'upper', [1, 1]), e('handwriting', 'A', 'lower', [0]), e('sight-words', 'the', 'hear', [1]), e('sight-words', 'the', 'match', [1]),
+    e('cvc', 'map', 'build', [1]), e('beginning-sounds', 'm', 'initial', [1]), e('rhyming', 'cake', 'rhyme', [1]), e('syllables', 'banana', 'beats', [1])];
+  c.renderGrownups();
+  const g = d.getElementById('gLetters').innerHTML, text = d.getElementById('gLetters').textContent;
+  T('each of the seven skills is counted in plain words', ['Letters practiced', 'Rhyming words practiced', 'Syllable words practiced',
+    'Beginning sounds practiced', 'Words built', 'Sight words practiced', 'Letters traced'].every(k => text.indexOf(k) !== -1));
+  T('a letter counts once, whatever its case: M, m and N are two letters', /Letters practiced<\/span><span class="detail-value">2</.test(g));
+  T('a traced letter says "traced"', /Traced 2 times/.test(text));
+  T('a little letter shows little, and a pair as a pair', />m<\/span>/.test(g) && />N n<\/span>/.test(g));
+  T('no grades, ranks or judgements: practice notes only', !/\b(grade|rank|score|behind|failing|weak|IQ|percent)\b/i.test(text.replace('These are practice notes, not a grade.', '')));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -4091,5 +4899,6 @@ module.exports = {
   testPersistence, testAudio, testAssets, testPrivacy, testChildJourney, testMotion,
   testDialogue, testWorldStage, testNewGames,
   testHud, testTravel, testInput, testPlayfield, testStation,
-  testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign
+  testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign,
+  testLetterforms, testLetterCases, testSightWords, testTracing, testMoonWriter, testJupiter, testAssetLoading, testGrownupsSeven
 };

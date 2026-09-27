@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.5.0';
+const CACHE_NAME = 'space-kindergarten-v0.6.0';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -57,6 +57,8 @@ const ASSETS = [
   './assets/props/workshop-on.webp',
   './assets/props/pedestal.webp',
   './assets/props/letter-stone.webp',
+  './assets/props/slate.webp',
+  './assets/props/slate-on.webp',
   './assets/props/beat-stone.webp',
   './assets/props/meteor.webp',
   './assets/props/meteor-lit.webp',
@@ -104,9 +106,7 @@ const ASSETS = [
   './assets/rocket/gear-lights.webp',
   './assets/rocket/gear-booster.webp',
   './assets/rocket/gear-wings.webp',
-  './assets/characters/pip.webp',
-  './icon-192.png',
-  './icon-512.png'
+  './assets/characters/pip.webp'
 ];
 /* APP-ASSETS-END */
 
@@ -124,16 +124,31 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(
+      .then(keys => {
         /* Only this app's own older caches. A cache belonging to another app
            on the same origin is left completely alone — deleting by anything
            looser than this prefix is how one deployment wipes another. */
-        keys.filter(k => k !== CACHE_NAME && k.indexOf(cachePrefix()) === 0)
-            .map(k => caches.delete(k))
-      ))
+        const older = keys.filter(k => k !== CACHE_NAME && k.indexOf(cachePrefix()) === 0);
+        return carryPictures(older).then(() => Promise.all(older.map(k => caches.delete(k))));
+      })
       .then(() => self.clients.claim())
   );
 });
+
+/* A picture the precache does not hold (a world's pictures, fetched when
+ * its route came near) is carried from an older cache into this one before
+ * that cache goes, so an update never takes a world away offline. Only
+ * pictures under assets/, only ones this cache lacks; the fetch handler
+ * refreshes them from the network whenever there is one. A failure here
+ * never stops the update. */
+function carryPictures(older){
+  const precached = new Set(ASSETS.map(p => new URL(p, self.location.href).href));
+  return caches.open(CACHE_NAME).then(fresh => Promise.all(older.map(name =>
+    caches.open(name).then(old => old.keys().then(reqs => Promise.all(reqs
+      .filter(req => !precached.has(req.url) && new URL(req.url).pathname.indexOf('/assets/') !== -1)
+      .map(req => fresh.match(req).then(have => have || old.match(req).then(res => (res ? fresh.put(req, res) : null))))))))))
+    .catch(() => {});
+}
 
 function cachePrefix(){
   const cut = CACHE_NAME.lastIndexOf('-v');

@@ -53,7 +53,7 @@ the render.
 
 ## The worlds you stand on
 
-### Horizons — `assets/horizons/earth.webp`, `moon.webp`, `mercury.webp`, `mars.webp` · 2400×780 each · transparent sky
+### Horizons — `assets/horizons/earth.webp`, `moon.webp`, `mercury.webp`, `mars.webp`, `jupiter.webp` · 2400×780 each · transparent sky
 
 Every world is the top of **the same clay sphere seen by the same camera**
 (`tools/art/scenes/horizon.js`): a long lens, the crest of the curve **18%**
@@ -76,6 +76,14 @@ version must keep that exact curve, because the app stands things on it.
   an orange sunset glow at its edge. Friendly, never dark or hostile. Its
   relief stays low (a stone at most 0.0038 of the sphere high), because
   taller relief makes the shared soft shadow paint black patches.
+- **Jupiter:** a huge, friendly cloud world, never stormy: bands of cream,
+  amber and warm orange clay rolled side by side as arcs following the
+  curve, like pressed coils of plasticine, with faint cloud wisps along
+  them. One big red-orange storm spiral in a cream collar at the lower
+  left, and two small swirls. An amber halo. The wide cream band under the
+  markers stays plain. Its clay is mixed darker and more saturated than
+  the planet's (horizon cream `#CDAE7D` against the planet's `#E6C994`),
+  because the horizon's rim light washes warm clay toward white.
 - **Keep clear:** the landing spots and marker feet listed below must be on
   plain ground, not in a crater's wall or under a cloud.
 
@@ -90,6 +98,10 @@ version must keep that exact curve, because the app stands things on it.
 | Mars: the rocket's landing spot | (76.5%, 45%) |
 | Mars: the sound scanner's foot | (37%, 50%) |
 | Mars: the word machine's foot | (58%, 55%) |
+| The Moon: the writing slate's foot | (26%, 42%) |
+| Jupiter: the rocket's landing spot | (76.5%, 45%) |
+| Jupiter: the sky sign's foot | (37%, 50%) |
+| Jupiter: the orbit ring's foot | (58%, 55%) |
 
 ## The worlds seen from afar
 
@@ -121,6 +133,19 @@ height: a blue ocean, green land, cream clouds. It must read at 80 px.
 - Coral clay with a cream polar cap on its face, one big soft crater, a few
   small ones and one deep-red patch: it reads as Mars at 60 px.
 - **Restored:** the same model, warm light in its hollows, a warm halo.
+
+### Jupiter — `assets/planets/jupiter.webp` and `jupiter-lit.webp` · 560×560 each · transparent
+
+- Coils of cream, amber and warm orange clay around the ball, one thin
+  warm-brown coil near the pole, and one big storm: a round red-orange
+  spiral like a cinnamon roll in a cream collar, with two small swirls.
+  Smooth and cloudy, never cratered: it reads as Jupiter at 60 px and never
+  as Mars. **No ring**, so it is never confused with Saturn.
+- **Waiting:** the light a little lower, a soft amber halo.
+- **Restored:** the same model, a faint warm glow in the belts and the
+  storm, a warm halo.
+- Kept offline from when Mars is restored (its route is next), not in the
+  first download (see "When a picture is fetched" below).
 
 ## What stands on the worlds
 
@@ -164,6 +189,50 @@ height: a blue ocean, green land, cream clouds. It must read at 80 px.
   EMPTY sockets in lavender bezels (never a letter), a crank, a lamp and
   stubby legs. It must not read as a house or a train.
 - **On:** the sockets glow amber and the lamp lights.
+
+### Writing slate — `assets/props/slate.webp` and `slate-on.webp` · 400×480 each · transparent
+
+- **Anchor:** the **foot at (45.83%, 84.84%)** (the middle of its three
+  feet); it stands 0.45 of the horizon's height tall, at (26%, 42%) on the
+  Moon.
+- The Moon Writer marker: a dark blue-grey slate board in a chunky, fully
+  rounded frame of warm cream clay, a coral chalk tray with one fat stick
+  of chalk, on a little coral easel leaning back. Turned a little toward
+  the middle of the scene. The slate is **blank**: never a letter, a line
+  or a mark. (A white frame and a lamp on top made it read as a television.)
+- **On:** the board glows softly warm; still blank.
+
+### Sky sign — `assets/props/skysign.webp` and `skysign-on.webp` · 480×480 each · transparent
+
+- **Anchor:** the **foot at (45.53%, 86.28%)**; it stands 0.5 of the
+  horizon's height tall.
+- The Star Words marker: a big rounded signboard with a **blank** cream face
+  in one fat rolled coil of amber clay, a small pillowy star on top, on a
+  short lavender post rising out of a white cloud puff.
+- **Off:** the face dim and cool, the star dark. **On:** the face glows
+  softly warm (still blank), the star lights yellow.
+
+### Orbit ring — `assets/props/orbit.webp` and `orbit-on.webp` · 480×400 each · transparent
+
+- **Anchor:** the **foot at (46.66%, 84.48%)**; it stands 0.44 of the
+  horizon's height tall.
+- The Word Orbit marker, like a toy orrery: a lavender clay moon (one
+  crater only: two read as a face) on a short neck on a round teal base,
+  circled by a slim amber ring tipped up to the right, with two small coral
+  satellites riding it, each with a glass lamp.
+- **Off:** the ring quiet clay, the lamps dull. **On:** the ring glows
+  warm and the lamps light.
+
+### Word satellite — `assets/props/word-satellite.webp` · 512×300 · transparent
+
+- **Anchor:** the **flat face** is a rectangle at left 20.24%, top 37.30%,
+  59.52% wide and 42.16% tall. The app lays the word over it in the school
+  print, so the face must be flat, plain, light and square to the frame.
+- A wide, flat, rounded panel: a clean light cream face in a chunky amber
+  frame, a small teal solar-panel wing on a lavender arm at each side, a
+  tiny antenna with a coral ball leaning from the top, off centre (a
+  centred one made the panel look like a face). No text and no marks.
+- Used for every word in Star Words and Word Orbit, floating over Jupiter.
 
 ### Rock pedestal — `assets/props/pedestal.webp` · 384×200 · transparent
 
@@ -331,6 +400,17 @@ Bumblebee theme's).
 - **Silhouette rule:** a body, two wings and an antenna. Never a star with a
   face, a pink ball, a white egg with a visor, or an owl. The face must read
   from across an iPad.
+
+## When a picture is fetched
+
+Every picture's registry entry says when it is fetched (`load`). The
+service worker precaches only the **core** pictures, so the first download
+stays small; the **icons** are fetched by the device when the app is added
+to the Home Screen; a **world's** pictures (Jupiter's horizon, planet,
+markers and word satellite) are fetched once its route is open or next to
+open, and then kept offline. [ASSET-MANIFEST.md](ASSET-MANIFEST.md) lists
+each picture's tier. A final picture keeps its tier and stays within its
+budget: core under 1.2 MB, each world under 300 KB.
 
 ## Home Screen icons — `icon-512.png` and `icon-192.png` · opaque PNG
 

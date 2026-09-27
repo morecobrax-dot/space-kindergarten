@@ -14,7 +14,7 @@ pauses described in each script.
 <!-- AUDIO-RECORDINGS-BEGIN
  — derived from the content by `npm run config:sync`. Do not hand-edit. -->
 
-**35 recordings replace development audio (13 sounds, 22 words said sound by sound or blended); 72 authored lines replace the device voice.**
+**35 recordings replace development audio (13 sounds, 22 words said sound by sound or blended); 93 authored lines replace the device voice.**
 
 ## Sounds (required)
 
@@ -65,7 +65,7 @@ Each on its own, with no vowel after it: /m/ is "mmm", never "muh"; /p/ is one p
 
 ## Narration (the device voice until recorded)
 
-Also recorded: the lines built from templates — each letter's questions and praise (`LETTER_LINES`), each rhyme pair's (`RHYME_LINES`), each word's beats (`BEAT_LINES`), and each Sound Scout and Word Builder word's (`SOUND_LINES`, `BUILD_LINES`). Their cue ids are listed in index.html beside `voiceCue()`, `wordCue()` and `phonicsCue()`.
+Also recorded: the lines built from templates — each letter's questions and praise, big, little and in pairs (`LETTER_LINES`), each rhyme pair's (`RHYME_LINES`), each word's beats (`BEAT_LINES`), each Sound Scout and Word Builder word's (`SOUND_LINES`, `BUILD_LINES`), each sight word's (`SIGHT_LINES`, with the word said on its own) and each traced letter's (`WRITE_LINES`). Their cue ids are listed in index.html beside `voiceCue()`, `letterCaseCue()`, `sightCue()`, `writeCue()`, `wordCue()` and `phonicsCue()`. Sight words and handwriting add no sounds to the required list: a sight word is said whole.
 
 | Cue | Type | Script |
 |---|---|---|
@@ -79,6 +79,7 @@ Also recorded: the lines built from templates — each letter's questions and pr
 | `guide.moonShining` | story | Welcome home! Look, the Moon is shining! |
 | `guide.mercuryShining` | story | Welcome home! Look, Mercury is glowing! |
 | `guide.marsShining` | story | Welcome home! Look, Mars is glowing! |
+| `guide.jupiterShining` | story | Welcome home! Look, Jupiter is glowing! |
 | `guide.dockHint` | hint | You have stars! Tap the paint brush to visit the space station and dress up your rocket. |
 | `travel.launch.1` | reaction | Let's launch! |
 | `travel.launch.2` | reaction | Blast off! |
@@ -86,6 +87,7 @@ Also recorded: the lines built from templates — each letter's questions and pr
 | `place.moon` | story | The Moon! That's where we find letters. Tap Launch to fly there! |
 | `place.mercury` | story | Mercury! That's where we play with rhymes and beats. Tap Launch to fly there! |
 | `place.mars` | story | Mars! That's where we play with sounds and words. Tap Launch to fly there! |
+| `place.jupiter` | story | Jupiter! That's where we find words. Tap Launch to fly there! |
 | `travel.station` | reaction | Up we go, to the space station! |
 | `travel.stationHome` | reaction | Back down to Earth! |
 | `story.moon.firstArrive` | story | We made it to the Moon! Its beacon is dim. Let's find letters to light it up! |
@@ -118,18 +120,37 @@ Also recorded: the lines built from templates — each letter's questions and pr
 | `story.mars.shining.1` | story | You did it! Mars is glowing! |
 | `story.mars.shining.2` | story | Hooray! Another mission done! |
 | `story.mars.shining.3` | story | Great work, explorer! |
+| `story.jupiter.reveal` | story | Look! A giant planet is waiting for us. That is Jupiter! |
+| `story.jupiter.next` | story | Next stop, Jupiter! Tap Launch when you are ready. |
+| `story.jupiter.firstArrive` | story | We made it to Jupiter! Its sky signs have lost their words. Let's find them! |
+| `story.jupiter.arrive.1` | story | Back on Jupiter! |
+| `story.jupiter.arrive.2` | story | Jupiter again! Hello, big clouds! |
+| `story.jupiter.arrive.3` | story | Here we are on Jupiter! |
+| `story.jupiter.step` | story | It works! Now the orbit ring needs help. |
+| `story.jupiter.restored` | story | You did it! Jupiter is full of words again! |
+| `story.jupiter.shining.1` | story | You did it! Jupiter is glowing! |
+| `story.jupiter.shining.2` | story | Hooray! Another mission done! |
+| `story.jupiter.shining.3` | story | Great reading, explorer! |
 | `marker.beacon` | hint | Tap the beacon to start! |
 | `marker.radar` | hint | Tap the radar dish to start! |
 | `marker.meteors` | hint | Now tap the meteor rocks! |
 | `marker.scanner` | hint | Tap the sound scanner to start! |
 | `marker.workshop` | hint | Now tap the word machine! |
+| `marker.skysign` | hint | Tap the sky sign to start! |
+| `marker.orbit` | hint | Now tap the orbit ring! |
 | `planet.homeHint` | hint | Tap the big yellow button to fly home! |
 | `planet.fixed` | hint | That one is already fixed. Tap it to play again! |
 | `mission.howTo` | instruction | I'll say a letter. You tap it! |
+| `mission.howTo.little` | instruction | Every letter has a big shape and a little shape. Now we find the little ones! |
+| `mission.howTo.pair` | instruction | Big letters and little letters go together. I show you one. You find its partner! |
 | `mission.howTo.rhyme` | instruction | Rhyming words sound the same at the end, like cat and hat. I'll say a word. You find the picture that rhymes! |
 | `mission.howTo.beats` | instruction | Words have beats. Tap the big stone once for each beat! |
 | `mission.howTo.sound` | instruction | Words start with a sound. I'll play a sound. You find the picture that starts with it. |
 | `mission.howTo.build` | instruction | I'll say a word sound by sound. Tap the letters to build it. |
+| `mission.howTo.write` | instruction | Let's write letters! Watch how I write each one. Then trace it with your finger, starting at the green dot. |
+| `marker.slate` | hint | Tap the writing slate. Let's write! |
+| `mission.howTo.sight` | instruction | Some words we just know by sight. I'll say a word. You find it! |
+| `mission.howTo.match` | instruction | Look at the word in the middle. Find the one that is just the same! |
 | `feedback.almost.1` | correction | Almost! Listen again. |
 | `feedback.almost.2` | correction | Good try! Listen again. |
 | `feedback.almost.3` | correction | So close! Listen again. |

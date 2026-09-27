@@ -4,9 +4,9 @@ How the learning works, and the decisions behind it. For where the content
 came from and what still needs expert review, see
 [CONTENT-SOURCES.md](CONTENT-SOURCES.md) and
 [CONTENT-REVIEW.md](CONTENT-REVIEW.md). **Nothing here claims to be
-research-backed or aligned with a standard or curriculum.** The rhyming and
-beats content is development content, written for this project and
-awaiting review.
+research-backed or aligned with a standard or curriculum.** The content is
+development content, written for this project (the twelve sight words are
+taken from one published list, as a source) and awaiting review.
 
 ## Principles every activity follows
 
@@ -20,7 +20,11 @@ awaiting review.
   pre-reader needs, and nothing on screen gives an answer away.
 - **Big, forgiving targets.** Choice tiles are 130–236px on an iPad (they
   shrink to fit a phone rather than slip off it), and every child control
-  is at least a 76px target, whatever the size of its mark.
+  is at least a 76px target, whatever the size of its mark. The writing
+  slate is the largest thing on its screen.
+- **One school print.** Every letter a child reads is drawn from the same
+  strokes a child learns to write (see "The school print" below), so the
+  "a" found on the Moon is the "a" traced on the slate.
 - **An answer being praised owns the screen.** Taps during praise wait; a
   tap during the explanation means "go on" and skips to the question; a
   second tap straight after a wrong answer is the same finger bouncing, not
@@ -36,24 +40,28 @@ awaiting review.
 
 ## Two layers: story and learning
 
-The **story layer** is the solar system: Earth, then the Moon, Mercury and
-Mars, then planets later. It is a story map, not a curriculum: Mars comes
-after Mercury because it is the next adventure, and Venus is not built yet. The **learning layer** is the skills. They cooperate but
-are not the same thing:
+The **story layer** is the solar system: Earth, then the Moon, Mercury, Mars
+and Jupiter, then planets later. It is a story map, not a curriculum: Jupiter
+comes after Mars because it is the next adventure outward, and Venus is not
+built yet. The **learning layer** is the skills. They cooperate but are not
+the same thing:
 
 - A destination has a `primarySkill` and `reviewSkills`.
 - A **mission** names its own `skillId`.
 - Resequencing the curriculum never means moving a planet, and a planet never
   locks a skill behind it.
 
-Handwriting in particular is not meant to wait for Neptune. It is planned as
-recurring "Explorer Writing Labs".
+Handwriting in particular does not wait for a planet of its own. It is the
+**Moon's writing slate** (Moon Writer): the first world a child reaches, so
+writing starts beside the letters it writes, and the slate can come back on
+other worlds later. A planet is never created only to hold a skill.
 
 ### Missions happen in the world
 
 The world is the navigation. Launch flies to a place; the place has
-**markers** standing on its ground — the Moon's beacon, Mercury's radar dish
-and meteor rocks, Mars's sound scanner and word machine. Each marker is one
+**markers** standing on its ground — the Moon's beacon and writing slate,
+Mercury's radar dish and meteor rocks, Mars's sound scanner and word
+machine, Jupiter's sky sign and orbit ring. Each marker is one
 game, and its missions come there one after another, with a small lamp under
 it for each one played.
 
@@ -70,25 +78,33 @@ it for each one played.
 
 A place is **restored** by its story missions (the Moon by `moon-1`, Mercury
 by its first Rhyme Radar and Syllable Meteors, Mars by its first Sound Scout
-and Word Builder). Missions added to a place later are more to play there,
-never a new lock: a child who restored the Moon before it had three missions
-still has it restored. Until a place is restored, its story missions follow
-one another in the same visit. Once it is restored, it offers one mission a
-visit: any not yet played first, then each in turn. After that the way
-forward is home.
+and Word Builder, Jupiter by its first Star Words and Word Orbit). Missions
+added to a place later are more to play there, never a new lock: a child who
+restored the Moon before it had a writing slate still has it restored. Until
+a place is restored, its story missions follow one another in the same
+visit. **The visit that restores a place also offers the first mission of
+any game there not yet played**, so every game is met: a new child relights
+the Moon with Letter Explorer and is pointed straight at the writing slate.
+Once it is restored, it offers one mission a visit: any not yet played
+first, then each in turn. After that the way forward is home, and Earth
+points to the first open place with something new.
 
 ### The route (a plan, apart from what is built)
 
 | Destination | Primary skill | State |
 |---|---|---|
-| Moon | Letter recognition | **Built:** `moon-1` to `moon-3`, Letter Explorer |
+| Moon | Letter recognition, and handwriting | **Built:** `moon-1` to `moon-3` Letter Explorer (big letters), `moon-4` (little letters) and `moon-5` (big and little partners); `writer-1` to `writer-3` Moon Writer |
 | Mercury | Rhyming, then counting syllables | **Built:** `mercury-1` and `mercury-3` Rhyme Radar, `mercury-2` and `mercury-4` Syllable Meteors. Opens when the Moon shines |
 | Mars | Beginning sounds, then CVC words | **Built:** `mars-1` and `mars-3` Sound Scout, `mars-2` and `mars-4` Word Builder. Opens when Mercury's signal is clear |
-| Venus | Letter recognition (lowercase, matching cases) | planned |
-| Jupiter | More CVC words (short i, o, e), then consonant blends | planned |
-| Saturn | Digraphs (sh, ch, th) | planned |
-| Uranus | Sight words (only once a list is chosen and sourced) | planned |
-| Neptune | Mixed review, with Explorer Writing Labs | planned |
+| Jupiter | Sight words | **Built:** `jupiter-1` and `jupiter-3` Star Words, `jupiter-2` and `jupiter-4` Word Orbit. Opens when Mars is full of sounds again |
+| Venus | More CVC words (short i, o, e) | planned |
+| Saturn | Consonant blends, then digraphs (sh, ch, th) | planned |
+| Uranus | More sight words (the rest of the pre-primer list, then primer) | planned |
+| Neptune | Mixed review, with more letters to write | planned |
+
+Twenty missions in all: 8 on the Moon, 4 on each other world. All seven
+learning areas now have a first game; depth (more words, blends, the rest of
+the alphabet to write) comes after review.
 
 The planned destinations are declared in `DESTINATIONS` as `kind: 'planned'`
 so no mission can be filed under a place nobody planned. They have no
@@ -166,16 +182,42 @@ begins, it asks what the child most needs to see again:
 3. with nothing shown yet, the first one listed;
 4. never something already asked in the same mission, and never at random.
 
-Evidence counts across games where the skills meet. A letter found only with
-help in Letter Explorer counts for its sound in Sound Scout: M was hard → /m/
-comes back, with a picture that starts with it. `moon-3` ends with two
-letter reviews, `mars-3` with two sound reviews, and `mars-4` with one word
-review. The same evidence always picks the same thing, and a grown-up could
-follow the rule on paper.
+Evidence counts across games where the skills meet:
+
+| Needed help with | Comes back in |
+|---|---|
+| a letter, big or little, in Letter Explorer | Sound Scout's review asks its sound: M was hard → /m/ comes back, with a picture that starts with it |
+| a little letter (m), finding it or matching it to its partner | the little-letter review at the end of `moon-5` |
+| a sound (/m/) in Sound Scout | Word Builder's review picks a word that starts with it |
+| a sight word, heard (Star Words) or matched (Word Orbit) | the reviews in `jupiter-3` and `jupiter-4` |
+| a letter traced with help | the review at the end of `writer-2`, with less help |
+
+`moon-3` ends with two letter reviews, `moon-5` with one, `mars-3` with two
+sound reviews, `mars-4` with one word review, `jupiter-3` with two word
+reviews, `jupiter-4` with one, and `writer-2` with one letter to trace. The
+same evidence always picks the same thing, and a grown-up could follow the
+rule on paper.
+
+## The school print
+
+The letters a child reads are **drawn, not typed**. Each letter is a list of
+vector strokes (`LETTER_FORMS`: sticks, slants, circles and dots, in the
+order and direction they are written), and the same strokes are drawn for
+reading, animated when Pip writes, and followed when the child traces. It is
+ball-and-stick manuscript: a single-storey a and g, a capital I with its bars
+(so it is never a stick like l), little letters between the dashed middle
+line and the baseline, tails below it. Letters sit on one shared baseline in
+a round, so a tall b and a short o are compared as they appear on a page.
+The device's own font was rejected (a double-storey a, an I that looks like
+l, different on every device); a bundled font was not needed once the
+strokes existed. Every letter's strokes are listed for review in
+[CONTENT-REVIEW.md](CONTENT-REVIEW.md#21-how-each-letter-is-written-stroke-order-and-direction).
 
 ## Letter Explorer: `find-letter` (the Moon)
 
-**Objective:** recognise an uppercase letter from its **spoken name**.
+**Objective:** recognise a letter from its **spoken name** — first the big
+(uppercase) letters, then the little (lowercase) ones, then which big and
+little letters go together.
 
 The letters stand on **Moon stones**: clay stones on the Moon's ground, each
 with a clean plate on its face. The letter is always on the plate, never on
@@ -212,6 +254,126 @@ recorded as evidence of anything.
 caption falls back to showing the letter ("Find M"), which turns the round
 into visual matching. Those rounds are **not recorded as recognition
 evidence**, and the grown-ups area explains why.
+
+**Little letters (`moon-4`).** The same game with little letters: *"Find
+the little letter em."* To a child they are "big" and "little" letters;
+"uppercase" and "lowercase" are grown-up words. First the little letters
+shaped like their big ones (o, s, c), then ones that are not (m, a, t).
+
+**Big and little partners (`moon-5`).** One case is shown on a round
+plate: *"This is the big letter en. Find the little letter en!"* The child
+finds its partner among three. Big to little first, then little to big. It
+is **seen, not heard** — matching the two shapes is the skill — so a pair
+counts as evidence even with the voice off. The last round is a review of
+the little letters.
+
+Evidence is kept per letter **and case**: M (big), m (little) and M–m (the
+pair) are three records, so a child who knows M and not m is seen as exactly
+that. In the grown-ups area they count as one letter practiced.
+
+## Moon Writer: `letter-trace` (the Moon's writing slate)
+
+**Objective:** learn **how a letter is formed** — where it starts, which way
+each stroke goes, and in what order. Not handwriting quality: nothing is
+scored, recognised or graded.
+
+For each letter:
+
+1. **Watch.** Pip writes the letter on the slate: each stroke drawn along
+   its path in order, a pen moving with it (*"Watch. This is how we write the
+   big letter el."*). With Reduce Motion, each stroke appears whole, in order.
+2. **Trace, with the path shown.** A wide lane for every stroke, the one to
+   trace brighter with a dashed middle and an arrow, and a green dot where it
+   starts (*"Now you! Trace the big letter el."*). This round teaches and is
+   not recorded.
+3. **Trace again, with less help.** A faint outline and only the green dot
+   (*"Now write it again, with less help!"*). This one is recorded.
+4. **Celebrate:** *"Nice tracing! The big letter el!"*, and on to the next
+   letter.
+
+**How a trace is checked — geometry, no AI.** Each stroke is a path of
+points a small step apart. A stroke begins only when the finger goes down
+near its green dot. As the finger moves, the trace advances to the nearest
+point of the path a little way ahead, if the finger is within the lane; so
+progress is along the path, in its direction — going backwards, cutting
+across or starting at the end makes none. A stroke is done when the finger
+reaches its end, then the next stroke's dot appears; the letter is done when
+the last stroke is. It is judged the same way every time, and a grown-up
+could follow it.
+
+**Forgiving, never wrong.**
+
+- A finger a little off the path is neither counted nor punished.
+- Straying **well** off the path for a while starts **that stroke only**
+  again: its ink goes, its green dot pulses, and Pip says *"Let's try that
+  line again."* The strokes already done stay done. Twice astray on one
+  stroke, Pip writes that stroke again.
+- A lifted finger carries on from where it stopped: the green dot moves
+  there. Going back to the stroke's start begins it again.
+- Going down somewhere else just pulses the dot (*"Start at the green
+  dot."*, not more than once every few seconds).
+- **Watch again** (the eye) and **start again** (the circular arrow) are
+  always beside the slate. Watching again, or a stroke started again,
+  counts as help — the letter is recorded as traced with help — and never
+  costs anything.
+- Every letter can be finished: there is no "wrong", no percentage and no
+  time limit.
+
+**Touch.** Pointer Events, so a finger and the Apple Pencil work the same
+(a Pencil is never required). One pointer draws at a time: a second finger
+is ignored, and a Pencil coming down while a touch is drawing takes over,
+since that touch is most likely a resting palm. A cancelled touch (a system
+gesture) just lifts. The page never scrolls or selects under the slate, and
+everything outside it behaves normally.
+
+**The letters.** `writer-1`: L, T, H (straight lines). `writer-2`: O, C
+(round, "start like c"), then a review of the straight-line letters with
+less help. `writer-3`: little c, a, d (little letters that start like c).
+Every letter's strokes exist, for reading, and more wait to be written.
+**Evidence** is per letter and case: "Traced 3 times · traced without help
+2 times".
+
+## Star Words: `sight-find` (Jupiter)
+
+**Objective:** recognise a common word **by sight** when it is heard — words
+children meet everywhere and often cannot yet sound out ("the", "you").
+
+Jupiter's sky signs have lost their words. Three word satellites float over
+the clouds, each showing a word in the school print. Pip says *"Find the
+word…"* and then the word itself. The question's caption is **"Find the
+word!"** — the word is never on screen as the clue. The child taps the
+satellite that says it.
+
+- **Correct:** the satellite glows, and Pip says the word again (*"the! You
+  found it!"*).
+- **Help:** the same ladder as every game: a wrong word steps aside, *"Listen
+  again."*, the word again; after a second miss, *"Here it is! This word
+  is…"* the word, *"Tap it!"*.
+- **Wrong words** are chosen from the same twelve by a written-down likeness
+  score (same first letter, same length, same last letter, letters shared).
+  The easy level never shows a look-alike; the harder level puts one in
+  (*is* beside *it*). Never two of the same word in a round.
+- **The word is an ordinary word**, so the device voice may say it (a
+  recording later). No sound of a letter is ever given to the device voice.
+
+## Word Orbit: `sight-match` (Jupiter)
+
+**Objective:** see a word as **its letters in order** — the same word, not
+one that only looks like it.
+
+A word satellite waits at the centre; three wait on a ring below. *"Find the
+same word!"* The child taps the one just like it; *"They match! the!"* It is
+seen, not heard, so it counts with the voice off too. At the harder level a
+look-alike stands on the ring (*in* beside *is* and *it*).
+
+**Evidence** for sight words is kept per word and game — heard (Star Words)
+and matched (Word Orbit) — and a word needing help in either comes back in
+the reviews.
+
+**The list.** Twelve words of the Dolch pre-primer list, chosen and
+documented in [CONTENT-SOURCES.md](CONTENT-SOURCES.md), met in this order:
+the, and, see, you; to, go, is, it; in, can, we, my. The product never claims
+to be "Dolch aligned".
 
 ## Rhyme Radar: `rhyme-pick` (Mercury)
 
@@ -320,11 +482,16 @@ the voice in use, and explains how to download a better one.
 
 ### Difficulty: which wrong letters appear
 
-| Level | Distractors | Example for M |
-|---|---|---|
-| 1 | Different stroke shape (straight, diagonal, curved, mixed), never a lookalike | O, S |
-| 2 | The same kind of strokes, not a lookalike | A, K |
-| 3 | At least one letter commonly confused with the target | N or W |
+| Level | Distractors | Example for M | Example for little m |
+|---|---|---|---|
+| 1 | Different stroke shape, never a lookalike | O, S | o, t |
+| 2 | The same kind of strokes, not a lookalike | A, K | r, u |
+| 3 | At least one letter commonly confused with the target | N or W | n or w |
+
+Little letters have their own shape families — round (a c e o s), hump
+(m n r u), short (i v w x z), tall (b d f h k l t) and tail (g j p q y) —
+and their own lookalikes (b d p q; n h u; i l j; …), listed in
+[CONTENT-REVIEW.md](CONTENT-REVIEW.md#19-little-letters-moon-4--development-content).
 
 Adaptation is deterministic and explainable, for letters and rhymes alike:
 
@@ -338,8 +505,10 @@ Adaptation is deterministic and explainable, for letters and rhymes alike:
 - Choice order comes from a random generator seeded by the run and round, so
   the same inputs always give the same round, and a test can prove it.
 
-Beats have one level: the count is the count. Sound Scout and Word Builder
-have two (see their sections above).
+Beats have one level: the count is the count. Sound Scout, Word Builder,
+Star Words and Word Orbit have two (see their sections above). Moon Writer
+has none: its help is the lane and the dot, and less help is authored into
+the mission, not chosen by the engine.
 
 There is no AI or model anywhere, and none should be added.
 
@@ -347,10 +516,13 @@ There is no AI or model anywhere, and none should be added.
 
 Per letter or word, the app records how many times it was asked, how many
 were right on the first try, the last 8 outcomes, and when it was last
-practised. The grown-ups area shows these as **plain counts, skill by
-skill** ("Heard 3 times · rhyme found on the first try 2 times"). There are
-no percentages, no mastery labels, and nothing calling a child behind or
-weak. Evidence exists only to shape the next experience.
+practiced. The grown-ups area opens with **seven plain counts** — "Letters
+practiced", "Rhyming words practiced", "Beginning sounds practiced",
+"Syllable words practiced", "Words built", "Sight words practiced", "Letters
+traced" — then lists each item ("Practiced 3 times · found on the first try
+2 times"; "Traced 2 times · traced without help 1 time"). There are no
+percentages, no mastery labels, no grades or ranks, and nothing calling a
+child behind or weak. Evidence exists only to shape the next experience.
 
 ## Stars: participation, not grades
 
@@ -364,14 +536,19 @@ weak. Evidence exists only to shape the next experience.
 ## What changes for the next skills
 
 Each learning area gets interactions designed around its real objective, not
-reskinned multiple choice. Rhyming (listen-first pairing of pictures),
-syllables (tap once per beat), beginning sounds (hear a sound, find what
-starts with it) and CVC words (hear the sounds, build the word, hear it
-blended) are now built. Still planned, **and not built**:
+reskinned multiple choice. All seven now have a first game: letters (hear a
+name, find it; big, little and partners), rhyming (listen-first pairing of
+pictures), syllables (tap once per beat), beginning sounds (hear a sound,
+find what starts with it), CVC words (hear the sounds, build the word, hear
+it blended), sight words (hear it, find it; see it, match it) and
+handwriting (watch, trace, trace with less help). Still planned, **and not
+built**:
 
-- **Sight words:** a sourced list, recognition in simple contexts.
-- **Handwriting:** tracing with a start point, a demonstrated direction, and
-  forgiving path proximity. **No handwriting recognition.**
+- **Sight words in sentences** (a short sentence with a word missing), once
+  sentences can be written with only one right answer — "I see ___ dog" has
+  several.
+- **More letters to write**, then writing without the outline.
+- **Deeper phonics**: more vowels, blends, digraphs.
 
 **Recordings are a prerequisite for calling any phonics content final.** A
 speech synthesiser cannot be trusted to produce isolated phonemes without an

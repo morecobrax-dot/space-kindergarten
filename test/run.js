@@ -69,7 +69,15 @@ const SUITES = [
   C.testWordBuilder,
   C.testMars,
   C.testReview,
-  C.testSoundDesign
+  C.testSoundDesign,
+  C.testLetterforms,
+  C.testLetterCases,
+  C.testSightWords,
+  C.testTracing,
+  C.testMoonWriter,
+  C.testJupiter,
+  C.testAssetLoading,
+  C.testGrownupsSeven
 ];
 
 async function main(){

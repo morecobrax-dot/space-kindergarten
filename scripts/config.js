@@ -84,16 +84,23 @@ function loadConfig(){
   };
 }
 
+/* The offline cache installs the core only: the Home Screen icons are the
+   device's to fetch, and a world added later (its `load` names it) is
+   kept once its route is near (preloadStage() in index.html). */
 function precacheList(c){
   const out = SHELL.slice();
-  c.registry.forEach(a => { const p = './' + a.path; if(out.indexOf(p) === -1) out.push(p); });
+  c.registry.filter(a => (a.load || 'core') === 'core').forEach(a => { const p = './' + a.path; if(out.indexOf(p) === -1) out.push(p); });
   return out;
+}
+function loadLabel(a){
+  const l = a.load || 'core';
+  return l === 'core' ? 'with the app' : l === 'install' ? 'at install only' : 'when ' + l.charAt(0).toUpperCase() + l.slice(1) + ' is near';
 }
 
 function mdCell(s){ return String(s == null ? '' : s).replace(/\|/g, '\\|'); }
 function assetTable(c){
   const rows = c.registry.map(a => '| `' + mdCell(a.id) + '` | `' + mdCell(a.path) + '` | ' + mdCell(a.state) + ' | ' +
-    mdCell(a.format) + ' | ' + mdCell(a.dimensions) + ' | ' + mdCell(a.purpose) + ' | ' +
+    mdCell(a.format) + ' | ' + mdCell(a.dimensions) + ' | ' + mdCell(loadLabel(a)) + ' | ' + mdCell(a.purpose) + ' | ' +
     mdCell(a.source) + ' | ' + mdCell(a.license) + ' |');
   const counts = {};
   c.registry.forEach(a => { counts[a.state] = (counts[a.state] || 0) + 1; });
@@ -103,8 +110,8 @@ function assetTable(c){
     '',
     '**' + c.registry.length + ' registered assets: ' + summary + '.**',
     '',
-    '| Id | Path | State | Format | Size | Purpose | Source | Licence |',
-    '|---|---|---|---|---|---|---|---|'
+    '| Id | Path | State | Format | Size | Kept offline | Purpose | Source | Licence |',
+    '|---|---|---|---|---|---|---|---|---|'
   ].concat(rows).join('\n');
 }
 
@@ -153,9 +160,11 @@ function recordingsDoc(c){
     '',
     '## Narration (the device voice until recorded)',
     '',
-    'Also recorded: the lines built from templates — each letter\'s questions and praise (`LETTER_LINES`), each rhyme pair\'s ' +
-      '(`RHYME_LINES`), each word\'s beats (`BEAT_LINES`), and each Sound Scout and Word Builder word\'s (`SOUND_LINES`, `BUILD_LINES`). ' +
-      'Their cue ids are listed in index.html beside `voiceCue()`, `wordCue()` and `phonicsCue()`.',
+    'Also recorded: the lines built from templates — each letter\'s questions and praise, big, little and in pairs (`LETTER_LINES`), ' +
+      'each rhyme pair\'s (`RHYME_LINES`), each word\'s beats (`BEAT_LINES`), each Sound Scout and Word Builder word\'s ' +
+      '(`SOUND_LINES`, `BUILD_LINES`), each sight word\'s (`SIGHT_LINES`, with the word said on its own) and each traced letter\'s ' +
+      '(`WRITE_LINES`). Their cue ids are listed in index.html beside `voiceCue()`, `letterCaseCue()`, `sightCue()`, `writeCue()`, ' +
+      '`wordCue()` and `phonicsCue()`. Sight words and handwriting add no sounds to the required list: a sight word is said whole.',
     '',
     '| Cue | Type | Script |',
     '|---|---|---|'

@@ -367,3 +367,50 @@ reading games on it (docs/AUDIO.md).
 76. **Sound effects are one family.** Every note from `SFX_NOTES`, sine or
     triangle, short and soft; no jackpot runs and no music. A new moment is
     a recipe in `Sfx`, and contract 45 checks the family.
+
+## Letters to read and write, and words to know
+
+These came from Phase 4, which added little letters, handwriting and sight
+words, and so completed the seven learning areas.
+
+77. **One school print.** Every letter or word a child reads is drawn from
+    `LETTER_FORMS` by `printSvg()`, never typed in a font. The same strokes
+    are animated when Pip writes and followed when the child traces, so the
+    "a" a child finds is the "a" they write. The device font was rejected: a
+    double-storey a, and a capital I that looks like l.
+78. **A letter's case is part of what is learned.** Evidence is kept per
+    case (`upper`, `lower`, `match`), and a grown-up's count still
+    counts M and m as one letter. Lines say "the big letter" and "the
+    little letter", never a bare "little bee" (an insect) or "big pee".
+79. **Handwriting is judged by geometry, never recognised.** No model, no
+    OCR, no score, no percentage, no "wrong". A trace advances only along a
+    stroke's path, in its direction; wandering well off restarts that
+    stroke alone; a lifted finger carries on where it stopped, and the green
+    dot moves there. A letter is always finished in the end.
+80. **The slate owns its pointer, and only the slate.** Pointer Events on
+    `#writePad`, which catches them itself (`pointer-events: auto`: the
+    scene layer lets taps through, and a real finger passed straight
+    through the slate until it did), one pointer at a time, a Pencil beats a touch (a palm), a
+    second finger is ignored, a cancel lifts, and `touch-action: none` is
+    set there and nowhere else. Nothing half-traced is ever saved.
+81. **A sight word comes from a recorded list.** A `WORDS` entry with
+    `sight` names its `WORD_LISTS` source, says whether it is decodable,
+    and has no picture. The list is a source, never a claim: no copy says
+    "aligned" unless docs/CONTENT-SOURCES.md records a mapping.
+82. **Seen, not heard, is `silentOk`.** A pair of cases, a matched word and
+    a trace count as evidence with the voice off; anything asked by sound
+    does not (rule 29). A new game decides which it is, in its
+    `ACTIVITY_TYPES` entry.
+83. **Pictures load by tier, within budget.** Every picture declares
+    `load`: `core` (precached with the app), `install` (the icons) or a
+    world id (fetched when its route is open or next). A new world's
+    pictures are never core. Core stays under 1.2 MB and each world under
+    300 KB; a budget is never raised to make something fit.
+84. **Where the child goes next is a rule.** Restore first
+    (`currentDestination()`), and the visit that restores a place offers
+    each game there not yet played, once (`markerNext()`), so a new game
+    is met without a menu.
+85. **A place in the sky clears Pip's words on every screen.** Pip's
+    caption is fixed in pixels while the sky is in fractions, so a phone is
+    where they meet. A new sky position is checked at the iPad sizes and at
+    667×375 with Pip's longest line showing.

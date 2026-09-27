@@ -22,6 +22,14 @@ only the largest one. Code in a second block, or in a linked `.js` file, is
 invisible to every contract, and the suite still passes. A contract asserts
 this.
 
+**Size.** At v0.6.0 the file is about 535 KB (about 149 KB gzipped, which is
+how GitHub Pages sends it). It was measured against splitting: the harness
+reads one script block; offline would need every split file precached in
+step; and a first visit downloads the same bytes either way, with a repeat
+visit coming from the service-worker cache. Splitting would add a second
+source of truth for no measured gain, so the file stays whole. It is
+revisited if first paint on an iPad is ever measured to suffer.
+
 ## The foundation
 
 ### Identity
@@ -106,9 +114,9 @@ Each layer reads only the ones above it.
 
 | Layer | What it is | Rule |
 |---|---|---|
-| **ASSETS** | `ASSET_REGISTRY`: every picture, its source, licence and state | The only place an asset path is written. A contract enforces it. |
-| **CONTENT** | `SKILLS`, `LETTERS`, `PHONEMES`, `WORDS` (the one word knowledge base), `DESTINATIONS`, `MISSIONS`, `TRAVEL_ART`, `COSMETIC_SLOTS`, `COSMETICS`, `VOICE_CUES` and the line templates | Data only. Checked by `validateContent()` at boot and in the contracts. |
-| **ENGINE** | Rounds, difficulty, the help ladder, evidence, review picks, progress and restoring, the star ledger, looks, what a place teaches | Pure functions: no DOM, no storage, seeded randomness. |
+| **ASSETS** | `ASSET_REGISTRY`: every picture, its source, licence, state and when it is fetched (`load`) | The only place an asset path is written. A contract enforces it. |
+| **CONTENT** | `SKILLS`, `LETTERS`, `LETTER_FORMS` (how every letter is written), `PHONEMES`, `WORDS` (the one word knowledge base), `WORD_LISTS`, `DESTINATIONS`, `MISSIONS`, `TRAVEL_ART`, `COSMETIC_SLOTS`, `COSMETICS`, `VOICE_CUES` and the line templates | Data only. Checked by `validateContent()` at boot and in the contracts. |
+| **ENGINE** | Rounds, difficulty, the help ladder, evidence, review picks, progress and restoring, the star ledger, looks, what a place teaches, the school print's geometry, tracing | Pure functions: no DOM, no storage, seeded randomness. |
 | **JOURNEY** | The child's saved state (`journey`) | Five keys, each written only by its owner. |
 | **AUDIO** | `Voice`, `AUDIO_TYPES`, `audioRoute()`, `AudioOut`, `DevVoice` and the synthesiser, `MediaVoice`, `Sfx`, `TIMING` | Every line is a typed cue: a recording if one exists; a phonics cue then the development phonics voice, anything else the device voice (temporary); otherwise a caption. A phonics cue never reaches the device voice. Each type sits in time by `AUDIO_TYPES`. [docs/AUDIO.md](docs/AUDIO.md) |
 | **SCENES** | The HUD; the world stage, flights and the resting-stage check; welcome, Earth, travel, a planet, a mission, the space station; one view per activity type; the play-field fit | Controllers return promises, so a contract can walk the journey. |
@@ -117,15 +125,24 @@ Each layer reads only the ones above it.
 ### Content model
 
 ```
-Skill        { label, short, status: 'active' | 'planned',   seven named, five active;
-               firstTry, shows }                             `short` is a child's word
+Skill        { label, short, status: 'active' | 'planned',   seven named, all active;
+               firstTry, shows, practiced, did? }            `short` is a child's word;
+                                                             `practiced` the grown-ups count
 Letter       { speak (its NAME), sound (its SOUND,           a name and a sound are
-               a Phoneme id), family, lookalikes, ambiguous? } different things
+               a Phoneme id), family, lookalikes,            different things; `lower`
+               lower{ family, lookalikes }, ambiguous? }     is the little letter's shape
+LetterForm   LETTER_FORMS['M'] / ['m']: strokes[], each a    how it is WRITTEN, apart from
+               list of segments ['L',x1,y1,x2,y2] |          how it is drawn: the print,
+               ['A',cx,cy,rx,ry,from°,to°] | ['D',x,y]       the demo and the trace all
+               in writing-line units (top 0, middle 0.5,     read it
+               base 1, tail 1.45), in stroke order
 Phoneme      { ipa, kind: 'continuous'|'stop'|'vowel',       the sounds; `spelling` ones
                example, spelling? }                          are never asked for alone
-Word         { speak, picture, rime, onset, beats[],         THE word knowledge base:
-               phonemes[], level?, reviewed? }               every game reads it; CVC is
-                                                             derived (isCvc())
+Word         { speak, picture?, rime, onset, beats[],        THE word knowledge base:
+               phonemes[], level?, reviewed?,                every game reads it; CVC is
+               sight?{ list, decodable } }                   derived (isCvc()); a sight
+                                                             word has no picture and
+                                                             names its WORD_LISTS source
 Destination  { id, kind: 'home' | 'destination' | 'station'  the STORY layer
                    | 'planned', name, label, tagline?,
                asset, restoredAsset, horizon, sky{x,y,size},
@@ -142,11 +159,17 @@ CosmeticSlot { id: 'paint' | 'gear' | 'theme', label, speak }
 Cosmetic     { id, slot, name, cost, starter?,               one of each slot is worn;
                tint? | art? | pattern?, focus? }             focus: where a gear chip zooms
 Activity     { type, target | sound, answer?, form?,          authored targets; `review`
-               guided?, review[]? }                          lists what a review may ask
+               from?, help?, guided?, review[]? }            lists what a review may ask;
+                                                             form: upper|lower, from: the
+                                                             case shown (a pair), help:
+                                                             full|light (a trace)
 ActivityType { skillId, repeatable?, validate, evidenceKey,  ACTIVITY_TYPES registry;
-               promptCue, buildRound, check?, valid? }       check/valid: a many-tap answer
+               promptCue, buildRound, check?, valid?,        check/valid: a many-tap answer;
+               silentOk? }                                   silentOk: seen, not heard, so
+                                                             evidence with the voice off
 GameView     { draw, ask, guide, again, praise, correct,     GAME_VIEWS: one per type,
-               wrong, retry, show, progressWord }            in SCENES
+               wrong, retry, show, progressWord, lead? }     in SCENES; lead: before the
+                                                             question (Pip writes first)
 VoiceCue     { id, type, text (on screen, or null),        `voiceCue(id)` builds
                speak (script), locale, file, sounds? }       value-carrying lines;
                                                              `sounds` for phonics cues
@@ -173,9 +196,77 @@ first, then each in turn: `markerNext()`).
 
 **Review** (`reviewActivity()`, pure): an activity with a `review` list asks,
 when its round begins, the candidate whose recent answers needed help most
-often, then the one practised longest ago, never one already asked in the
-run. Evidence counts across games: a letter needing help brings back its
-sound in Sound Scout (`reviewLinks()`).
+often, then the one practiced longest ago, never one already asked in the
+run. `reviewLinks()` says which evidence counts for which review: a letter
+(either case) for its sound in Sound Scout, a sound for a word starting with
+it in Word Builder, a little letter found or matched for the little-letter
+review, a sight word heard or matched for either sight review, a traced
+letter for the tracing review.
+
+**Where the child goes next** (`currentDestination()`, pure): the first open
+place not yet restored; else the first with a mission not yet played; else
+the last open one. **The next marker** (`markerNext()`): the story missions
+in order, then — in the visit that restored the place — the first mission
+of any game there not yet played, then one mission a visit.
+
+### The school print
+
+Letters are drawn, not typed. `LETTER_FORMS` holds every letter, big and
+little, as strokes in writing-line units; `strokePoints()` walks a stroke
+into evenly spaced points and `strokePathD()` into an SVG path (arcs in
+pieces of at most 120°). `printSvg(text, frame)` draws a letter or a word
+as round-capped strokes (`PRINT`: the ink, the gap between letters, the dot)
+in `currentColor`; `printFrame()` gives a round's choices one shared frame,
+so every letter sits on the same baseline at the same scale. The print is
+`aria-hidden`; its button carries the label ("Little letter m"). The same
+strokes feed the demo and the trace, so reading and writing cannot drift
+apart. `formProblems()` rejects a malformed letter (too many strokes, a
+broken stroke, out of bounds); content validation runs it on all 52.
+
+### Tracing (Moon Writer)
+
+- **The engine** (pure, letter units): `tracePlan(strokes)` makes each stroke
+  a path of points `TRACE.step` apart, or `null` for a malformed letter.
+  `traceDown` begins a stroke near its start (or where it was left);
+  `traceMove` walks the finger in small steps and advances to the nearest
+  path point within `TRACE.ahead` points and `TRACE.tolerance` of it, so
+  progress is only along the path; `TRACE.wander` off the path for
+  `TRACE.wanderFor` of travel restarts that stroke alone; a stroke ends
+  `TRACE.endSlack` points from its end. No score, no recognition: done, or
+  not yet, and help counted (`noteHelp()`).
+- **The slate** (`writeBegin()`, `drawWrite()`): an SVG in a fixed frame
+  (`WRITE_FRAME`) with the writing lines; full help draws lanes, a dashed
+  middle and an arrow; light help a faint outline; the green dot is where the
+  next stroke starts or carries on. The ink is redrawn at most once a frame
+  (`drawInk()`). Pip's demo (`watchLetter()`) animates `stroke-dashoffset`
+  with the Web Animations API, stroke by stroke, and appears whole under
+  Reduce Motion.
+- **Input** (`wireWritePad()`): Pointer Events on `#writePad` only
+  (`pointer-events: auto`, since the scene layer lets taps through;
+  `touch-action: none`, no selection, no callout). One pointer at a time
+  (`writeInput`); a pen beats a touch (a resting palm); a second finger is
+  ignored; `pointercancel` and `lostpointercapture` lift; coalesced events
+  are followed. The handlers turn screen points into letter units
+  (`padPoint()`) and call `writeDown/writeMove/writeUp`, which is also what
+  the contracts drive.
+- **Answering:** the round's answer is `'traced'`, given through `choose()`
+  when the last stroke is done, so the shared ladder, evidence and praise
+  apply. Nothing half-traced is stored; a reload mid-letter starts it again.
+
+### Loading pictures: three tiers
+
+Every picture declares when it is fetched (`renderedAsset(…, load)`):
+
+| Tier | What | Kept offline |
+|---|---|---|
+| `core` | everything the first worlds and the shell need | precached by the service worker at install |
+| `install` | the home-screen icons | fetched by the device at install, not precached |
+| a world id (`jupiter`) | that world's horizon, planet, markers and game pictures | fetched when its route is open or next to open (`worldsToKeep()`, `stageAssets()`, `preloadStage()`), at boot and whenever a route opens, then kept by the service worker's cache |
+
+So the first download holds only what is needed, a new world is on the
+device before a child can fly there, and a new version's cache keeps every
+open world. Contracts hold the budgets: core under 1.2 MB, each world under
+300 KB.
 
 ### The HUD
 
@@ -265,6 +356,9 @@ One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
   letter is in each slot; a tapped letter goes into the next empty slot (and
   plays its sound), a placed one tapped again comes back, and a full word is
   answered through `choose()` like any choice (`ACTIVITY_TYPES.check`).
+- **Moon Writer** answers by tracing: `session.write` holds the plan, the
+  trace and the ink (see "Tracing" above). The slate is the one game that
+  fills its box's height, beside its two buttons.
 
 ### Audio
 
@@ -294,7 +388,7 @@ only the stage rocket (`previewLook()`); the action unlocks or wears it.
 | `data.profile` | `{ id, createdAt, updatedAt, story: { 'arrived.<place>', 'shown.<place>', 'heard.dockHint' } }` | first tap; story moments |
 | `data.completions` | `[{ id: runId, missionId, destinationId, skillId, startedAt, completedAt, rounds, firstTry, helped, unscored }]` | end of a mission |
 | `data.stars` | `[{ id: 'earn.<runId>' \| 'spend.<cosmeticId>', kind, amount, runId \| cosmeticId, at }]` | end of a mission (earn); the Dock (spend) |
-| `data.evidence` | `[{ id: '<skill>.<item>.<form>', item, form, seen, firstTry, recent[≤8], lastPracticed }]`: a letter (`letter-recognition.M.upper`), a word (`rhyming.cake.rhyme`), a sound (`beginning-sounds.m.initial`), a built word (`cvc.map.build`) | after each resolved round |
+| `data.evidence` | `[{ id: '<skill>.<item>.<form>', item, form, seen, firstTry, recent[≤8], lastPracticed }]`: a letter (`letter-recognition.M.upper`, `.M.lower`, `.M.match`), a word (`rhyming.cake.rhyme`), a sound (`beginning-sounds.m.initial`), a built word (`cvc.map.build`), a sight word (`sight-words.the.hear`, `.the.match`), a traced letter (`handwriting.L.upper`) | after each resolved round |
 | `data.rocket` | `{ paint, gear?, theme?, updatedAt }` (a missing slot reads as its free starter, so v0.3.0 records need no migration) | the space station |
 | `ui.sound`, `ui.motion` | device preferences | grown-ups area |
 
@@ -327,6 +421,9 @@ only the stage rocket (`previewLook()`); the action unlocks or wears it.
 - **Feedback:** the wrong-answer hold (0.45s), the celebration guard, and
   the reward stars (all landed within about 2s).
 - **Ambient:** a shooting star about every 13–23s at rest.
+- **Writing:** Pip's pen moves at `writeDemo` ms per letter height, with a
+  `writeDemoGap` between strokes; "Start at the green dot" is said at most
+  every `writeHint` ms.
 
 `AUDIO_TYPES` is the other table: for each type of cue (story, instruction,
 question, praise, correction, hint, reaction, word, letter name, phoneme,
@@ -358,12 +455,18 @@ The contracts collapse these to zero to run the journey in milliseconds.
   base, and a letter's name against its sound; 41 Sound Scout; 42 Word
   Builder; 43 Mars, restoring by story missions and a v0.4.0 journey
   opening; 44 review by rule; 45 the sound effects family.
+- **Contracts 46–53** cover Phase 4: 46 the letterforms and the school print;
+  47 big and little letters and partners; 48 sight words, their source and
+  both games; 49 tracing by geometry; 50 Moon Writer (watch, trace, less
+  help, pointers, reload); 51 Jupiter and a v0.5.0 journey opening it; 52
+  picture tiers and offline; 53 the grown-ups area's seven skills.
 
 The journey contract (28) plays welcome → Earth → the Moon → the beacon →
 the mission → the world answering → home → Dock → reload through the same
 functions the buttons call, using a recording fake speech engine; 33 goes on
-through Mercury. The harness has no layout, no pointer events and no Web
-Animations, so flights and visual behaviour are checked in a real browser.
+through Mercury. The harness has no layout and no Web Animations, and its pointer events are
+dispatched by hand, so flights, tracing feel and visual behaviour are also
+checked in a real browser.
 See the QA notes in `docs/PRODUCT.md`.
 
 ## Where new work goes
@@ -373,6 +476,9 @@ See the QA notes in `docs/PRODUCT.md`.
 | A picture | A file in `assets/`, one `ASSET_REGISTRY` entry, then `npm run config:sync` |
 | A recording | A registry entry, then its path in `VOICE_RECORDINGS` under the cue's id ([docs/AUDIO-RECORDINGS.md](docs/AUDIO-RECORDINGS.md) lists every one) |
 | A word | One `WORDS` entry (picture, rime, beats, phonemes); every game can then use it |
+| A sight word | A `WORDS` entry with `sight: { list, decodable }` and no picture, from a list recorded in `WORD_LISTS` and docs/CONTENT-SOURCES.md |
+| A letter to write | Nothing new: all 52 are in `LETTER_FORMS`. A `letter-trace` activity in a Moon Writer mission, and its strokes checked in docs/CONTENT-REVIEW.md |
+| A world's pictures | Registry entries with `load: '<world id>'`, so they are fetched when its route is near, not in the first download |
 | A sound a game asks for | A `PHONEMES` entry, a `LETTERS[].sound` if a letter spells it, and its synthesis in `SYNTH_SOUNDS` until it is recorded |
 | A review round | A `review` list on the activity: what it may ask, the default first |
 | A sound effect | A recipe in `Sfx`, from `SFX_NOTES`, short and soft |

@@ -120,6 +120,13 @@
   --socket-well: rgba(6,8,30,0.62);
   --socket-edge: rgba(239,233,255,0.22);
   /* A marker's lamps: one per mission played there. */
+  --orbit-ring: rgba(255, 214, 150, 0.45);   /* Word Orbit's ring */
+  --slate-surface: #2A3264;                  /* Moon Writer's slate */
+  --slate-rim: rgba(255, 244, 222, 0.16);
+  --slate-line: rgba(214, 220, 255, 0.55);
+  --slate-lane: #FFF4DE;
+  --slate-dash: #FFD66B;
+  --slate-ink: #FFD66B;
   --lamp-off: rgba(239,233,255,0.3);
   --lamp-shade: rgba(6,8,30,0.5);
 
@@ -903,6 +910,7 @@ html[data-scene="mission"] .marker{ opacity: 0; }
 .stage[data-place="moon"]{ --rx: 0.745; --ry: 0.44; }
 .stage[data-place="mercury"]{ --rx: 0.765; --ry: 0.45; }
 .stage[data-place="mars"]{ --rx: 0.765; --ry: 0.45; }
+.stage[data-place="jupiter"]{ --rx: 0.765; --ry: 0.45; }
 /* In the garage the rocket stands on the turntable, and larger: it is
    what the child came to look at (tools/art station.js ANCHORS). */
 .stage[data-place="station"]{ --rx: 0.38; --ry: 0.705; --rocket-h: calc(var(--station-h) * 0.44); }
@@ -1349,6 +1357,13 @@ html[data-speaking="true"] .pip-light{
 .game[data-fit="row"]{ flex-direction: row; align-items: flex-end; justify-content: center; }
 .game-signal, .beats{ display: none; }
 .game[data-game="rhyme-pick"] .game-signal, .game[data-game="syllable-tap"] .game-signal{ display: flex; }
+/* A pair: the partner stands on a plate in the signal's place. */
+.game[data-game="find-letter"][data-variant="pair"] .game-signal{ display: flex; }
+.signal-plate{
+  width: 100%; height: 100%; border-radius: calc(var(--signal) * 0.16);
+  background: var(--tile-surface); color: var(--tile-ink); padding: 12%;
+  box-shadow: inset -2px -6px 0 var(--brand-lavender-edge), inset 2px 3px 0 var(--plate-hi);
+}
 .game[data-game="syllable-tap"] .choices{ display: none; }
 .game[data-game="syllable-tap"] .beats{ display: flex; }
 
@@ -1366,6 +1381,10 @@ html[data-speaking="true"] .pip-light{
 .choice:active{ transform: translateY(4px) scale(0.97); }
 .game.is-waiting .choice{ cursor: default; }
 .choice-glyph{ display: block; transform: translateY(-3%); }
+/* The school print (printSvg()): letters drawn from their letterforms,
+   in the tile's ink, sized by the box they sit in. */
+.print{ display: block; width: 100%; height: 100%; overflow: visible; }
+.choice-face .choice-glyph{ width: 82%; height: 82%; transform: none; }
 /* A letter stone: a clay stone standing on the world, with the letter on
    a clean face plate — never on the clay. The stone is the world; the
    plate is the learning, and it stays as plain as a tile. */
@@ -1481,6 +1500,7 @@ html[data-speaking="true"] .pip-light{
   display: flex; align-items: center; justify-content: center;
   font-size: var(--fs-glyph-stone); font-weight: 800; line-height: 1;
   animation: pop 0.45s var(--ease-bounce) both;
+  padding: 10%;
 }
 .game[data-game="sound-pick"] .choices:not(.is-revealed) .choice{ opacity: 0; transform: translateY(18px) scale(0.9); pointer-events: none; }
 .game[data-game="sound-pick"] .choice{ transition: transform var(--dur-slow) var(--ease-bounce), opacity var(--dur-slow) var(--ease); }
@@ -1498,6 +1518,90 @@ html[data-speaking="true"] .pip-light{
 .choice-object.is-naming .picture-art{ transform: translateY(-5%); filter: drop-shadow(0 0 16px var(--glow-accent)); }
 .choices .choice-object.is-correct{ box-shadow: none; }
 .choice-object.is-correct .picture-art{ filter: drop-shadow(0 0 20px var(--glow-success)); }
+
+/* ---- Star Words and Word Orbit: words on satellites over Jupiter ----
+   A word floats on a clay satellite's clean face, in the school print —
+   never on the clay. In Word Orbit the word to match sits at the centre
+   on a bigger satellite, and the choices wait on a ring below it. */
+.choice-word{
+  width: calc(var(--tile-size) * 1.5); height: auto; aspect-ratio: 512 / 300;
+  background: none; box-shadow: none; border-radius: 0; padding: 0;
+}
+.sat-float{ position: absolute; inset: 0; display: block; }
+.game[data-game="sight-find"] .sat-float{ animation: sat-bob 3.4s var(--ease) infinite alternate; }
+.game[data-game="sight-find"] .choice-word:nth-child(2) .sat-float{ animation-delay: -1.1s; }
+.game[data-game="sight-find"] .choice-word:nth-child(3) .sat-float{ animation-delay: -2.3s; }
+@keyframes sat-bob{ from{ transform: translateY(-3%); } to{ transform: translateY(3%); } }
+.sat-art{ position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+/* The satellite's flat face, as fractions of its picture (tools/art
+   wordsat.js FACE_RECT): the box keeps the picture's shape, so they hold. */
+.word-face{
+  position: absolute; left: 20.24%; top: 37.3%; width: 59.52%; height: 42.16%;
+  color: var(--tile-ink); display: flex; align-items: center; justify-content: center;
+}
+.choices .choice-word.is-correct{ box-shadow: none; }
+.choice-word.is-correct .sat-float{ filter: drop-shadow(0 0 20px var(--glow-success)); }
+.choice-word.is-hint::after{ inset: 4% -6%; border-radius: 40%; }
+.game[data-game="sight-match"] .game-signal{
+  display: flex; width: calc(var(--tile-size) * 1.7); height: auto; aspect-ratio: 512 / 300;
+  border-radius: 0; background: none; box-shadow: none; padding: 0;
+}
+.signal-word{ position: relative; display: block; width: 100%; height: 100%; }
+.game[data-game="sight-match"] .choices{ position: relative; }
+/* the ring the choices sit on */
+.game[data-game="sight-match"] .choices::before{
+  content: ''; position: absolute; left: -6%; right: -6%; top: 18%; bottom: -8%;
+  border-radius: 50%; border: 3px solid var(--orbit-ring); pointer-events: none;
+}
+
+/* ---- Moon Writer: trace the letter on a slate ----
+   The slate is the one place a trace is taken: no scrolling, no text
+   selection, no long-press menu under a tracing finger. Its lines are the
+   classroom's: a solid top line and baseline, a dashed midline, and a
+   faint tail line for little letters. */
+.write{ display: none; align-items: center; justify-content: center; gap: var(--game-gap); }
+.game[data-game="letter-trace"] .choices{ display: none; }
+.game[data-game="letter-trace"] .write{ display: flex; }
+.write-pad{
+  position: relative; flex-shrink: 0; width: var(--pad-w, 360px); height: var(--pad-h, 440px);
+  border-radius: var(--radius-2xl); background: var(--slate-surface);
+  box-shadow: var(--shadow-tile), inset 0 0 0 6px var(--slate-rim);
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  /* The scene layer lets taps through to the world and only its buttons
+     catch them; the slate is not a button, so it says so itself. Without
+     this a real finger or Pencil passes straight through it. */
+  pointer-events: auto;
+}
+.write-pad.is-written{ box-shadow: var(--shadow-tile), inset 0 0 0 6px var(--slate-rim), 0 0 0 8px var(--success), 0 0 44px var(--glow-success); }
+.w-svg{ position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.w-line, .w-mid, .w-tail{ stroke: var(--slate-line); stroke-width: 0.014; }
+.w-mid{ stroke-dasharray: 0.06 0.05; }
+.w-tail{ opacity: 0.45; }
+.w-lane{ fill: none; stroke: var(--slate-lane); stroke-width: 0.3; stroke-linecap: round; stroke-linejoin: round; opacity: 0.35; }
+.w-lane.is-now{ opacity: 0.85; }
+.w-lane.is-done{ stroke: var(--success); opacity: 0.4; }
+.w-faint{ fill: none; stroke: var(--slate-lane); stroke-width: 0.05; stroke-linecap: round; stroke-linejoin: round; opacity: 0.5; }
+.w-faint.is-done{ opacity: 0.2; }
+.w-dash{ fill: none; stroke: var(--slate-dash); stroke-width: 0.024; stroke-dasharray: 0.05 0.06; stroke-linecap: round; }
+.w-arrow{ fill: none; stroke: var(--slate-dash); stroke-width: 0.03; stroke-linecap: round; stroke-linejoin: round; }
+.w-spot{ fill: var(--slate-lane); opacity: 0.6; }
+.w-spot.is-done{ fill: var(--slate-ink); opacity: 1; }
+.w-ink path{ fill: none; stroke: var(--slate-ink); stroke-width: 0.1; stroke-linecap: round; stroke-linejoin: round; }
+.w-start{ fill: var(--success); stroke: var(--slate-surface); stroke-width: 0.02; }
+.w-start.is-pulsing{ animation: start-pulse 0.5s var(--ease) 3 alternate; transform-box: fill-box; transform-origin: center; }
+@keyframes start-pulse{ from{ transform: scale(1); } to{ transform: scale(1.7); } }
+.w-demo-stroke{ fill: none; stroke: var(--slate-ink); stroke-width: 0.11; stroke-linecap: round; stroke-linejoin: round; }
+.w-demo-spot{ fill: var(--slate-ink); }
+.w-pen{ fill: var(--accent); }
+.write-tools{ display: flex; flex-direction: column; gap: var(--space-lg); }
+.write-btn{
+  width: 76px; height: 76px; border: none; border-radius: 50%; cursor: pointer;
+  background: var(--kid-surface); color: var(--kid-ink); box-shadow: var(--shadow-tile);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform var(--dur-fast) var(--ease-bounce);
+}
+.write-btn:active{ transform: translateY(3px) scale(0.95); }
+.game.is-waiting .write-btn{ opacity: 0.55; }
 
 /* ---- Word Builder: tap the letters into the word ----
    The word is built in a sunken tray of three slots; the letters wait
@@ -1540,6 +1644,7 @@ html[data-speaking="true"] .pip-light{
   transition: transform var(--dur-fast) var(--ease-bounce), opacity var(--dur-fast) var(--ease);
 }
 .piece:active{ transform: translateY(4px) scale(0.97); }
+.piece-glyph{ display: block; width: 66%; height: 66%; pointer-events: none; }
 .slot .piece{ position: absolute; inset: 0; width: 100%; height: 100%; animation: piece-in 0.28s var(--ease-bounce) both; }
 .build-tray .piece.is-used{ opacity: 0.16; box-shadow: none; pointer-events: none; }
 .piece.is-sounding{ box-shadow: var(--shadow-tile), 0 0 0 6px var(--accent), 0 0 30px var(--glow-accent); }
@@ -1653,6 +1758,10 @@ html[data-speaking="true"] .pip-light{
   .bubble{ padding: var(--space-sm) var(--space-md); }
   .dock-panel{ width: min(calc(42 * var(--vw)), 360px); }
   .repeat-btn{ width: var(--touch-kid); height: var(--touch-kid); }
+  /* The writing slate stands in front of the ground, down to the bottom
+     edge, so a letter is big enough for a finger. Its corridor is never
+     widened instead: see TRACE. */
+  .game[data-game="letter-trace"]{ bottom: calc(var(--inset-bottom) + var(--space-md)); }
 }
 
 /* =========================================================
@@ -1937,6 +2046,16 @@ body.scroll-locked{
           <div class="build-slots" id="buildSlots" role="group" aria-label="The word, letter by letter"></div>
           <div class="build-tray" id="buildTray" role="group" aria-label="Letters to build with"></div>
         </div>
+        <!-- MOON WRITER: the letter on a slate between its writing lines. A
+             finger or an Apple Pencil traces it; only this box takes the
+             trace, and the page never scrolls under it (touch-action). -->
+        <div class="write" id="writeGame">
+          <div class="write-pad" id="writePad" role="img" aria-label="The letter to trace"></div>
+          <div class="write-tools">
+            <button class="write-btn" id="writeWatchBtn" onclick="watchAgain()" aria-label="Watch how it is written"></button>
+            <button class="write-btn" id="writeRestartBtn" onclick="restartLetter()" aria-label="Start this letter again"></button>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -2179,6 +2298,26 @@ function validateAppId(id){
    history starts at its own first flight.
    ========================================================= */
 const APP_UPDATES = [
+  {
+    id: 'v0-6-0',
+    version: '0.6.0',
+    title: 'Words, little letters and writing',
+    date: '2026-09-27',
+    summary: 'Jupiter opens after Mars, with two games for sight words. On the Moon, letters now come big and little, ' +
+             'and a writing slate teaches how each letter is made. All seven areas of the adventure are here.',
+    newFeatures: [
+      'Jupiter: a giant banded planet that opens once Mars is full of sounds again',
+      'Star Words: hear a word, and find it among three',
+      'Word Orbit: find the word that is just the same as the one in the middle',
+      'Moon Writer: watch how a letter is made, then trace it with a finger or an Apple Pencil',
+      'Little letters on the Moon, and big and little partners to match'
+    ],
+    improvements: [
+      'Every letter a child reads is drawn in one school print, the same shapes they learn to write',
+      'The grown-ups area counts practice in all seven skills, in plain words',
+      'Pictures for a new world are kept for offline play once its route is near, so the first download stays small'
+    ]
+  },
   {
     id: 'v0-5-0',
     version: '0.5.0',
@@ -2935,11 +3074,22 @@ function renderAll(){
    --------------------------------------------------------- */
 const ASSET_STATES = ['PLACEHOLDER', 'DRAFT', 'FINAL'];
 const RENDER_SOURCE = 'Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26';
+/* When a picture is fetched and kept for offline use:
+     core      with the app: the offline cache installs it, because the
+               start, the flights, the station and every world a v0.5.0
+               child could already reach need it
+     install   only when the app is installed: the Home Screen icons, which
+               the device fetches then and the page never shows
+     <world>   a world added later (jupiter): fetched and kept offline once
+               its route is open, or is the next to open — never before
+   config:sync derives the offline cache from `core`; a contract holds each
+   budget. */
+const ASSET_LOADS = ['core', 'install'];
 
-function renderedAsset(id, path, dimensions, purpose){
+function renderedAsset(id, path, dimensions, purpose, load){
   return { id: id, path: path, format: path.slice(path.lastIndexOf('.') + 1),
            dimensions: dimensions, purpose: purpose,
-           source: RENDER_SOURCE, license: 'Project-owned', state: 'DRAFT' };
+           source: RENDER_SOURCE, license: 'Project-owned', state: 'DRAFT', load: load || 'core' };
 }
 
 const ASSET_REGISTRY = [
@@ -2976,6 +3126,8 @@ const ASSET_REGISTRY = [
   renderedAsset('prop.workshopOn',    'assets/props/workshop-on.webp',      '480×400',   'The word machine working, its sockets glowing'),
   renderedAsset('prop.pedestal',      'assets/props/pedestal.webp',         '384×200',   'A low Mars rock a picture stands on, in Sound Scout'),
   renderedAsset('prop.letterStone',   'assets/props/letter-stone.webp',     '400×440',   'A Moon stone carrying a letter plate, in Letter Explorer'),
+  renderedAsset('prop.slate',         'assets/props/slate.webp',            '400×480',   'The Moon\'s writing slate, dim: the Moon Writer marker'),
+  renderedAsset('prop.slateOn',       'assets/props/slate-on.webp',         '400×480',   'The writing slate glowing'),
   renderedAsset('prop.beatStone',     'assets/props/beat-stone.webp',       '512×400',   'The big stone a child taps once for each beat'),
   renderedAsset('prop.meteor',        'assets/props/meteor.webp',           '192×192',   'A beat still to tap'),
   renderedAsset('prop.meteorLit',     'assets/props/meteor-lit.webp',       '192×192',   'A beat tapped: a glowing meteor'),
@@ -3030,9 +3182,20 @@ const ASSET_REGISTRY = [
   renderedAsset('rocket.gearBooster', 'assets/rocket/gear-booster.webp',    '640×800',   'Gear: two small side boosters'),
   renderedAsset('rocket.gearWings',   'assets/rocket/gear-wings.webp',      '640×800',   'The bumblebee theme\'s pale wings'),
   renderedAsset('character.pip',      'assets/characters/pip.webp',         '720×660',   'Pip, the guide — an original satellite-buddy design'),
-  renderedAsset('icon.192',           'icon-192.png',                       '192×192',   'Home-screen icon'),
-  renderedAsset('icon.512',           'icon-512.png',                       '512×512',   'Install and splash icon')
+  renderedAsset('icon.192',           'icon-192.png',                       '192×192',   'Home-screen icon', 'install'),
+  renderedAsset('icon.512',           'icon-512.png',                       '512×512',   'Install and splash icon', 'install'),
+  /* Jupiter: the sight-words world, fetched once its route opens */
+  renderedAsset('horizon.jupiter',    'assets/horizons/jupiter.webp',       '2400×780',  'Jupiter underfoot: soft banded cloud tops and a big friendly storm swirl', 'jupiter'),
+  renderedAsset('planet.jupiter',     'assets/planets/jupiter.webp',        '560×560',   'Jupiter in the sky, waiting: cream, amber and orange bands and a round storm', 'jupiter'),
+  renderedAsset('planet.jupiterLit',  'assets/planets/jupiter-lit.webp',    '560×560',   'Jupiter once restored: warm light in its bands', 'jupiter'),
+  renderedAsset('prop.skysign',       'assets/props/skysign.webp',          '480×480',   'Jupiter\'s sky sign, blank and dim: the Star Words marker', 'jupiter'),
+  renderedAsset('prop.skysignOn',     'assets/props/skysign-on.webp',       '480×480',   'The sky sign glowing, its star lit', 'jupiter'),
+  renderedAsset('prop.orbit',         'assets/props/orbit.webp',            '480×400',   'Jupiter\'s orbit ring, dim: the Word Orbit marker', 'jupiter'),
+  renderedAsset('prop.orbitOn',       'assets/props/orbit-on.webp',         '480×400',   'The orbit ring glowing, its satellites lit', 'jupiter'),
+  renderedAsset('prop.wordSat',       'assets/props/word-satellite.webp',   '512×300',   'A floating word satellite a sight word is shown on', 'jupiter')
 ];
+/* A picture's world, if it waits for one. */
+function assetWorld(a){ return a && ASSET_LOADS.indexOf(a.load) === -1 ? a.load : null; }
 
 function assetEntry(id){
   for(let i = 0; i < ASSET_REGISTRY.length; i++){ if(ASSET_REGISTRY[i].id === id) return ASSET_REGISTRY[i]; }
@@ -3070,23 +3233,29 @@ function artImg(id, cls){
    firstTry: what "first try" means for the skill, in a grown-up's words.
    shows:    how a practised item is written for a grown-up: a letter, a
              word, a word in capitals as it was built, or a sound (as /m/,
-             never as a letter). */
+             never as a letter).
+   practiced the grown-ups area's count of it, in plain words; `did` the
+             verb for one item's row (practiced, unless traced). */
 const SKILLS = {
-  'letter-recognition': { label: 'Letter recognition', short: 'Letters',     status: 'active', firstTry: 'found on the first try', shows: 'letter' },
-  'rhyming':            { label: 'Rhyming',            short: 'Rhymes',      status: 'active', firstTry: 'rhyme found on the first try', shows: 'word' },
-  'beginning-sounds':   { label: 'Beginning sounds',   short: 'Sounds',      status: 'active', firstTry: 'first sound heard on the first try', shows: 'sound' },
-  'syllables':          { label: 'Counting syllables', short: 'Beats',       status: 'active', firstTry: 'beats counted on the first try', shows: 'word' },
-  'cvc':                { label: 'Blending CVC words', short: 'Words',       status: 'active', firstTry: 'built on the first try', shows: 'built' },
-  'sight-words':        { label: 'Sight words',        short: 'Sight words', status: 'planned' },
-  'handwriting':        { label: 'Handwriting',        short: 'Writing',     status: 'planned' }
+  'letter-recognition': { label: 'Letter recognition', short: 'Letters',     status: 'active', firstTry: 'found on the first try', shows: 'letter', practiced: 'Letters practiced' },
+  'rhyming':            { label: 'Rhyming',            short: 'Rhymes',      status: 'active', firstTry: 'rhyme found on the first try', shows: 'word', practiced: 'Rhyming words practiced' },
+  'beginning-sounds':   { label: 'Beginning sounds',   short: 'Sounds',      status: 'active', firstTry: 'first sound heard on the first try', shows: 'sound', practiced: 'Beginning sounds practiced' },
+  'syllables':          { label: 'Counting syllables', short: 'Beats',       status: 'active', firstTry: 'beats counted on the first try', shows: 'word', practiced: 'Syllable words practiced' },
+  'cvc':                { label: 'Blending CVC words', short: 'Words',       status: 'active', firstTry: 'built on the first try', shows: 'built', practiced: 'Words built' },
+  'sight-words':        { label: 'Sight words',        short: 'Sight words', status: 'active', firstTry: 'found on the first try', shows: 'word', practiced: 'Sight words practiced' },
+  'handwriting':        { label: 'Handwriting',        short: 'Writing',     status: 'active', firstTry: 'traced without help', shows: 'letter', practiced: 'Letters traced', did: 'Traced' }
 };
 
 const LETTER_FAMILIES = ['straight', 'diagonal', 'curved', 'mixed'];
+const LOWER_FAMILIES = ['round', 'hump', 'short', 'tall', 'tail'];
 
-/* Uppercase letters. A letter has a NAME ("em") and a SOUND (/m/), and
-   they are different things to a child and different recordings: the
-   name is a letterName cue (letter.M) the device voice may say; the sound
-   is a phoneme cue (phoneme.m) it never may (see AUDIO).
+/* The letters, each once: its big (uppercase) and little (lowercase)
+   shapes are one letter, keyed by its capital. A letter has a NAME ("em")
+   and a SOUND (/m/), and they are different things to a child and
+   different recordings: the name is a letterName cue (letter.M) the device
+   voice may say; the sound is a phoneme cue (phoneme.m) it never may (see
+   AUDIO). How each shape is written — and so how it is shown — is its
+   letterform (LETTER_FORMS, below).
    speak      what the voice is given for the letter's name. Spelled out
               because a synthesiser reads a bare "A" as the word "uh", and
               "Find M" can be heard as "find 'em". To be checked on the
@@ -3098,37 +3267,239 @@ const LETTER_FAMILIES = ['straight', 'diagonal', 'curved', 'mixed'];
               the answer in family: find M among O and S.
    lookalikes letters a beginner commonly takes for this one. The hardest
               rounds include one: find M among N and W.
-   ambiguous  cannot be told from lowercase l or the digit 1 in a plain
-              sans-serif. Kept out of every round until a school font
-              arrives with lowercase work. */
+   lower      the same for its little letter: a family (round a c e o s,
+              humps m n r u, short i v w x z, tall b d f h k l t, tails
+              g j p q y) and its lookalikes, by capital (b takes d, p, q)
+   ambiguous  (optional) a shape that cannot be told from another in the
+              school print, kept out of every round. None is, now: the
+              printed capital I carries its bars, so it is never taken for
+              a little l. */
 const LETTERS = {
-  A: { speak: 'ay',         sound: 'a', family: 'diagonal', lookalikes: ['H', 'V'] },
-  B: { speak: 'bee',        sound: 'b', family: 'mixed',    lookalikes: ['P', 'R', 'D'] },
-  C: { speak: 'see',        sound: 'k', family: 'curved',   lookalikes: ['G', 'O'] },
-  D: { speak: 'dee',        sound: 'd', family: 'mixed',    lookalikes: ['O', 'B'] },
-  E: { speak: 'E',          sound: 'e', family: 'straight', lookalikes: ['F'] },
-  F: { speak: 'eff',        sound: 'f', family: 'straight', lookalikes: ['E', 'P'] },
-  G: { speak: 'gee',        sound: 'g', family: 'curved',   lookalikes: ['C', 'O'] },
-  H: { speak: 'aitch',      sound: 'h', family: 'straight', lookalikes: ['N', 'A'] },
-  I: { speak: 'eye',        sound: 'i', family: 'straight', lookalikes: ['L', 'T'], ambiguous: true },
-  J: { speak: 'jay',                    family: 'curved',   lookalikes: ['U', 'L'] },
-  K: { speak: 'kay',        sound: 'k', family: 'diagonal', lookalikes: ['X', 'R'] },
-  L: { speak: 'el',         sound: 'l', family: 'straight', lookalikes: ['I', 'J'] },
-  M: { speak: 'em',         sound: 'm', family: 'diagonal', lookalikes: ['N', 'W'] },
-  N: { speak: 'en',         sound: 'n', family: 'diagonal', lookalikes: ['M', 'H', 'Z'] },
-  O: { speak: 'oh',         sound: 'o', family: 'curved',   lookalikes: ['Q', 'C', 'D'] },
-  P: { speak: 'pee',        sound: 'p', family: 'mixed',    lookalikes: ['R', 'B', 'F'] },
-  Q: { speak: 'cue',                    family: 'curved',   lookalikes: ['O', 'G'] },
-  R: { speak: 'are',        sound: 'r', family: 'mixed',    lookalikes: ['P', 'B', 'K'] },
-  S: { speak: 'ess',        sound: 's', family: 'curved',   lookalikes: ['Z', 'C'] },
-  T: { speak: 'tee',        sound: 't', family: 'straight', lookalikes: ['I', 'Y'] },
-  U: { speak: 'you',        sound: 'u', family: 'curved',   lookalikes: ['V', 'J'] },
-  V: { speak: 'vee',        sound: 'v', family: 'diagonal', lookalikes: ['U', 'Y', 'W'] },
-  W: { speak: 'double you',             family: 'diagonal', lookalikes: ['M', 'V'] },
-  X: { speak: 'ex',                     family: 'diagonal', lookalikes: ['K', 'Y'] },
-  Y: { speak: 'why',                    family: 'diagonal', lookalikes: ['V', 'X', 'T'] },
-  Z: { speak: 'zee',        sound: 'z', family: 'diagonal', lookalikes: ['N', 'S'] }
+  A: { speak: 'ay',         sound: 'a', family: 'diagonal', lookalikes: ['H', 'V'], lower: { family: 'round', lookalikes: ['O', 'D', 'E'] } },
+  B: { speak: 'bee',        sound: 'b', family: 'mixed',    lookalikes: ['P', 'R', 'D'], lower: { family: 'tall', lookalikes: ['D', 'P', 'Q', 'H'] } },
+  C: { speak: 'see',        sound: 'k', family: 'curved',   lookalikes: ['G', 'O'], lower: { family: 'round', lookalikes: ['E', 'O'] } },
+  D: { speak: 'dee',        sound: 'd', family: 'mixed',    lookalikes: ['O', 'B'], lower: { family: 'tall', lookalikes: ['B', 'Q', 'P', 'A'] } },
+  E: { speak: 'E',          sound: 'e', family: 'straight', lookalikes: ['F'], lower: { family: 'round', lookalikes: ['C', 'O'] } },
+  F: { speak: 'eff',        sound: 'f', family: 'straight', lookalikes: ['E', 'P'], lower: { family: 'tall', lookalikes: ['T', 'L'] } },
+  G: { speak: 'gee',        sound: 'g', family: 'curved',   lookalikes: ['C', 'O'], lower: { family: 'tail', lookalikes: ['Q', 'Y', 'P'] } },
+  H: { speak: 'aitch',      sound: 'h', family: 'straight', lookalikes: ['N', 'A'], lower: { family: 'tall', lookalikes: ['N', 'B', 'K'] } },
+  I: { speak: 'eye',        sound: 'i', family: 'straight', lookalikes: ['L', 'T'], lower: { family: 'short', lookalikes: ['L', 'J'] } },
+  J: { speak: 'jay',                    family: 'curved',   lookalikes: ['U', 'L'], lower: { family: 'tail', lookalikes: ['I', 'Y'] } },
+  K: { speak: 'kay',        sound: 'k', family: 'diagonal', lookalikes: ['X', 'R'], lower: { family: 'tall', lookalikes: ['H', 'X'] } },
+  L: { speak: 'el',         sound: 'l', family: 'straight', lookalikes: ['I', 'J'], lower: { family: 'tall', lookalikes: ['I', 'T'] } },
+  M: { speak: 'em',         sound: 'm', family: 'diagonal', lookalikes: ['N', 'W'], lower: { family: 'hump', lookalikes: ['N', 'W'] } },
+  N: { speak: 'en',         sound: 'n', family: 'diagonal', lookalikes: ['M', 'H', 'Z'], lower: { family: 'hump', lookalikes: ['M', 'H', 'U', 'R'] } },
+  O: { speak: 'oh',         sound: 'o', family: 'curved',   lookalikes: ['Q', 'C', 'D'], lower: { family: 'round', lookalikes: ['A', 'C', 'E'] } },
+  P: { speak: 'pee',        sound: 'p', family: 'mixed',    lookalikes: ['R', 'B', 'F'], lower: { family: 'tail', lookalikes: ['Q', 'B', 'D'] } },
+  Q: { speak: 'cue',                    family: 'curved',   lookalikes: ['O', 'G'], lower: { family: 'tail', lookalikes: ['P', 'G', 'D', 'B'] } },
+  R: { speak: 'are',        sound: 'r', family: 'mixed',    lookalikes: ['P', 'B', 'K'], lower: { family: 'hump', lookalikes: ['N', 'V'] } },
+  S: { speak: 'ess',        sound: 's', family: 'curved',   lookalikes: ['Z', 'C'], lower: { family: 'round', lookalikes: ['Z', 'C'] } },
+  T: { speak: 'tee',        sound: 't', family: 'straight', lookalikes: ['I', 'Y'], lower: { family: 'tall', lookalikes: ['F', 'L'] } },
+  U: { speak: 'you',        sound: 'u', family: 'curved',   lookalikes: ['V', 'J'], lower: { family: 'hump', lookalikes: ['N', 'V'] } },
+  V: { speak: 'vee',        sound: 'v', family: 'diagonal', lookalikes: ['U', 'Y', 'W'], lower: { family: 'short', lookalikes: ['U', 'W', 'Y'] } },
+  W: { speak: 'double you',             family: 'diagonal', lookalikes: ['M', 'V'], lower: { family: 'short', lookalikes: ['V', 'M'] } },
+  X: { speak: 'ex',                     family: 'diagonal', lookalikes: ['K', 'Y'], lower: { family: 'short', lookalikes: ['K', 'Y'] } },
+  Y: { speak: 'why',                    family: 'diagonal', lookalikes: ['V', 'X', 'T'], lower: { family: 'tail', lookalikes: ['V', 'G', 'J'] } },
+  Z: { speak: 'zee',        sound: 'z', family: 'diagonal', lookalikes: ['N', 'S'], lower: { family: 'short', lookalikes: ['S', 'X'] } }
 };
+
+/* ---------------------------------------------------------
+   LETTERFORMS — how every letter is written, and so how it is shown
+   ---------------------------------------------------------
+   One set of strokes is both the letter a child reads and the letter a
+   child traces, so the two can never disagree. It is school print in the
+   ball-and-stick manuscript model taught in many US kindergartens:
+   straight sticks and round circles, a single-storey "a" and "g", a
+   capital I with its bars (never mistaken for a little l), and every
+   letter starting at the top. The shapes are drawn here, for this app,
+   not copied from any publisher; stroke order and direction follow the
+   model's common conventions and are awaiting an educator's review
+   (docs/CONTENT-SOURCES.md, docs/CONTENT-REVIEW.md).
+   Units are the writing lines: the top line y = 0, the dashed midline
+   0.5, the baseline 1, the tail line 1.45; x runs right from the
+   letter's left side. A letter is its strokes in the order they are
+   written; a stroke is drawn without lifting, as segments that follow on
+   from each other:
+     ['L', x1, y1, x2, y2]            a straight line, from 1 to 2
+     ['A', cx, cy, rx, ry, a0, a1]    part of an ellipse, from angle a0 to
+                                      a1 in degrees (0 right, 90 down); a1
+                                      below a0 goes counterclockwise
+     ['D', x, y]                      a dot: tapped, not traced
+   Circles start near one o'clock and go counterclockwise ("start like
+   c"), sticks are pulled down, bars slide right. */
+const WRITING_LINES = { top: 0, mid: 0.5, base: 1, tail: 1.45 };
+const LETTER_FORMS = {
+  /* big letters */
+  A: [[['L', 0.42, 0, 0, 1]], [['L', 0.42, 0, 0.84, 1]], [['L', 0.17, 0.64, 0.67, 0.64]]],
+  B: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.34, 0], ['A', 0.34, 0.24, 0.24, 0.24, -90, 90], ['L', 0.34, 0.48, 0, 0.48]],
+      [['L', 0, 0.48, 0.38, 0.48], ['A', 0.38, 0.74, 0.26, 0.26, -90, 90], ['L', 0.38, 1, 0, 1]]],
+  C: [[['A', 0.46, 0.5, 0.46, 0.5, -45, -315]]],
+  D: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.3, 0], ['A', 0.3, 0.5, 0.5, 0.5, -90, 90], ['L', 0.3, 1, 0, 1]]],
+  E: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.6, 0]], [['L', 0, 0.5, 0.5, 0.5]], [['L', 0, 1, 0.6, 1]]],
+  F: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.6, 0]], [['L', 0, 0.5, 0.5, 0.5]]],
+  G: [[['A', 0.46, 0.5, 0.46, 0.5, -45, -360], ['L', 0.92, 0.5, 0.56, 0.5]]],
+  H: [[['L', 0, 0, 0, 1]], [['L', 0.7, 0, 0.7, 1]], [['L', 0, 0.5, 0.7, 0.5]]],
+  I: [[['L', 0.25, 0, 0.25, 1]], [['L', 0, 0, 0.5, 0]], [['L', 0, 1, 0.5, 1]]],
+  J: [[['L', 0.5, 0, 0.5, 0.72], ['A', 0.25, 0.72, 0.25, 0.28, 0, 180]]],
+  K: [[['L', 0, 0, 0, 1]], [['L', 0.62, 0, 0.04, 0.55], ['L', 0.04, 0.55, 0.64, 1]]],
+  L: [[['L', 0, 0, 0, 1], ['L', 0, 1, 0.56, 1]]],
+  M: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.42, 0.72], ['L', 0.42, 0.72, 0.84, 0], ['L', 0.84, 0, 0.84, 1]]],
+  N: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.72, 1], ['L', 0.72, 1, 0.72, 0]]],
+  O: [[['A', 0.47, 0.5, 0.47, 0.5, -60, -420]]],
+  P: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.34, 0], ['A', 0.34, 0.26, 0.26, 0.26, -90, 90], ['L', 0.34, 0.52, 0, 0.52]]],
+  Q: [[['A', 0.47, 0.5, 0.47, 0.5, -60, -420]], [['L', 0.56, 0.7, 0.92, 1.04]]],
+  R: [[['L', 0, 0, 0, 1]], [['L', 0, 0, 0.34, 0], ['A', 0.34, 0.26, 0.26, 0.26, -90, 90], ['L', 0.34, 0.52, 0, 0.52], ['L', 0, 0.52, 0.62, 1]]],
+  S: [[['A', 0.34, 0.26, 0.32, 0.26, -20, -270], ['A', 0.34, 0.76, 0.34, 0.24, -90, 160]]],
+  T: [[['L', 0.34, 0, 0.34, 1]], [['L', 0, 0, 0.68, 0]]],
+  U: [[['L', 0, 0, 0, 0.66], ['A', 0.34, 0.66, 0.34, 0.34, 180, 0], ['L', 0.68, 0.66, 0.68, 0]]],
+  V: [[['L', 0, 0, 0.36, 1], ['L', 0.36, 1, 0.72, 0]]],
+  W: [[['L', 0, 0, 0.24, 1], ['L', 0.24, 1, 0.48, 0], ['L', 0.48, 0, 0.72, 1], ['L', 0.72, 1, 0.96, 0]]],
+  X: [[['L', 0, 0, 0.68, 1]], [['L', 0.68, 0, 0, 1]]],
+  Y: [[['L', 0, 0, 0.35, 0.52]], [['L', 0.7, 0, 0.35, 0.52], ['L', 0.35, 0.52, 0.35, 1]]],
+  Z: [[['L', 0, 0, 0.68, 0], ['L', 0.68, 0, 0, 1], ['L', 0, 1, 0.68, 1]]],
+  /* little letters */
+  a: [[['A', 0.25, 0.75, 0.25, 0.25, -40, -400]], [['L', 0.5, 0.5, 0.5, 1]]],
+  b: [[['L', 0, 0, 0, 1]], [['A', 0.25, 0.75, 0.25, 0.25, 180, 540]]],
+  c: [[['A', 0.25, 0.75, 0.25, 0.25, -45, -315]]],
+  d: [[['A', 0.25, 0.75, 0.25, 0.25, -40, -400]], [['L', 0.5, 0, 0.5, 1]]],
+  e: [[['L', 0, 0.75, 0.5, 0.75], ['A', 0.25, 0.75, 0.25, 0.25, 0, -315]]],
+  f: [[['A', 0.36, 0.18, 0.2, 0.18, -20, -180], ['L', 0.16, 0.18, 0.16, 1]], [['L', 0, 0.5, 0.36, 0.5]]],
+  g: [[['A', 0.25, 0.75, 0.25, 0.25, -40, -400]], [['L', 0.5, 0.5, 0.5, 1.22], ['A', 0.28, 1.22, 0.22, 0.2, 0, 150]]],
+  h: [[['L', 0, 0, 0, 1]], [['A', 0.25, 0.75, 0.25, 0.25, 180, 360], ['L', 0.5, 0.75, 0.5, 1]]],
+  i: [[['L', 0, 0.5, 0, 1]], [['D', 0, 0.27]]],
+  j: [[['L', 0.2, 0.5, 0.2, 1.22], ['A', 0, 1.22, 0.2, 0.2, 0, 150]], [['D', 0.2, 0.27]]],
+  k: [[['L', 0, 0, 0, 1]], [['L', 0.42, 0.5, 0.03, 0.78], ['L', 0.03, 0.78, 0.44, 1]]],
+  l: [[['L', 0, 0, 0, 1]]],
+  m: [[['L', 0, 0.5, 0, 1]], [['A', 0.2, 0.7, 0.2, 0.2, 180, 360], ['L', 0.4, 0.7, 0.4, 1]],
+      [['A', 0.6, 0.7, 0.2, 0.2, 180, 360], ['L', 0.8, 0.7, 0.8, 1]]],
+  n: [[['L', 0, 0.5, 0, 1]], [['A', 0.25, 0.75, 0.25, 0.25, 180, 360], ['L', 0.5, 0.75, 0.5, 1]]],
+  o: [[['A', 0.25, 0.75, 0.25, 0.25, -40, -400]]],
+  p: [[['L', 0, 0.5, 0, 1.45]], [['A', 0.25, 0.75, 0.25, 0.25, 180, 540]]],
+  q: [[['A', 0.25, 0.75, 0.25, 0.25, -40, -400]], [['L', 0.5, 0.5, 0.5, 1.45]]],
+  r: [[['L', 0, 0.5, 0, 1]], [['A', 0.24, 0.74, 0.24, 0.24, 180, 300]]],
+  s: [[['A', 0.2, 0.63, 0.2, 0.13, -20, -270], ['A', 0.2, 0.88, 0.22, 0.12, -90, 160]]],
+  t: [[['L', 0.18, 0.1, 0.18, 1]], [['L', 0, 0.5, 0.36, 0.5]]],
+  u: [[['L', 0, 0.5, 0, 0.75], ['A', 0.25, 0.75, 0.25, 0.25, 180, 0], ['L', 0.5, 0.75, 0.5, 0.5]], [['L', 0.5, 0.5, 0.5, 1]]],
+  v: [[['L', 0, 0.5, 0.25, 1], ['L', 0.25, 1, 0.5, 0.5]]],
+  w: [[['L', 0, 0.5, 0.18, 1], ['L', 0.18, 1, 0.36, 0.5], ['L', 0.36, 0.5, 0.54, 1], ['L', 0.54, 1, 0.72, 0.5]]],
+  x: [[['L', 0, 0.5, 0.46, 1]], [['L', 0.46, 0.5, 0, 1]]],
+  y: [[['L', 0, 0.5, 0.25, 1]], [['L', 0.5, 0.5, 0.025, 1.45]]],
+  z: [[['L', 0, 0.5, 0.46, 0.5], ['L', 0.46, 0.5, 0, 1], ['L', 0, 1, 0.46, 1]]]
+};
+/* The letterform of a letter in one case: LETTER_FORMS.M or .m. */
+function formOf(L, form){ return LETTER_FORMS[form === 'lower' ? String(L).toLowerCase() : String(L).toUpperCase()] || null; }
+
+/* ---- geometry: the same numbers draw a letter and check a trace ---- */
+const n3 = v => Math.round(v * 1000) / 1000;
+/* The points along one segment, no more than `step` apart, ends exact. */
+function segmentPoints(sg, step){
+  const out = [];
+  if(sg[0] === 'L'){
+    const n = Math.max(1, Math.ceil(Math.hypot(sg[3] - sg[1], sg[4] - sg[2]) / step));
+    for(let k = 0; k <= n; k++) out.push([sg[1] + (sg[3] - sg[1]) * k / n, sg[2] + (sg[4] - sg[2]) * k / n]);
+  } else if(sg[0] === 'A'){
+    const cx = sg[1], cy = sg[2], rx = sg[3], ry = sg[4], a0 = sg[5], a1 = sg[6];
+    const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) * Math.PI / 180 * Math.max(rx, ry) / step));
+    for(let k = 0; k <= n; k++){
+      const a = (a0 + (a1 - a0) * k / n) * Math.PI / 180;
+      out.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]);
+    }
+  } else if(sg[0] === 'D') out.push([sg[1], sg[2]]);
+  return out;
+}
+/* A stroke as one run of points, in the order it is written. */
+function strokePoints(stroke, step){
+  const out = [];
+  stroke.forEach((sg, i) => segmentPoints(sg, step).forEach((p, k) => { if(!(i > 0 && k === 0)) out.push(p); }));
+  return out;
+}
+function isDot(stroke){ return stroke.length === 1 && stroke[0][0] === 'D'; }
+/* What is wrong with a letterform, if anything: a malformed shape must be
+   caught here, never reach a child as a broken trace. */
+function formProblems(strokes){
+  if(!Array.isArray(strokes) || !strokes.length || strokes.length > 6) return 'it needs 1 to 6 strokes';
+  for(let i = 0; i < strokes.length; i++){
+    const st = strokes[i];
+    if(!Array.isArray(st) || !st.length || st.length > 8) return 'stroke ' + (i + 1) + ' needs 1 to 8 segments';
+    for(let k = 0; k < st.length; k++){
+      const sg = st[k], len = { L: 5, A: 7, D: 3 }[sg && sg[0]];
+      if(!len || sg.length !== len || !sg.slice(1).every(v => typeof v === 'number' && isFinite(v))) return 'stroke ' + (i + 1) + ' has a segment that is not a line, an arc or a dot';
+      if(sg[0] === 'D' && st.length !== 1) return 'a dot is a stroke of its own';
+      if(sg[0] === 'A' && !(sg[3] > 0 && sg[4] > 0 && sg[5] !== sg[6] && Math.abs(sg[6] - sg[5]) <= 360)) return 'stroke ' + (i + 1) + ' has an impossible arc';
+      if(k > 0){
+        const a = segmentPoints(st[k - 1], 1), b = segmentPoints(sg, 1)[0];
+        if(Math.hypot(a[a.length - 1][0] - b[0], a[a.length - 1][1] - b[1]) > 0.01) return 'stroke ' + (i + 1) + ' lifts between its segments';
+      }
+    }
+    if(!strokePoints(st, 0.05).every(p => p[0] >= -0.3 && p[0] <= 1.3 && p[1] >= -0.05 && p[1] <= 1.5)) return 'stroke ' + (i + 1) + ' leaves the writing lines';
+  }
+  return null;
+}
+/* The ink's extent: the shape plus half the pen's width. */
+const PRINT = { ink: 0.11, gap: 0.17, dot: 0.08 };
+function inkBox(strokes){
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  strokes.forEach(st => strokePoints(st, 0.05).forEach(p => {
+    x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]);
+  }));
+  const h = PRINT.ink / 2;
+  return { x0: x0 - h, y0: y0 - h, x1: x1 + h, y1: y1 + h };
+}
+/* One stroke as an SVG path: lines, and arcs in pieces a path can draw. */
+function strokePathD(stroke){
+  let d = '';
+  stroke.forEach((sg, i) => {
+    if(sg[0] === 'D') return;
+    if(i === 0){ const p = segmentPoints(sg, 1)[0]; d += 'M' + n3(p[0]) + ' ' + n3(p[1]); }
+    if(sg[0] === 'L') d += 'L' + n3(sg[3]) + ' ' + n3(sg[4]);
+    else {
+      const pieces = Math.ceil(Math.abs(sg[6] - sg[5]) / 120 - 1e-9);
+      for(let k = 1; k <= pieces; k++){
+        const a = (sg[5] + (sg[6] - sg[5]) * k / pieces) * Math.PI / 180;
+        d += 'A' + n3(sg[3]) + ' ' + n3(sg[4]) + ' 0 0 ' + (sg[6] > sg[5] ? 1 : 0) + ' ' + n3(sg[1] + sg[3] * Math.cos(a)) + ' ' + n3(sg[2] + sg[4] * Math.sin(a));
+      }
+    }
+  });
+  return d;
+}
+/* A letter's strokes as SVG, in currentColor: paths for strokes, a round
+   spot for a dot. */
+function formSvg(strokes){
+  return strokes.map(st => isDot(st)
+    ? '<circle cx="' + n3(st[0][1]) + '" cy="' + n3(st[0][2]) + '" r="' + PRINT.dot + '" fill="currentColor" stroke="none"/>'
+    : '<path d="' + strokePathD(st) + '"/>').join('');
+}
+/* A word — or one letter — in school print, laid out left to right: each
+   letter's ink starts PRINT.gap after the last one's ends. */
+function printLayout(text){
+  let x = 0;
+  const parts = [];
+  String(text).split('').forEach(ch => {
+    const f = LETTER_FORMS[ch];
+    if(!f) return;
+    const b = inkBox(f);
+    if(parts.length) x += PRINT.gap;
+    parts.push({ ch: ch, dx: x - b.x0, box: b });
+    x += b.x1 - b.x0;
+  });
+  const ys = parts.map(p => p.box);
+  return { parts: parts, width: x, y0: Math.min.apply(null, ys.map(b => b.y0)), y1: Math.max.apply(null, ys.map(b => b.y1)) };
+}
+/* The frame a round shares: the widest thing, and the band from the
+   highest ink to the lowest, so every choice is drawn at one size on one
+   baseline and a little letter looks little beside a big one. */
+function printFrame(texts){
+  const ls = texts.map(printLayout);
+  return { w: Math.max.apply(null, ls.map(l => l.width)), y0: Math.min.apply(null, ls.map(l => l.y0)), y1: Math.max.apply(null, ls.map(l => l.y1)) };
+}
+function printSvg(text, frame){
+  const lay = printLayout(text);
+  const fr = frame || { w: lay.width, y0: lay.y0, y1: lay.y1 };
+  const pad = 0.06, w = fr.w + 2 * pad, x0 = lay.width / 2 - w / 2;
+  return '<svg class="print" viewBox="' + [x0, fr.y0 - pad, w, fr.y1 - fr.y0 + 2 * pad].map(n3).join(' ') + '" aria-hidden="true" focusable="false">' +
+    '<g fill="none" stroke="currentColor" stroke-width="' + PRINT.ink + '" stroke-linecap="round" stroke-linejoin="round">' +
+    lay.parts.map(p => '<g transform="translate(' + n3(p.dx) + ' 0)">' + formSvg(LETTER_FORMS[p.ch]) + '</g>').join('') + '</g></svg>';
+}
 
 /* The sounds of spoken US English the games use, by id.
      ipa        the sound, for a reviewer
@@ -3168,7 +3539,11 @@ const PHONEMES = {
   oo: { ipa: 'u',  kind: 'vowel',      example: 'moon',   spelling: true },
   oh: { ipa: 'oʊ', kind: 'vowel',      example: 'tomato', spelling: true },
   ar: { ipa: 'ɑɹ', kind: 'vowel',      example: 'star',   spelling: true },
-  uh: { ipa: 'ə',  kind: 'vowel',      example: 'banana', spelling: true }
+  uh: { ipa: 'ə',  kind: 'vowel',      example: 'banana', spelling: true },
+  dh: { ipa: 'ð',  kind: 'continuous', example: 'the',    spelling: true },
+  w:  { ipa: 'w',  kind: 'continuous', example: 'we',     spelling: true },
+  y:  { ipa: 'j',  kind: 'continuous', example: 'you',    spelling: true },
+  ie: { ipa: 'aɪ', kind: 'vowel',      example: 'my',     spelling: true }
 };
 /* A sound a game may ask a child to hear on its own. */
 function teachableSound(p){ return !!PHONEMES[p] && !PHONEMES[p].spelling; }
@@ -3177,6 +3552,13 @@ function soundLetter(p){
   const ks = Object.keys(LETTERS).filter(L => LETTERS[L].sound === p && L !== 'K');
   return ks[0] || null;
 }
+
+/* The published word lists a word may come from. A sight word names its
+   list, so no word can claim a source nobody recorded
+   (docs/CONTENT-SOURCES.md). The app never claims to be aligned to one. */
+const WORD_LISTS = {
+  'dolch-pre-primer': { name: 'Dolch pre-primer', by: 'Edward W. Dolch', year: 1936, size: 40 }
+};
 
 /* THE WORD KNOWLEDGE BASE: every word any game uses, once. A game never
    keeps its own copy of a word: Rhyme Radar reads its rime, Syllable
@@ -3198,6 +3580,11 @@ function soundLetter(p){
              with a stop (cat, bus)
    reviewed  the date an educator signed it off; absent means awaiting
              review, as every word is today
+   sight     a sight word: the list it comes from (WORD_LISTS), and
+             whether a child could sound it out with the letter sounds
+             taught so far (and, it, in, can) or must know it by sight
+             (the, to, you). A sight word has no picture: it is read, not
+             named, and no picture game ever offers it.
    Its spelling is its key, in capitals. A word is CVC (isCvc()) when it
    is three letters, each spelling one sound: consonant, short vowel,
    consonant. Development content: every word, rhyme, count and sound is
@@ -3236,8 +3623,29 @@ const WORDS = {
   fish:     { speak: 'fish',     picture: 'picture.fish',     rime: 'ish',    onset: 'f', beats: ['fish'],              phonemes: ['f', 'i', 'sh'] },
   pumpkin:  { speak: 'pumpkin',  picture: 'picture.pumpkin',  rime: 'umpkin', onset: 'p', beats: ['pump', 'kin'],       phonemes: ['p', 'u', 'm', 'p', 'k', 'i', 'n'] },
   umbrella: { speak: 'umbrella', picture: 'picture.umbrella', rime: 'ella',   onset: 'u', beats: ['um', 'brel', 'la'],  phonemes: ['u', 'm', 'b', 'r', 'e', 'l', 'uh'] },
-  cupcake:  { speak: 'cupcake',  picture: 'picture.cupcake',  rime: 'ake',    onset: 'k', beats: ['cup', 'cake'],       phonemes: ['k', 'u', 'p', 'k', 'ay', 'k'] }
+  cupcake:  { speak: 'cupcake',  picture: 'picture.cupcake',  rime: 'ake',    onset: 'k', beats: ['cup', 'cake'],       phonemes: ['k', 'u', 'p', 'k', 'ay', 'k'] },
+  /* sight words: a development set of twelve from the Dolch pre-primer
+     list, awaiting review. Single-letter words (a, I) wait: they look like
+     the letters a child is finding on the Moon. */
+  the:      { speak: 'the', rime: 'uh',  onset: 'dh', beats: ['the'], phonemes: ['dh', 'uh'],     sight: { list: 'dolch-pre-primer', decodable: false } },
+  and:      { speak: 'and', rime: 'and', onset: 'a',  beats: ['and'], phonemes: ['a', 'n', 'd'],  sight: { list: 'dolch-pre-primer', decodable: true } },
+  see:      { speak: 'see', rime: 'ee',  onset: 's',  beats: ['see'], phonemes: ['s', 'ee'],      sight: { list: 'dolch-pre-primer', decodable: false } },
+  you:      { speak: 'you', rime: 'oo',  onset: 'y',  beats: ['you'], phonemes: ['y', 'oo'],      sight: { list: 'dolch-pre-primer', decodable: false } },
+  to:       { speak: 'to',  rime: 'oo',  onset: 't',  beats: ['to'],  phonemes: ['t', 'oo'],      sight: { list: 'dolch-pre-primer', decodable: false } },
+  go:       { speak: 'go',  rime: 'oh',  onset: 'g',  beats: ['go'],  phonemes: ['g', 'oh'],      sight: { list: 'dolch-pre-primer', decodable: false } },
+  is:       { speak: 'is',  rime: 'iz',  onset: 'i',  beats: ['is'],  phonemes: ['i', 'z'],       sight: { list: 'dolch-pre-primer', decodable: false } },
+  it:       { speak: 'it',  rime: 'it',  onset: 'i',  beats: ['it'],  phonemes: ['i', 't'],       sight: { list: 'dolch-pre-primer', decodable: true } },
+  in:       { speak: 'in',  rime: 'in',  onset: 'i',  beats: ['in'],  phonemes: ['i', 'n'],       sight: { list: 'dolch-pre-primer', decodable: true } },
+  can:      { speak: 'can', rime: 'an',  onset: 'k',  beats: ['can'], phonemes: ['k', 'a', 'n'],  sight: { list: 'dolch-pre-primer', decodable: true } },
+  we:       { speak: 'we',  rime: 'ee',  onset: 'w',  beats: ['we'],  phonemes: ['w', 'ee'],      sight: { list: 'dolch-pre-primer', decodable: false } },
+  my:       { speak: 'my',  rime: 'ie',  onset: 'm',  beats: ['my'],  phonemes: ['m', 'ie'],      sight: { list: 'dolch-pre-primer', decodable: false } }
 };
+/* A word a picture game may show: it has a picture. Sight words have
+   none, so no picture game can ever offer "the". */
+function hasPicture(w){ return !!(WORDS[w] && WORDS[w].picture); }
+function sightWords(){ return Object.keys(WORDS).filter(w => WORDS[w].sight); }
+/* Every letter of a word can be printed. */
+function printable(w){ return String(w).split('').every(ch => !!LETTER_FORMS[ch]); }
 /* Three letters, each spelling one sound: consonant, short vowel,
    consonant — "map", never "fish" (sh) or "rock" (ck). */
 function isCvc(w){
@@ -3293,13 +3701,15 @@ const DESTINATIONS = {
     id: 'moon', kind: 'destination', name: 'the Moon', label: 'Moon',
     asset: 'planet.moon', restoredAsset: 'planet.moonLit', horizon: 'horizon.moon', skyLamp: true,
     primarySkill: 'letter-recognition', reviewSkills: [],
-    missions: ['moon-1', 'moon-2', 'moon-3'],
+    missions: ['moon-1', 'writer-1', 'moon-2', 'moon-3', 'writer-2', 'moon-4', 'moon-5', 'writer-3'],
     restore: ['moon-1'],
     unlock: null,                                  // the first stop is always open
     sky: { x: 76, y: 31, size: 23 },
     markers: {
-      beacon: { name: 'the beacon', asset: 'prop.beacon', litAsset: 'prop.beaconLit', lamp: true, missions: ['moon-1', 'moon-2', 'moon-3'],
-                at: [0.44, 0.47], height: 0.74, foot: [0.5, 0.885], aspect: '512 / 896', call: 'marker.beacon' }
+      beacon: { name: 'the beacon', asset: 'prop.beacon', litAsset: 'prop.beaconLit', lamp: true, missions: ['moon-1', 'moon-2', 'moon-3', 'moon-4', 'moon-5'],
+                at: [0.44, 0.47], height: 0.74, foot: [0.5, 0.885], aspect: '512 / 896', call: 'marker.beacon' },
+      slate:  { name: 'the writing slate', asset: 'prop.slate', litAsset: 'prop.slateOn', missions: ['writer-1', 'writer-2', 'writer-3'],
+                at: [0.26, 0.42], height: 0.45, foot: [0.4583, 0.8484], aspect: '400 / 480', call: 'marker.slate' }
     },
     story: {
       name:         'place.moon',
@@ -3379,14 +3789,43 @@ const DESTINATIONS = {
     turntable: [0.38, 0.705],
     window: { earth: [0.27, 0.43, 0.2] }
   },
+  /* The biggest world, banded warm clay clouds: sight words. It comes
+     after Mars because it is the next adventure outward. Its sky signs
+     have lost their words. Its pictures are fetched once its route opens. */
+  jupiter: {
+    id: 'jupiter', kind: 'destination', name: 'Jupiter', label: 'Jupiter',
+    asset: 'planet.jupiter', restoredAsset: 'planet.jupiterLit', horizon: 'horizon.jupiter',
+    primarySkill: 'sight-words', reviewSkills: [],
+    missions: ['jupiter-1', 'jupiter-2', 'jupiter-3', 'jupiter-4'],
+    restore: ['jupiter-1', 'jupiter-2'],
+    unlock: { after: 'mars' },                     // the next route opens when Mars is full of sounds again
+    newIn: '0.6.0',                                // a child who restored Mars before this saw no reveal: Earth shows it once
+    sky: { x: 46, y: 44, size: 14 },                 // central, over the horizon: clear of Pip's words, its label above the clouds, phones too
+    markers: {
+      skysign: { name: 'the sky sign', asset: 'prop.skysign', litAsset: 'prop.skysignOn', missions: ['jupiter-1', 'jupiter-3'],
+                 at: [0.37, 0.5], height: 0.5, foot: [0.4553, 0.8628], aspect: '1', call: 'marker.skysign' },
+      orbit:   { name: 'the orbit ring', asset: 'prop.orbit', litAsset: 'prop.orbitOn', missions: ['jupiter-2', 'jupiter-4'],
+                 at: [0.58, 0.55], height: 0.44, foot: [0.4666, 0.8448], aspect: '480 / 400', call: 'marker.orbit' }
+    },
+    story: {
+      name:         'place.jupiter',
+      reveal:       'story.jupiter.reveal',
+      next:         'story.jupiter.next',
+      firstArrival: 'story.jupiter.firstArrive',
+      arrival:      'story.jupiter.arrive',
+      step:         'story.jupiter.step',
+      restored:     'story.jupiter.restored',
+      shining:      'story.jupiter.shining',
+      home:         'guide.jupiterShining'
+    }
+  },
   /* The rest of the route: a plan, not content (docs/LEARNING-DESIGN.md). */
-  venus:   { id: 'venus',   kind: 'planned', primarySkill: 'letter-recognition' },
-  jupiter: { id: 'jupiter', kind: 'planned', primarySkill: 'cvc' },
+  venus:   { id: 'venus',   kind: 'planned', primarySkill: 'cvc' },
   saturn:  { id: 'saturn',  kind: 'planned', primarySkill: 'cvc' },
   uranus:  { id: 'uranus',  kind: 'planned', primarySkill: 'sight-words' },
   neptune: { id: 'neptune', kind: 'planned', primarySkill: 'handwriting' }
 };
-const JOURNEY_ORDER = ['moon', 'mercury', 'mars'];
+const JOURNEY_ORDER = ['moon', 'mercury', 'mars', 'jupiter'];
 
 /* A mission is an ordered set of activities plus the difficulty band the
    engine may adapt within. Targets are authored, so the sequence can be
@@ -3485,6 +3924,98 @@ const MISSIONS = {
       { type: 'find-letter', target: 'S', form: 'upper', review: ['S', 'M', 'O', 'T', 'A', 'P', 'F', 'N'] }
     ]
   },
+  /* Little letters. The game is known, but little letters are new, so
+     it is explained once and its first round is guided. First the ones
+     shaped like their big letters (o, s, c), then ones that are not
+     (m, a, t). */
+  'moon-4': {
+    id: 'moon-4', destinationId: 'moon', skillId: 'letter-recognition',
+    title: 'Letter Explorer', task: 'Find the little letter',
+    howTo: 'mission.howTo.little',
+    choices: 3,
+    difficulty: { min: 1, max: 3 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'find-letter', target: 'O', form: 'lower', guided: true },
+      { type: 'find-letter', target: 'S', form: 'lower' },
+      { type: 'find-letter', target: 'C', form: 'lower' },
+      { type: 'find-letter', target: 'M', form: 'lower' },
+      { type: 'find-letter', target: 'A', form: 'lower' },
+      { type: 'find-letter', target: 'T', form: 'lower' }
+    ]
+  },
+  /* Big and little partners: one is on the screen, find the other. Big to
+     little first, then little to big; the last round brings back the
+     little letter the child most needed help with (none of them asked
+     here, so any can come back). */
+  'moon-5': {
+    id: 'moon-5', destinationId: 'moon', skillId: 'letter-recognition',
+    title: 'Letter Explorer', task: 'Match big and little',
+    howTo: 'mission.howTo.pair',
+    choices: 3,
+    difficulty: { min: 1, max: 3 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'find-letter', target: 'N', form: 'lower', from: 'upper', guided: true },
+      { type: 'find-letter', target: 'P', form: 'lower', from: 'upper' },
+      { type: 'find-letter', target: 'F', form: 'lower', from: 'upper' },
+      { type: 'find-letter', target: 'H', form: 'upper', from: 'lower' },
+      { type: 'find-letter', target: 'B', form: 'upper', from: 'lower' },
+      { type: 'find-letter', target: 'M', form: 'lower', review: ['M', 'A', 'T', 'S', 'O', 'C'] }
+    ]
+  },
+  /* Moon Writer: watch a letter being made, trace it with its whole path
+     shown, then again with only its start. Straight lines first (L, T,
+     H), then round (O, C), then little letters that start like c (c, a,
+     d). The second ends with a REVIEW: the letter traced so far that
+     needed the most help comes back, with light help. */
+  'writer-1': {
+    id: 'writer-1', destinationId: 'moon', skillId: 'handwriting',
+    title: 'Moon Writer', task: 'Trace the letter',
+    howTo: 'mission.howTo.write',
+    choices: 3,
+    difficulty: { min: 1, max: 1 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'letter-trace', target: 'L', form: 'upper', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'L', form: 'upper', help: 'light' },
+      { type: 'letter-trace', target: 'T', form: 'upper', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'T', form: 'upper', help: 'light' },
+      { type: 'letter-trace', target: 'H', form: 'upper', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'H', form: 'upper', help: 'light' }
+    ]
+  },
+  'writer-2': {
+    id: 'writer-2', destinationId: 'moon', skillId: 'handwriting',
+    title: 'Moon Writer', task: 'Trace the letter',
+    howTo: 'mission.howTo.write',
+    choices: 3,
+    difficulty: { min: 1, max: 1 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'letter-trace', target: 'O', form: 'upper', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'O', form: 'upper', help: 'light' },
+      { type: 'letter-trace', target: 'C', form: 'upper', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'C', form: 'upper', help: 'light' },
+      { type: 'letter-trace', target: 'L', form: 'upper', help: 'light', review: ['L', 'T', 'H'] }
+    ]
+  },
+  'writer-3': {
+    id: 'writer-3', destinationId: 'moon', skillId: 'handwriting',
+    title: 'Moon Writer', task: 'Trace the letter',
+    howTo: 'mission.howTo.write',
+    choices: 3,
+    difficulty: { min: 1, max: 1 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'letter-trace', target: 'C', form: 'lower', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'C', form: 'lower', help: 'light' },
+      { type: 'letter-trace', target: 'A', form: 'lower', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'A', form: 'lower', help: 'light' },
+      { type: 'letter-trace', target: 'D', form: 'lower', help: 'full', guided: true },
+      { type: 'letter-trace', target: 'D', form: 'lower', help: 'light' }
+    ]
+  },
   /* Rhyme Radar's second mission: rhymes from the new short words. */
   'mercury-3': {
     id: 'mercury-3', destinationId: 'mercury', skillId: 'rhyming',
@@ -3571,6 +4102,75 @@ const MISSIONS = {
       { type: 'word-build', target: 'cat' },
       { type: 'word-build', target: 'cap' },
       { type: 'word-build', target: 'pan' }
+    ]
+  },
+  /* Star Words: hear a sight word, find it among three. Twelve words from
+     the Dolch pre-primer list, a few at a time; the second mission ends
+     with two REVIEW rounds, the word the child most needed help with. */
+  'jupiter-1': {
+    id: 'jupiter-1', destinationId: 'jupiter', skillId: 'sight-words',
+    title: 'Star Words', task: 'Find each word Pip says',
+    howTo: 'mission.howTo.sight',
+    choices: 3,
+    difficulty: { min: 1, max: 2 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'sight-find', target: 'the', guided: true },
+      { type: 'sight-find', target: 'and' },
+      { type: 'sight-find', target: 'see' },
+      { type: 'sight-find', target: 'you' },
+      { type: 'sight-find', target: 'the' },
+      { type: 'sight-find', target: 'and' }
+    ]
+  },
+  'jupiter-3': {
+    id: 'jupiter-3', destinationId: 'jupiter', skillId: 'sight-words',
+    title: 'Star Words', task: 'Find each word Pip says',
+    howTo: 'mission.howTo.sight',
+    choices: 3,
+    difficulty: { min: 1, max: 2 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'sight-find', target: 'to' },
+      { type: 'sight-find', target: 'go' },
+      { type: 'sight-find', target: 'is' },
+      { type: 'sight-find', target: 'it' },
+      { type: 'sight-find', target: 'the', review: ['the', 'and', 'see', 'you'] },
+      { type: 'sight-find', target: 'and', review: ['and', 'the', 'see', 'you'] }
+    ]
+  },
+  /* Word Orbit: a word at the centre, find the one just like it. The
+     harder level puts a word that looks like it on the ring (it, is). */
+  'jupiter-2': {
+    id: 'jupiter-2', destinationId: 'jupiter', skillId: 'sight-words',
+    title: 'Word Orbit', task: 'Match each word',
+    howTo: 'mission.howTo.match',
+    choices: 3,
+    difficulty: { min: 1, max: 2 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'sight-match', target: 'the', guided: true },
+      { type: 'sight-match', target: 'see' },
+      { type: 'sight-match', target: 'you' },
+      { type: 'sight-match', target: 'and' },
+      { type: 'sight-match', target: 'to' },
+      { type: 'sight-match', target: 'go' }
+    ]
+  },
+  'jupiter-4': {
+    id: 'jupiter-4', destinationId: 'jupiter', skillId: 'sight-words',
+    title: 'Word Orbit', task: 'Match each word',
+    howTo: 'mission.howTo.match',
+    choices: 3,
+    difficulty: { min: 1, max: 2 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'sight-match', target: 'in' },
+      { type: 'sight-match', target: 'can' },
+      { type: 'sight-match', target: 'we' },
+      { type: 'sight-match', target: 'my' },
+      { type: 'sight-match', target: 'is' },
+      { type: 'sight-match', target: 'the', review: ['the', 'and', 'see', 'you', 'to', 'go', 'it'] }
     ]
   },
   'mars-4': {
@@ -3664,6 +4264,7 @@ const VOICE_CUES = {
   'guide.moonShining':      { type: 'story', text: 'The Moon is shining!',  speak: 'Welcome home! Look, the Moon is shining!' },
   'guide.mercuryShining':   { type: 'story', text: 'Mercury is glowing!',   speak: 'Welcome home! Look, Mercury is glowing!' },
   'guide.marsShining':      { type: 'story', text: 'Mars is glowing!',      speak: 'Welcome home! Look, Mars is glowing!' },
+  'guide.jupiterShining':   { type: 'story', text: 'Jupiter is glowing!',   speak: 'Welcome home! Look, Jupiter is glowing!' },
   'guide.dockHint':         { type: 'hint', text: 'Dress up your rocket!', speak: 'You have stars! Tap the paint brush to visit the space station and dress up your rocket.' },
   'travel.launch.1':        { type: 'reaction', text: "Let's launch!",         speak: "Let's launch!" },
   'travel.launch.2':        { type: 'reaction', text: 'Blast off!',            speak: 'Blast off!' },
@@ -3671,6 +4272,7 @@ const VOICE_CUES = {
   'place.moon':             { type: 'story', text: 'The Moon!',             speak: "The Moon! That's where we find letters. Tap Launch to fly there!" },
   'place.mercury':          { type: 'story', text: 'Mercury!',              speak: "Mercury! That's where we play with rhymes and beats. Tap Launch to fly there!" },
   'place.mars':             { type: 'story', text: 'Mars!',                 speak: "Mars! That's where we play with sounds and words. Tap Launch to fly there!" },
+  'place.jupiter':          { type: 'story', text: 'Jupiter!',              speak: "Jupiter! That's where we find words. Tap Launch to fly there!" },
   'travel.station':         { type: 'reaction', text: 'To the station!',       speak: 'Up we go, to the space station!' },
   'travel.stationHome':     { type: 'reaction', text: 'Back to Earth!',        speak: 'Back down to Earth!' },
   'story.moon.firstArrive': { type: 'story', text: 'The Moon!',             speak: "We made it to the Moon! Its beacon is dim. Let's find letters to light it up!" },
@@ -3703,18 +4305,37 @@ const VOICE_CUES = {
   'story.mars.shining.1':   { type: 'story', text: 'You did it!',           speak: 'You did it! Mars is glowing!' },
   'story.mars.shining.2':   { type: 'story', text: 'Hooray!',               speak: 'Hooray! Another mission done!' },
   'story.mars.shining.3':   { type: 'story', text: 'Great work!',           speak: 'Great work, explorer!' },
+  'story.jupiter.reveal':   { type: 'story', text: 'Look! Jupiter!',        speak: 'Look! A giant planet is waiting for us. That is Jupiter!' },
+  'story.jupiter.next':     { type: 'story', text: 'Next stop: Jupiter!',   speak: 'Next stop, Jupiter! Tap Launch when you are ready.' },
+  'story.jupiter.firstArrive': { type: 'story', text: 'Jupiter!',           speak: "We made it to Jupiter! Its sky signs have lost their words. Let's find them!" },
+  'story.jupiter.arrive.1': { type: 'story', text: 'Jupiter!',              speak: 'Back on Jupiter!' },
+  'story.jupiter.arrive.2': { type: 'story', text: 'Jupiter!',              speak: 'Jupiter again! Hello, big clouds!' },
+  'story.jupiter.arrive.3': { type: 'story', text: 'Jupiter!',              speak: 'Here we are on Jupiter!' },
+  'story.jupiter.step':     { type: 'story', text: 'It works!',             speak: 'It works! Now the orbit ring needs help.' },
+  'story.jupiter.restored': { type: 'story', text: 'You did it!',           speak: 'You did it! Jupiter is full of words again!' },
+  'story.jupiter.shining.1': { type: 'story', text: 'You did it!',          speak: 'You did it! Jupiter is glowing!' },
+  'story.jupiter.shining.2': { type: 'story', text: 'Hooray!',              speak: 'Hooray! Another mission done!' },
+  'story.jupiter.shining.3': { type: 'story', text: 'Great work!',          speak: 'Great reading, explorer!' },
   'marker.beacon':          { type: 'hint', text: 'Tap the beacon!',       speak: 'Tap the beacon to start!' },
   'marker.radar':           { type: 'hint', text: 'Tap the radar!',        speak: 'Tap the radar dish to start!' },
   'marker.meteors':         { type: 'hint', text: 'Tap the rocks!',        speak: 'Now tap the meteor rocks!' },
   'marker.scanner':         { type: 'hint', text: 'Tap the scanner!',      speak: 'Tap the sound scanner to start!' },
   'marker.workshop':        { type: 'hint', text: 'Tap the machine!',      speak: 'Now tap the word machine!' },
+  'marker.skysign':         { type: 'hint', text: 'Tap the sky sign!',     speak: 'Tap the sky sign to start!' },
+  'marker.orbit':           { type: 'hint', text: 'Tap the orbit ring!',   speak: 'Now tap the orbit ring!' },
   'planet.homeHint':        { type: 'hint', text: 'Fly home!',             speak: 'Tap the big yellow button to fly home!' },
   'planet.fixed':           { type: 'hint', text: 'All fixed!',            speak: 'That one is already fixed. Tap it to play again!' },
   'mission.howTo':          { type: 'instruction', text: 'Listen, then tap!',     speak: "I'll say a letter. You tap it!" },
+  'mission.howTo.little':   { type: 'instruction', text: 'Little letters!',       speak: 'Every letter has a big shape and a little shape. Now we find the little ones!' },
+  'mission.howTo.pair':     { type: 'instruction', text: 'Big and little!',       speak: 'Big letters and little letters go together. I show you one. You find its partner!' },
   'mission.howTo.rhyme':    { type: 'instruction', text: 'Find the rhyme!',       speak: "Rhyming words sound the same at the end, like cat and hat. I'll say a word. You find the picture that rhymes!" },
   'mission.howTo.beats':    { type: 'instruction', text: 'Tap the beats!',        speak: 'Words have beats. Tap the big stone once for each beat!' },
   'mission.howTo.sound':    { type: 'instruction', text: 'Listen for the first sound!', speak: "Words start with a sound. I'll play a sound. You find the picture that starts with it." },
   'mission.howTo.build':    { type: 'instruction', text: 'Build the word!',       speak: "I'll say a word sound by sound. Tap the letters to build it." },
+  'mission.howTo.write':    { type: 'instruction', text: 'Watch, then trace!',    speak: "Let's write letters! Watch how I write each one. Then trace it with your finger, starting at the green dot." },
+  'marker.slate':           { type: 'hint', text: 'Tap the writing slate!', speak: "Tap the writing slate. Let's write!" },
+  'mission.howTo.sight':    { type: 'instruction', text: 'Find the word!',        speak: "Some words we just know by sight. I'll say a word. You find it!" },
+  'mission.howTo.match':    { type: 'instruction', text: 'Find the same word!',   speak: 'Look at the word in the middle. Find the one that is just the same!' },
   'feedback.almost.1':      { type: 'correction', text: 'Almost!',               speak: 'Almost! Listen again.' },
   'feedback.almost.2':      { type: 'correction', text: 'Good try!',             speak: 'Good try! Listen again.' },
   'feedback.almost.3':      { type: 'correction', text: 'So close!',             speak: 'So close! Listen again.' },
@@ -3743,7 +4364,24 @@ const LETTER_LINES = {
   again: ['Listen. Find the letter {L}.', 'Take your time. Find the letter {L}.'],
   found: ["Yes! That's the letter {L}.", 'Great job! You found the letter {L}.', 'You got it! The letter {L}.',
           "Wonderful! That's the letter {L}.", 'Super! You found the letter {L}.'],
-  show:  ['Here it is! This is the letter {L}. Tap it!']
+  show:  ['Here it is! This is the letter {L}. Tap it!'],
+  /* little letters: "the little letter em", the way the big ones say "the letter em" */
+  little:      ['Find the little letter {L}.', 'Now find the little letter {L}.', 'Can you find the little letter {L}?', 'Where is the little letter {L}?'],
+  littleAgain: ['Listen. Find the little letter {L}.', 'Take your time. Find the little letter {L}.'],
+  littleFound: ["Yes! That's the little letter {L}.", 'Great job! You found the little letter {L}.', 'You got it! The little letter {L}.'],
+  littleShow:  ['Here it is! This is the little letter {L}. Tap it!'],
+  /* pairs: one case is on the screen, the child finds the other. Always
+     "the big letter" and "the little letter": a bare "little bee" is an
+     insect, and "big pee" is not a thing to say to a class. */
+  pairLower:      ['This is the big letter {L}. Find the little letter {L}!', 'Here is the big letter {L}. Where is the little letter {L}?',
+                   'The big letter {L}! Can you find the little letter {L}?'],
+  pairUpper:      ['This is the little letter {L}. Find the big letter {L}!', 'Here is the little letter {L}. Where is the big letter {L}?',
+                   'The little letter {L}! Can you find the big letter {L}?'],
+  pairAgainLower: ['Look at the big letter {L}. Find the little letter {L}.', 'Take your time. Find the little letter {L}.'],
+  pairAgainUpper: ['Look at the little letter {L}. Find the big letter {L}.', 'Take your time. Find the big letter {L}.'],
+  pairFound:      ['Yes! They match: the big and little letter {L}!', 'You got it! The big letter {L} and the little letter {L}!',
+                   'They go together! The big and little letter {L}!'],
+  pairShow:       ['Here it is! The big letter {L} and the little letter {L} go together. Tap it!']
 };
 /* Rhyme Radar, as templates: {W} is the word heard, {R} the one that
    rhymes with it. Praise always says both words together, so the rhyme
@@ -3788,9 +4426,130 @@ const BUILD_LINES = {
   show:   ["Let's build it together. Listen."],
   turn:   ['Now you! Build {W}.']
 };
+/* Star Words and Word Orbit. {W} is the sight word. A question ends on
+   "…" and the word itself follows as its own cue, so the caption can say
+   the task and never show the word. */
+const SIGHT_LINES = {
+  ask:        ['Find the word…', 'Where is the word…', 'Can you find the word…'],
+  again:      ['Listen again.', 'Take your time. Listen.'],
+  found:      ['{W}! You found it!', 'Yes! {W}!', 'Great reading! {W}!'],
+  show:       ['Here it is! This word is…'],
+  tap:        ['Tap it!'],
+  look:       ['Look at this word. It says…'],
+  match:      ['Find the same word!', 'Which one is just the same?', 'Find a word just like it!'],
+  matchAgain: ['Look closely. Find the same word.', 'Take your time. Look at each letter.'],
+  matched:    ['They match! {W}!', 'Just the same! {W}!', 'Yes! Both say {W}!'],
+  matchShow:  ['Here it is! Just the same. Tap it!']
+};
+/* Moon Writer. {L} is the letter's name and {C} "big" or "little": every
+   line says "the big letter el", never a bare name. */
+const WRITE_LINES = {
+  watch:      ['Watch. This is how we write the {C} letter {L}.', 'Watch how the {C} letter {L} is made.'],
+  trace:      ['Now you! Trace the {C} letter {L}.', 'Your turn! Trace the {C} letter {L}.'],
+  light:      ['Now write it again, with less help!', 'Can you write it on your own?'],
+  done:       ['Nice tracing! The {C} letter {L}!', 'You wrote the {C} letter {L}!', 'Beautiful writing! The {C} letter {L}!'],
+  again:      ['Start at the green dot and follow the path.', 'Take your time. Start at the green dot.'],
+  start:      ['Start at the green dot.'],
+  retry:      ["Let's try that line again.", "Let's try that one again. Start at the dot."],
+  watchAgain: ['Watch again.']
+};
+function writeLine(kind, index, L, form){
+  const list = WRITE_LINES[kind];
+  return list[(Math.abs(index) || 0) % list.length].split('{L}').join(LETTERS[L].speak).split('{C}').join(form === 'lower' ? 'little' : 'big');
+}
 function letterLine(kind, index, L){
   const list = LETTER_LINES[kind];
-  return list[(Math.abs(index) || 0) % list.length].replace('{L}', LETTERS[L].speak);
+  return list[(Math.abs(index) || 0) % list.length].split('{L}').join(LETTERS[L].speak);
+}
+/* How a letter is named for a grown-up's screen reader. */
+function letterLabel(L, form){ return form === 'lower' ? 'Little letter ' + L.toLowerCase() : 'Letter ' + L; }
+/* Moon Writer lines, by id:
+     write.watch.L.upper.k    "Watch. This is how we write the big letter el."
+     write.trace.L.upper.k    "Now you! Trace the big letter el."
+     write.light.L.upper.k    "Now write it again, with less help!"
+     write.done.L.upper.k     praise, naming the letter
+     write.again.n            the n-th nudge
+     write.start              "Start at the green dot."
+     write.retry.k            a stroke restarted
+     write.watchAgain         "Watch again."
+   The letter is on the slate, so a caption may name it: tracing is not a
+   question with an answer to hide. */
+function writeCue(p){
+  if(p[0] !== 'write') return null;
+  const k = n => (p[n] === undefined ? 0 : parseInt(p[n], 10));
+  if(p[1] === 'start' && p.length === 2) return { type: 'hint', text: 'Start at the green dot!', speak: WRITE_LINES.start[0] };
+  if(p[1] === 'watchAgain' && p.length === 2) return { type: 'instruction', text: 'Watch!', speak: WRITE_LINES.watchAgain[0] };
+  if(p[1] === 'again' && p.length === 3 && k(2) >= 0) return { type: 'hint', text: 'Start at the green dot!', speak: WRITE_LINES.again[k(2) % WRITE_LINES.again.length] };
+  if(p[1] === 'retry' && p.length === 3 && k(2) >= 0) return { type: 'correction', text: 'Try that line again!', speak: WRITE_LINES.retry[k(2) % WRITE_LINES.retry.length] };
+  const L = p[2], form = p[3];
+  if(!LETTERS[L] || (form !== 'upper' && form !== 'lower') || p.length > 5 || !(k(4) >= 0)) return null;
+  const shown = form === 'lower' ? L.toLowerCase() : L;
+  if(p[1] === 'watch') return { type: 'instruction', text: 'Watch!', speak: writeLine('watch', k(4), L, form) };
+  if(p[1] === 'trace') return { type: 'question', text: 'Trace the letter!', speak: writeLine('trace', k(4), L, form) };
+  if(p[1] === 'light') return { type: 'question', text: 'Now on your own!', speak: writeLine('light', k(4), L, form) };
+  if(p[1] === 'done') return { type: 'praise', text: 'You wrote ' + shown + '!', speak: writeLine('done', k(4), L, form) };
+  return null;
+}
+/* Sight-word lines, by id:
+     sight.word.the           the word itself — no caption: it is the answer
+     sight.ask.the.k          "Find the word…" (the word follows)
+     sight.again.the.n        the n-th nudge (the word follows)
+     sight.found.the.k        praise, naming the word
+     sight.show.the           "Here it is! This word is…" (the word follows)
+     sight.tap                "Tap it!"
+     sight.look.the           Word Orbit: "Look at this word. It says…"
+     sight.match.the.k        "Find the same word!"
+     sight.matchAgain.the.n   the n-th nudge
+     sight.matched.the.k      praise
+     sight.matchShow.the      the answer, shown
+   Only if nothing can be heard does a Star Words question show its word
+   (and then the answer is not counted). */
+function sightCue(p){
+  if(p[0] !== 'sight') return null;
+  if(p[1] === 'tap' && p.length === 2) return { type: 'correction', text: 'Tap it!', speak: SIGHT_LINES.tap[0] };
+  const w = WORDS[p[2]];
+  if(!w || !w.sight) return null;
+  const k = p.length === 4 ? parseInt(p[3], 10) : 0;
+  if(!(k >= 0)) return null;
+  const say = kind => wordLine(SIGHT_LINES, kind, k, p[2]);
+  const one = p.length === 3, many = p.length <= 4;
+  if(p[1] === 'word' && one) return { type: 'word', text: null, speak: w.speak + '.' };
+  if(p[1] === 'ask' && many) return { type: 'question', text: 'Find the word!', visual: 'Find the word: ' + p[2], speak: say('ask') };
+  if(p[1] === 'again' && many) return { type: 'question', text: 'Find the word!', visual: 'Find the word: ' + p[2], speak: say('again') };
+  if(p[1] === 'found' && many) return { type: 'praise', text: p[2] + '!', speak: say('found') };
+  if(p[1] === 'show' && one) return { type: 'correction', text: 'Here it is!', speak: say('show') };
+  if(p[1] === 'look' && one) return { type: 'instruction', text: 'Look at this word!', speak: say('look') };
+  if(p[1] === 'match' && many) return { type: 'question', text: 'Find the same word!', speak: say('match') };
+  if(p[1] === 'matchAgain' && many) return { type: 'question', text: 'Find the same word!', speak: say('matchAgain') };
+  if(p[1] === 'matched' && many) return { type: 'praise', text: p[2] + '!', speak: say('matched') };
+  if(p[1] === 'matchShow' && one) return { type: 'correction', text: 'Here it is!', speak: say('matchShow') };
+  return null;
+}
+/* Lines about a little letter, or a pair, by id:
+     little.M(.k)  littleAgain.M.k  littleFound.M.k  littleShow.M
+     pair.M.lower(.k) — find little m, big M on screen — and .upper the
+     other way; pairAgain / pairFound / pairShow the same.
+   On screen: the task, never the letter to find (the partner is already
+   there). */
+function letterCaseCue(p){
+  if(!LETTERS[p[1]]) return null;
+  const L = p[1], l = L.toLowerCase();
+  const k = n => (p[n] === undefined ? 0 : parseInt(p[n], 10));
+  if(['little', 'littleAgain', 'littleFound', 'littleShow'].indexOf(p[0]) !== -1){
+    if(p.length > 3 || !(k(2) >= 0)) return null;
+    if(p[0] === 'littleFound') return { type: 'praise', text: "That's " + l + '!', speak: letterLine('littleFound', k(2), L) };
+    if(p[0] === 'littleShow') return { type: 'correction', text: 'Here it is!', speak: letterLine('littleShow', k(2), L) };
+    return { type: 'question', text: 'Find the little letter!', visual: 'Find ' + l, speak: letterLine(p[0], k(2), L) };
+  }
+  if(['pair', 'pairAgain', 'pairFound', 'pairShow'].indexOf(p[0]) !== -1){
+    const to = p[2];
+    if((to !== 'lower' && to !== 'upper') || p.length > 4 || !(k(3) >= 0)) return null;
+    const side = to === 'lower' ? 'Lower' : 'Upper', want = to === 'lower' ? 'little' : 'big';
+    if(p[0] === 'pairFound') return { type: 'praise', text: L + ' and ' + l + '!', speak: letterLine('pairFound', k(3), L) };
+    if(p[0] === 'pairShow') return { type: 'correction', text: 'Here it is!', speak: letterLine('pairShow', k(3), L) };
+    return { type: 'question', text: 'Find its ' + want + ' letter!', visual: 'Find its ' + want + ' letter', speak: letterLine(p[0] + side, k(3), L) };
+  }
+  return null;
 }
 /* A word that starts a sentence — the line's first, or after ". ! ? …" —
    is capitalised: "Great listening! Moon!", never "… moon!". */
@@ -3840,7 +4599,7 @@ function voiceCue(id){
   if(!cue && letterId && p[0] === 'show'){
     cue = { type: 'correction', text: 'Here it is!', speak: letterLine('show', k, p[1]) };
   }
-  if(!cue) cue = phonicsCue(p) || wordCue(p);
+  if(!cue) cue = letterCaseCue(p) || sightCue(p) || writeCue(p) || phonicsCue(p) || wordCue(p);
   const n = parseInt(p[p.length - 1], 10);
   if(!cue && id.indexOf('stars.found.') === 0 && n >= 0){
     cue = { type: 'praise', text: n === 1 ? 'You found a star!' : 'You found ' + n + ' stars!',
@@ -4013,7 +4772,12 @@ function validateContent(){
     const w = WORDS[k];
     if(!/^[a-z]+$/.test(k)) flag('word key ' + k + ' is not one lowercase word');
     if(!w.speak) flag('word ' + k + ' has no spoken form');
-    if(!assetEntry(w.picture)) flag('word ' + k + ' has no picture');
+    if(w.sight){
+      if(w.picture !== undefined) flag('sight word ' + k + ' has a picture: it is read, not named');
+      if(!WORD_LISTS[w.sight.list]) flag('sight word ' + k + ' names no recorded list');
+      if(typeof w.sight.decodable !== 'boolean') flag('sight word ' + k + ' does not say whether it can be sounded out');
+      if(!printable(k)) flag('sight word ' + k + ' has a letter with no letterform');
+    } else if(!assetEntry(w.picture)) flag('word ' + k + ' has no picture');
     if(!w.rime || !w.onset) flag('word ' + k + ' needs a rime and an onset');
     if(!(Array.isArray(w.beats) && w.beats.length >= 1 && w.beats.length <= MAX_BEATS && w.beats.every(Boolean))){
       flag('word ' + k + ' needs 1 to ' + MAX_BEATS + ' beats');
@@ -4216,20 +4980,23 @@ function tierFor(recent, band){
   return tier;
 }
 
-function areLookalikes(a, b){
-  return (LETTERS[a].lookalikes || []).indexOf(b) !== -1 || (LETTERS[b].lookalikes || []).indexOf(a) !== -1;
+/* A letter's shape data in one case: its big letter, or its little one
+   (b, whose lookalikes are d, p and q, is not B, whose are P, R and D). */
+function letterShape(L, form){ return form === 'lower' ? LETTERS[L].lower : LETTERS[L]; }
+function areLookalikes(a, b, form){
+  return (letterShape(a, form).lookalikes || []).indexOf(b) !== -1 || (letterShape(b, form).lookalikes || []).indexOf(a) !== -1;
 }
-function distractorPools(target){
-  const t = LETTERS[target];
+function distractorPools(target, form){
+  const t = letterShape(target, form);
   const usable = Object.keys(LETTERS).filter(k => k !== target && !LETTERS[k].ambiguous);
   return {
-    lookalike:   usable.filter(k => areLookalikes(target, k)),
-    sameFamily:  usable.filter(k => LETTERS[k].family === t.family && !areLookalikes(target, k)),
-    otherFamily: usable.filter(k => LETTERS[k].family !== t.family && !areLookalikes(target, k))
+    lookalike:   usable.filter(k => areLookalikes(target, k, form)),
+    sameFamily:  usable.filter(k => letterShape(k, form).family === t.family && !areLookalikes(target, k, form)),
+    otherFamily: usable.filter(k => letterShape(k, form).family !== t.family && !areLookalikes(target, k, form))
   };
 }
-function pickDistractors(target, tier, count, rand){
-  const p = distractorPools(target);
+function pickDistractors(target, tier, count, rand, form){
+  const p = distractorPools(target, form);
   let order;
   if(tier >= 3){
     const one = shuffled(p.lookalike, rand).slice(0, 1);
@@ -4252,7 +5019,7 @@ function pickDistractors(target, tier, count, rand){
    "rhymes", and hearing past it is the skill. */
 function rhymeDistractorPools(a){
   const t = WORDS[a.target];
-  const usable = Object.keys(WORDS).filter(k => k !== a.target && k !== a.answer && WORDS[k].rime !== t.rime);
+  const usable = Object.keys(WORDS).filter(k => hasPicture(k) && k !== a.target && k !== a.answer && WORDS[k].rime !== t.rime);
   return {
     sameStart: usable.filter(k => WORDS[k].onset === t.onset),
     other:     usable.filter(k => WORDS[k].onset !== t.onset)
@@ -4280,7 +5047,7 @@ const SOUND_CLASS = { m: 'hum', n: 'hum', s: 'hiss', f: 'hiss', h: 'hiss', v: 'h
                       r: 'glide', l: 'glide', p: 'stop', b: 'stop', t: 'stop', d: 'stop', k: 'stop', g: 'stop' };
 function soundClass(p){ return SOUND_CLASS[p] || (PHONEMES[p] && PHONEMES[p].kind === 'vowel' ? 'vowel' : p); }
 function soundDistractorPools(a){
-  const usable = Object.keys(WORDS).filter(k => k !== a.answer && WORDS[k].onset !== a.sound);
+  const usable = Object.keys(WORDS).filter(k => hasPicture(k) && k !== a.answer && WORDS[k].onset !== a.sound);
   return {
     far:   usable.filter(k => soundClass(WORDS[k].onset) !== soundClass(a.sound)),
     rhyme: usable.filter(k => WORDS[k].rime === WORDS[a.answer].rime && soundClass(WORDS[k].onset) !== soundClass(a.sound))
@@ -4293,6 +5060,32 @@ function pickSoundDistractors(a, tier, count, rand){
   order.forEach(group => group.forEach(k => { if(out.length < count && out.indexOf(k) === -1) out.push(k); }));
   return out;
 }
+/* ---- sight words: which words stand beside the one asked for ----
+   Never the word itself, and never one twice. At the easy level the
+   others look little like it (another first letter, another length, few
+   letters shared); above it, one looks a lot like it — "it" beside "is",
+   "to" beside "the" — because telling close words apart, letter by
+   letter, is the skill. Likeness is counted, so a grown-up could check
+   it: the same first letter 2, the same length 1, the same last letter 1,
+   and 1 for each letter they share. */
+function wordLikeness(a, b){
+  let n = (a[0] === b[0] ? 2 : 0) + (a.length === b.length ? 1 : 0) + (a[a.length - 1] === b[b.length - 1] ? 1 : 0);
+  a.split('').forEach((ch, i) => { if(a.indexOf(ch) === i && b.indexOf(ch) !== -1) n += 1; });
+  return n;
+}
+function sightDistractorPools(target){
+  const others = sightWords().filter(w => w !== target);
+  return { far: others.filter(w => wordLikeness(target, w) <= 2), near: others.filter(w => wordLikeness(target, w) >= 3) };
+}
+function pickSightDistractors(target, tier, count, rand){
+  const p = sightDistractorPools(target);
+  const order = tier >= 2 ? [shuffled(p.near, rand).slice(0, 1), shuffled(p.far, rand), shuffled(p.near, rand)]
+                          : [shuffled(p.far, rand), shuffled(p.near, rand)];
+  const out = [];
+  order.forEach(group => group.forEach(k => { if(out.length < count && out.indexOf(k) === -1) out.push(k); }));
+  return out;
+}
+
 /* Word Builder's extra piece, above the easy level: a letter whose sound
    is nowhere in the word and whose shape is not one of its letters'
    lookalikes, so it is a wrong piece, never a trick. */
@@ -4313,18 +5106,28 @@ function pickLetterDistractor(word, rand){
    `check` / `valid`: for an answer that is not one tap (the letters of a
    word, in order); without them an answer is the index of one choice. */
 const ACTIVITY_TYPES = {
+  /* Letter Explorer. `form` is the case to find: a big letter (upper)
+     or a little one (lower). With `from`, the letter is shown in its
+     other case first — big M on the screen, find little m — a matched
+     pair, seen rather than heard. Options are letters by capital, drawn in
+     the round's case. */
   'find-letter': {
     skillId: 'letter-recognition',
     validate(a){
       if(!LETTERS[a.target]) return 'unknown letter ' + a.target;
-      if(LETTERS[a.target].ambiguous) return 'letter ' + a.target + ' is ambiguous without a school font';
-      if(a.form !== 'upper') return 'only uppercase letters are taught so far';
+      if(['upper', 'lower'].indexOf(a.form) === -1) return 'a letter is found big (upper) or little (lower), not ' + a.form;
+      if(a.from !== undefined && (['upper', 'lower'].indexOf(a.from) === -1 || a.from === a.form)) return 'a match shows the letter in its other case';
+      if(LETTERS[a.target].ambiguous) return 'letter ' + a.target + ' cannot be told apart in print';
+      if(formProblems(formOf(a.target, a.form)) || (a.from && formProblems(formOf(a.target, a.from)))) return 'letter ' + a.target + ' has no good letterform';
       return null;
     },
-    evidenceKey(a){ return { item: a.target, form: a.form }; },
-    promptCue(a){ return 'find.' + a.target; },
+    /* M found as a big letter, m as a little one, and M with m as a pair */
+    evidenceKey(a){ return { item: a.target, form: a.from ? 'match' : a.form }; },
+    promptCue(a){ return a.from ? 'pair.' + a.target + '.' + a.form : (a.form === 'lower' ? 'little.' : 'find.') + a.target; },
+    /* a pair is matched by eye: its partner is on the screen */
+    silentOk(a){ return !!a.from; },
     buildRound(a, o){
-      const options = shuffled([a.target].concat(pickDistractors(a.target, o.tier, o.choices - 1, o.rand)), o.rand);
+      const options = shuffled([a.target].concat(pickDistractors(a.target, o.tier, o.choices - 1, o.rand, a.form)), o.rand);
       return { options: options, answer: options.indexOf(a.target) };
     }
   },
@@ -4335,6 +5138,7 @@ const ACTIVITY_TYPES = {
       const t = WORDS[a.target], r = WORDS[a.answer];
       if(!t) return 'unknown word ' + a.target;
       if(!r) return 'unknown word ' + a.answer;
+      if(!hasPicture(a.target) || !hasPicture(a.answer)) return 'a rhyme is a picture game, and ' + (hasPicture(a.target) ? a.answer : a.target) + ' has no picture';
       if(a.target === a.answer) return 'a word is not its own rhyme';
       if(t.rime !== r.rime) return a.answer + ' does not rhyme with ' + a.target;
       const p = rhymeDistractorPools(a);
@@ -4377,6 +5181,7 @@ const ACTIVITY_TYPES = {
       if(PHONEMES[a.sound].kind !== 'continuous') return 'a first beginning sound is one that can be held, not ' + a.sound;
       const w = WORDS[a.answer];
       if(!w) return 'unknown word ' + a.answer;
+      if(!hasPicture(a.answer)) return a.answer + ' has no picture to find';
       if(w.onset !== a.sound) return a.answer + ' does not start with /' + a.sound + '/';
       if(!singleOnset(a.answer)) return a.answer + ' starts with two sounds together';
       if(soundDistractorPools(a).far.length < 2) return 'too few pictures that start with another kind of sound';
@@ -4390,6 +5195,56 @@ const ACTIVITY_TYPES = {
       return { options: options, answer: options.indexOf(a.answer) };
     }
   },
+  /* Star Words: hear a sight word, find it among three. The word is the
+     question: it is never on the screen, in the caption or the HUD, until
+     it is found. */
+  'sight-find': {
+    skillId: 'sight-words',
+    validate(a){ return sightProblem(a.target); },
+    evidenceKey(a){ return { item: a.target, form: 'hear' }; },
+    promptCue(a){ return 'sight.word.' + a.target; },
+    buildRound(a, o){
+      const options = shuffled([a.target].concat(pickSightDistractors(a.target, o.tier, o.choices - 1, o.rand)), o.rand);
+      return { options: options, answer: options.indexOf(a.target) };
+    }
+  },
+  /* Word Orbit: a word is shown at the centre; find the one just like it
+     among the words around it. Seen, not heard — matching letter by
+     letter is the skill — and then heard, once it is found. */
+  'sight-match': {
+    skillId: 'sight-words',
+    validate(a){ return sightProblem(a.target); },
+    evidenceKey(a){ return { item: a.target, form: 'match' }; },
+    promptCue(a){ return 'sight.word.' + a.target; },
+    silentOk(){ return true; },
+    buildRound(a, o){
+      const options = shuffled([a.target].concat(pickSightDistractors(a.target, o.tier, o.choices - 1, o.rand)), o.rand);
+      return { options: options, answer: options.indexOf(a.target) };
+    }
+  },
+  /* Moon Writer: watch the letter being written, then trace it — with
+     its whole path shown (`help: 'full'`, a teaching round), then again
+     with only where to start (`light`). Nothing is chosen: the round is
+     answered when the letter is traced, and it is always traced in the
+     end. A stroke restarted, or the letter shown again, counts as help.
+     It is seen and done, so it counts with the sound off too. */
+  'letter-trace': {
+    skillId: 'handwriting',
+    repeatable: true,
+    validate(a){
+      if(!LETTERS[a.target]) return 'unknown letter ' + a.target;
+      if(['upper', 'lower'].indexOf(a.form) === -1) return 'a letter is written big (upper) or little (lower), not ' + a.form;
+      if(['full', 'light'].indexOf(a.help) === -1) return 'a letter is traced with full or light help, not ' + a.help;
+      const bad = formProblems(formOf(a.target, a.form));
+      return bad ? 'letter ' + (a.form === 'lower' ? a.target.toLowerCase() : a.target) + ' cannot be traced: ' + bad : null;
+    },
+    evidenceKey(a){ return { item: a.target, form: a.form }; },
+    promptCue(a){ return 'write.' + (a.help === 'full' ? 'trace' : 'light') + '.' + a.target + '.' + a.form; },
+    silentOk(){ return true; },
+    buildRound(){ return { options: [], answer: 'traced' }; },
+    valid(r, choice){ return choice === 'traced'; },
+    check(){ return true; }
+  },
   /* Word Builder: hear a word sound by sound, then tap its letters into
      the slots in order. The answer is the letters' order; a wrong one is
      rebuilt, not removed. At the easy level only the word's own letters
@@ -4399,6 +5254,7 @@ const ACTIVITY_TYPES = {
     repeatable: true,
     validate(a){
       if(!WORDS[a.target]) return 'unknown word ' + a.target;
+      if(!hasPicture(a.target)) return a.target + ' has no picture to show once it is built';
       if(!isCvc(a.target)) return a.target + ' is not a three-sound word spelled one letter per sound';
       if(new Set(a.target.split('')).size !== 3) return a.target + ' repeats a letter';
       return null;
@@ -4422,6 +5278,107 @@ const ACTIVITY_TYPES = {
   }
 };
 
+function sightProblem(w){
+  if(!WORDS[w] || !WORDS[w].sight) return w + ' is not a sight word';
+  if(!printable(w)) return 'a letter of ' + w + ' has no letterform';
+  if(sightDistractorPools(w).far.length < 2) return 'too few words that look unlike ' + w;
+  return null;
+}
+
+/* ---- tracing: did the child follow the way the letter is made? ----
+   Not "is this letter perfect" — no recognition, no score, no model:
+   deterministic geometry, forgiving on purpose. Each stroke is its run of
+   points (the path), in the order it is written. A trace moves forward
+   along it: it is at the path point nearest the finger, looking only a
+   little way ahead, while the finger is within the stroke's corridor —
+   sideways room, never a reach further along — so a stroke is followed
+   from its start, in its direction, to its end, never backwards and never
+   by cutting across. A finger lifted part way can carry on from where it
+   stopped. A finger that wanders well out of the corridor restarts that
+   stroke, and only that one. A dot is a tap near it.
+   Units are the writing lines (LETTER_FORMS). The corridor is never widened
+   for a small screen: wider than a little o's radius, a finger wiggling in
+   its middle would finish it. A short screen gets a bigger slate instead. */
+const TRACE = {
+  step: 0.02,        // the path's points, this far apart
+  tolerance: 0.15,   // how near a point the finger must pass to cover it
+  start: 0.22,       // how near the start (or where it stopped) a finger must go down
+  ahead: 8,          // how far along one move may reach, in points
+  wander: 0.34,      // this far from the path is off it...
+  wanderFor: 0.24,   // ...and this much travel off it restarts the stroke
+  dot: 0.24,         // a dot is a tap this near it
+  endSlack: 2        // a stroke is done this many points from its very end
+};
+/* A letterform as paths to follow, or null if it is malformed: a broken
+   shape is never offered to a child. */
+function tracePlan(strokes){
+  if(formProblems(strokes)) return null;
+  return strokes.map(st => (isDot(st) ? { dot: true, pts: [[st[0][1], st[0][2]]] } : { dot: false, pts: strokePoints(st, TRACE.step) }));
+}
+function traceStart(plan){ return { stroke: 0, at: -1, down: false, off: 0, last: null, resets: 0, done: !plan || !plan.length }; }
+function tracePoint(p){ return Array.isArray(p) && p.length === 2 && isFinite(p[0]) && isFinite(p[1]); }
+function traceNear(a, b, r){ return Math.hypot(a[0] - b[0], a[1] - b[1]) <= r; }
+/* A stroke done: on to the next, or the letter is. Restarts are counted
+   stroke by stroke (twice astray on one stroke, Pip writes it again). */
+function traceNext(plan, t){
+  t.stroke += 1; t.at = -1; t.down = false; t.off = 0; t.last = null; t.resets = 0;
+  if(t.stroke >= plan.length){ t.done = true; return 'letter'; }
+  return 'stroke';
+}
+/* A finger (or the Pencil) goes down. 'start' if it is where the stroke
+   was left (a lifted finger carries on) or where the stroke begins (a
+   child who goes back to the beginning starts that stroke again); 'away'
+   if not. A dot tapped is done. */
+function traceDown(plan, t, p){
+  if(!plan || !t || t.done || !tracePoint(p)) return null;
+  const s = plan[t.stroke];
+  if(s.dot) return traceNear(p, s.pts[0], TRACE.dot) ? traceNext(plan, t) : 'away';
+  if(t.at > 0 && traceNear(p, s.pts[t.at], TRACE.start)){ /* carries on */ }
+  else if(traceNear(p, s.pts[0], TRACE.start)) t.at = 0;
+  else { t.down = false; return 'away'; }
+  t.down = true; t.off = 0; t.last = p;
+  return 'start';
+}
+/* It moves: walked in small steps, so a fast finger is followed too. */
+function traceMove(plan, t, p){
+  if(!plan || !t || t.done || !t.down || !tracePoint(p)) return null;
+  const s = plan[t.stroke], q0 = t.last;
+  const dist = Math.hypot(p[0] - q0[0], p[1] - q0[1]), n = Math.max(1, Math.ceil(dist / TRACE.step));
+  for(let k = 1; k <= n; k++){
+    const q = [q0[0] + (p[0] - q0[0]) * k / n, q0[1] + (p[1] - q0[1]) * k / n];
+    /* the trace is where the finger is along the path: the path point
+       nearest to it, a little way ahead — so the corridor is sideways
+       room, never a reach further along the letter */
+    let near = t.at, nd = Infinity;
+    for(let j = t.at; j <= Math.min(t.at + TRACE.ahead, s.pts.length - 1); j++){
+      const dd = Math.hypot(q[0] - s.pts[j][0], q[1] - s.pts[j][1]);
+      if(dd < nd){ nd = dd; near = j; }
+    }
+    if(nd <= TRACE.tolerance && near > t.at) t.at = near;
+    let d = Infinity;
+    for(let j = Math.max(0, t.at - TRACE.ahead); j <= Math.min(s.pts.length - 1, t.at + TRACE.ahead); j++){
+      d = Math.min(d, Math.hypot(q[0] - s.pts[j][0], q[1] - s.pts[j][1]));
+    }
+    t.off = d > TRACE.wander ? t.off + dist / n : 0;
+    if(t.off > TRACE.wanderFor){ t.at = -1; t.down = false; t.off = 0; t.last = null; t.resets += 1; return 'wander'; }
+    if(t.at >= s.pts.length - 1 - TRACE.endSlack) return traceNext(plan, t);
+  }
+  t.last = p;
+  return 'move';
+}
+/* Lifted, or cancelled by the device: what was traced stays. */
+function traceUp(t){ if(t){ t.down = false; t.off = 0; t.last = null; } return null; }
+/* How much of the stroke being traced is done, 0 to 1. */
+function traceShare(plan, t){
+  if(!plan || !t) return 0;
+  if(t.done) return 1;
+  const s = plan[t.stroke];
+  return s.dot || t.at < 0 ? 0 : t.at / (s.pts.length - 1);
+}
+/* A restarted stroke, or the letter shown again, is help: the round's
+   answer then counts as helped, not first-try. */
+function noteHelp(run){ const r = run && run.round; if(r && !r.resolved) r.misses += 1; }
+
 /* ---- review: something the child found hard comes back ----
    An activity marked `review` lists what it may ask (its candidates,
    the first being what it asks when nothing has been shown yet). When
@@ -4432,20 +5389,37 @@ const ACTIVITY_TYPES = {
    help in Letter Explorer brings its sound back in Sound Scout.
    The same evidence always picks the same target, and a grown-up could
    follow the rule on paper. */
-function reviewLinks(type, item){
-  if(type === 'find-letter') return [evidenceId('letter-recognition', item, 'upper')];
+/* What counts as the child's history with an item, for the activity
+   reviewing it: a little m needing help in either little-letter game; a
+   letter (big or little) behind its sound; a word's first sound behind the
+   word; a sight word in either sight-word game. */
+function reviewLinks(a, item){
+  const type = a.type;
+  if(type === 'find-letter'){
+    const f = a.from ? 'match' : (a.form || 'upper');
+    return [evidenceId('letter-recognition', item, f)]
+      .concat(f === 'lower' ? [evidenceId('letter-recognition', item, 'match')] : f === 'match' ? [evidenceId('letter-recognition', item, 'lower')] : []);
+  }
   if(type === 'sound-pick'){
     const L = soundLetter(item);
-    return [evidenceId('beginning-sounds', item, 'initial')].concat(L ? [evidenceId('letter-recognition', L, 'upper')] : []);
+    return [evidenceId('beginning-sounds', item, 'initial')]
+      .concat(L ? [evidenceId('letter-recognition', L, 'upper'), evidenceId('letter-recognition', L, 'lower')] : []);
   }
-  if(type === 'word-build') return [evidenceId('cvc', item, 'build')];
+  if(type === 'word-build'){
+    const w = WORDS[item];
+    return [evidenceId('cvc', item, 'build')].concat(w ? [evidenceId('beginning-sounds', w.onset, 'initial')] : []);
+  }
+  if(type === 'sight-find' || type === 'sight-match') return [evidenceId('sight-words', item, 'hear'), evidenceId('sight-words', item, 'match')];
+  if(type === 'letter-trace') return [evidenceId('handwriting', item, a.form)];
   return [];
 }
-function reviewPick(type, candidates, evidence, avoid){
+/* `of` is the reviewing activity, or just its type (a big letter). */
+function reviewPick(of, candidates, evidence, avoid){
+  const a = typeof of === 'string' ? { type: of, form: 'upper' } : of;
   let best = null;
   (candidates || []).forEach((item, order) => {
     if((avoid || []).indexOf(item) !== -1) return;
-    const recs = reviewLinks(type, item).map(id => findEvidence(evidence || [], id)).filter(Boolean);
+    const recs = reviewLinks(a, item).map(id => findEvidence(evidence || [], id)).filter(Boolean);
     if(!recs.length) return;
     const need = recs.reduce((s, e) => s + (e.recent || []).filter(x => x === 0).length, 0);
     const last = recs.reduce((m, e) => (e.lastPracticed || '') > m ? e.lastPracticed : m, '');
@@ -4456,7 +5430,7 @@ function reviewPick(type, candidates, evidence, avoid){
 /* The word a review of a sound asks with: the first picture that starts
    with it on its own, not already used in this run. */
 function soundWord(sound, avoid){
-  const ok = Object.keys(WORDS).filter(w => WORDS[w].onset === sound && singleOnset(w));
+  const ok = Object.keys(WORDS).filter(w => hasPicture(w) && WORDS[w].onset === sound && singleOnset(w));
   return ok.filter(w => (avoid || []).indexOf(w) === -1)[0] || ok[0] || null;
 }
 function reviewActivity(a, evidence, run){
@@ -4464,16 +5438,16 @@ function reviewActivity(a, evidence, run){
   const asked = run.asked || [];
   const type = a.type;
   if(type === 'find-letter'){
-    const t = reviewPick(type, a.review, evidence, asked) || a.target;
+    const t = reviewPick(a, a.review, evidence, asked) || a.target;
     return Object.assign({}, a, { target: t, reviewed: t !== a.target || null });
   }
   if(type === 'sound-pick'){
-    const s = reviewPick(type, a.review, evidence, asked);
+    const s = reviewPick(a, a.review, evidence, asked);
     if(!s) return a;
     return Object.assign({}, a, { sound: s, answer: soundWord(s, asked) || a.answer, reviewed: true });
   }
-  if(type === 'word-build'){
-    const t = reviewPick(type, a.review, evidence, asked) || a.target;
+  if(type === 'word-build' || type === 'sight-find' || type === 'sight-match' || type === 'letter-trace'){
+    const t = reviewPick(a, a.review, evidence, asked) || a.target;
     return Object.assign({}, a, { target: t, reviewed: t !== a.target || null });
   }
   return a;
@@ -4612,14 +5586,17 @@ function destinationUnlocked(destId, completions){
   if(!d.unlock) return true;
   return destinationProgress(d.unlock.after, completions).restored;
 }
-/* The next stop: the first open destination not yet restored, or the
-   last one open once everything is. */
+/* The next stop: the first open destination not yet restored; once
+   everything open is, the first with a mission not yet played (so the
+   writing slate and the little letters are come back to); and once all of
+   those are played, the last one open. */
 function currentDestination(completions){
   const open = JOURNEY_ORDER.filter(id => destinationUnlocked(id, completions));
   for(let i = 0; i < open.length; i++){
     if(!destinationProgress(open[i], completions).restored) return open[i];
   }
-  return open[open.length - 1];
+  const more = open.filter(id => (DESTINATIONS[id].missions || []).some(mid => !completions.some(c => c.missionId === mid)))[0];
+  return more || open[open.length - 1];
 }
 /* The first mission here not yet finished. A restored destination offers
    its missions again: a child who wants to go back should always be able
@@ -4877,7 +5854,9 @@ const TIMING = {
   shootingStarEvery: 18000, shootingStarJitter: 5000,  // rare: one every 13 to 23 s at rest
   captionBase: 900, captionPerChar: 55,            // pacing when nothing can be heard
   speechStartGrace: 1200,                          // a voice that has not begun by now is not coming
-  speechSafetyBase: 2500, speechSafetyPerChar: 110 // iOS sometimes never reports the end
+  speechSafetyBase: 2500, speechSafetyPerChar: 110, // iOS sometimes never reports the end
+  writeDemo: 650, writeDemoGap: 180,               // Pip writes a stroke at this many ms per unit of its length
+  writeHint: 2600                                  // "start at the green dot" is said at most this often
 };
 
 /* The kinds of cue, and how each sits in time (ms), instead of pauses
@@ -5767,7 +6746,9 @@ const GLYPHS = {
   check:   '<path d="M5 12.6l4.4 4.4L19.2 7.2" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>',
   moon:    '<path d="M15.6 3.1a8.9 8.9 0 1 0 5.3 12.6 7.1 7.1 0 0 1-5.3-12.6Z"/>',
   sparkle: '<path d="M12 2.5l1.9 6.4 6.6 2.1-6.6 2.1L12 19.5l-1.9-6.4L3.5 11l6.6-2.1Z"/>',
-  none:    '<circle cx="12" cy="12" r="7.6" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M6.8 17.2 17.2 6.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>'
+  none:    '<circle cx="12" cy="12" r="7.6" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M6.8 17.2 17.2 6.8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>',
+  eye:     '<path d="M2.6 12c1.9-3.6 5.5-6.2 9.4-6.2s7.5 2.6 9.4 6.2c-1.9 3.6-5.5 6.2-9.4 6.2S4.5 15.6 2.6 12Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.3"/>',
+  again:   '<path d="M19.2 12a7.2 7.2 0 1 1-2.1-5.1" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><path d="M19.8 3.6v4.8H15" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>'
 };
 function glyph(name, size){
   return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" aria-hidden="true" ' +
@@ -5950,6 +6931,9 @@ function setStageView(view){ const s = document.getElementById('stage'); if(s) s
 function missionDone(missionId){ return journey.completions.some(c => c.missionId === missionId); }
 /* A game the child has already played: its task needs no explaining. */
 function gamePlayed(type){ return journey.completions.some(c => MISSIONS[c.missionId] && MISSIONS[c.missionId].activities[0].type === type); }
+/* A task already explained: a finished mission taught it. Little letters
+   are explained once even though Letter Explorer is known. */
+function taskExplained(howTo){ return journey.completions.some(c => MISSIONS[c.missionId] && MISSIONS[c.missionId].howTo === howTo); }
 function placeRestored(placeId){
   const d = DESTINATIONS[placeId];
   return !!d && d.kind === 'destination' && destinationProgress(placeId, journey.completions).restored;
@@ -6020,15 +7004,23 @@ function applyPick(){
   }
 }
 /* The mission to play here now. Until the place is restored, its story
-   missions in order, one after another in the same visit. Once it is:
-   one mission a visit — any not yet played first, then each in turn —
-   and after that the way forward is home. */
+   missions in order, one after another in the same visit — and in that
+   visit, the first mission of any game there not yet played, so every
+   game is met. Once it is restored: one mission a visit — any not yet
+   played first, then each in turn — and after that the way forward is
+   home. */
 function markerNext(placeId){
   const d = DESTINATIONS[placeId];
   if(!d || !d.missions || !d.missions.length) return null;
   const story = restoreMissions(placeId).filter(mid => !missionDone(mid))[0];
   if(story) return story;
   const v = session.visit;
+  /* The visit that restores a place also shows every game there: a game
+     none of whose missions has been played offers its first. */
+  if(v && v.dest === placeId && v.restoredHere){
+    const unplayed = Object.keys(d.markers || {}).map(k => d.markers[k]).filter(mk => !mk.missions.some(missionDone))[0];
+    if(unplayed) return unplayed.missions[0];
+  }
   if(v && v.dest === placeId && v.played) return null;
   const fresh = d.missions.filter(mid => !missionDone(mid))[0];
   if(fresh) return fresh;
@@ -6113,17 +7105,32 @@ function renderStage(){
   paintStageRocket(currentScene === 'dock' ? previewLook() : currentLook());
 }
 /* Pictures the stage will need are fetched and decoded while the child is
-   still on Earth, so no flight ever shows a planet arriving as a blank. */
-const _preloaded = [];
+   still on Earth, so no flight ever shows a planet arriving as a blank.
+   The core comes with the app. A world added later is fetched — and so
+   kept by the offline cache, which keeps whatever the app fetches — once
+   its route is open or is the next to open: a route that opens with no
+   network still has its world, and nothing later is fetched before it is
+   near. Run at boot and whenever a route opens. */
+const _preloaded = {};
+function worldsToKeep(completions){
+  const open = JOURNEY_ORDER.filter(id => destinationUnlocked(id, completions));
+  const next = JOURNEY_ORDER.filter(id => !destinationUnlocked(id, completions))[0];
+  return open.concat(next ? [next] : []);
+}
+function stageAssets(completions){
+  const keep = worldsToKeep(completions);
+  return ASSET_REGISTRY.filter(a => a.load !== 'install' && (!assetWorld(a) || keep.indexOf(assetWorld(a)) !== -1) &&
+    /^(horizon|planet|bg|prop|rocket|character|place)\./.test(a.id));
+}
 function preloadStage(){
   try{
     if(typeof window === 'undefined' || typeof window.Image !== 'function') return;
-    ASSET_REGISTRY.forEach(a => {
-      if(!/^(horizon|planet|bg|prop|rocket|character|place)\./.test(a.id)) return;
+    stageAssets(journey.completions).forEach(a => {
+      if(_preloaded[a.id]) return;
       const img = new window.Image();
       img.src = a.path;
       if(typeof img.decode === 'function') img.decode().catch(() => {});
-      _preloaded.push(img);
+      _preloaded[a.id] = img;
     });
   }catch(e){}
 }
@@ -7013,7 +8020,7 @@ function startMission(missionId){
   session.praiseAt = hashString(run.id) % GAME_VIEWS[m.activities[0].type].praiseCount;
   /* The task is explained until its game has been played once: the
      second Letter Explorer mission needs no explaining. */
-  const intro = gamePlayed(m.activities[0].type) ? [] : [m.howTo];
+  const intro = taskExplained(m.howTo) ? [] : [m.howTo];
   return Voice.sequence(intro).then(() => (session.run === run ? askRound(run) : null));
 }
 
@@ -7025,9 +8032,13 @@ function renderMissionFrame(){
 
 function beginNextRound(run){
   const a = reviewActivity(MISSIONS[run.missionId].activities[run.index], journey.evidence, run);
-  beginRound(run, journey.evidence, { audible: lineAudible(voiceCue(ACTIVITY_TYPES[a.type].promptCue(a))) });
+  const type = ACTIVITY_TYPES[a.type];
+  /* A round asked out loud counts only if it could be heard; a pair, a
+     matched word or a traced letter is seen, and counts either way. */
+  beginRound(run, journey.evidence, { audible: !!(type.silentOk && type.silentOk(a)) || lineAudible(voiceCue(type.promptCue(a))) });
   resetBeats();
   resetBuild();
+  session.write = null;
   renderRound(run);
 }
 
@@ -7079,10 +8090,39 @@ function tileClass(i, cls){ const t = document.getElementById('choice-' + i); if
    A short, wide box puts the picture beside the game ('row') when that
    is much roomier than stacking it above ('stack'). Pure: a box in, the
    sizes out. */
-function playfieldSizes(w, h, type){
+function playfieldSizes(w, h, type, variant){
   const gap = Math.round(Math.max(12, Math.min(32, h * 0.05)));
   const cap = 236;
   const fl = v => Math.max(0, Math.floor(v));
+  if(type === 'find-letter' && variant === 'pair'){
+    /* the partner on its plate (0.72 tiles) over three stones (1.1 tall) */
+    const sStack = Math.min(cap, (w - 2 * gap) / 3, (h - gap) / 1.82);
+    const sRow = Math.min(cap, (w - 3 * gap) / 3.8, h / 1.1);
+    const row = sRow >= sStack * 1.2 && sStack < 150;
+    const s = row ? sRow : sStack;
+    return { layout: row ? 'row' : 'stack', tile: fl(s), signal: fl(Math.min(180, s * (row ? 0.8 : 0.72))), gap: gap };
+  }
+  if(type === 'letter-trace'){
+    /* the slate (its frame's shape) beside two round buttons; the only
+       game that fills its box's height, so it keeps a gap's clearance —
+       the HUD's title and progress stars end right at the box's top */
+    const tools = 84, ratio = WRITE_FRAME.w / (WRITE_FRAME.y1 - WRITE_FRAME.y0);
+    const ph = Math.max(0, Math.min(h - gap, (w - tools - gap) / ratio));
+    return { layout: 'row', tile: fl(Math.min(cap, ph / 3)), pad: fl(ph), padW: fl(ph * ratio), gap: gap };
+  }
+  if(type === 'sight-find'){
+    /* three satellites, each 1.5 tiles wide and 0.88 tall (512 by 300) */
+    const s = Math.min(cap, (w - 2 * gap) / 4.5, h / 0.95);
+    return { layout: 'stack', tile: fl(s), gap: gap };
+  }
+  if(type === 'sight-match'){
+    /* the word at the centre (1.7 by 1.0 tiles) over three on the ring (0.88) */
+    const sStack = Math.min(cap, (w - 2 * gap) / 4.5, (h - gap) / 1.95);
+    const sRow = Math.min(cap, (w - 3 * gap) / 6.2, h / 1.1);
+    const row = sRow >= sStack * 1.2 && sStack < 110;
+    const s = row ? sRow : sStack;
+    return { layout: row ? 'row' : 'stack', tile: fl(s), gap: gap };
+  }
   if(type === 'rhyme-pick'){
     const sStack = Math.min(cap, (w - 2 * gap) / 3, (h - gap) / 1.72);
     const sRow = Math.min(cap, (w - 3 * gap) / 3.8, h);
@@ -7127,13 +8167,14 @@ function fitPlayfield(){
   if(!game || currentScene !== 'mission' || typeof game.getBoundingClientRect !== 'function') return null;
   const box = game.getBoundingClientRect();
   if(!(box.width > 0 && box.height > 0)) return null;
-  const fit = playfieldSizes(box.width, box.height, game.getAttribute('data-game'));
+  const fit = playfieldSizes(box.width, box.height, game.getAttribute('data-game'), game.getAttribute('data-variant'));
   game.setAttribute('data-fit', fit.layout);
   game.style.setProperty('--game-gap', fit.gap + 'px');
   game.style.setProperty('--tile-size', fit.tile + 'px');
   if(fit.signal) game.style.setProperty('--signal', fit.signal + 'px');
   if(fit.stone) game.style.setProperty('--stone-w', fit.stone + 'px');
   if(fit.meteor) game.style.setProperty('--meteor', fit.meteor + 'px');
+  if(fit.pad){ game.style.setProperty('--pad-h', fit.pad + 'px'); game.style.setProperty('--pad-w', fit.padW + 'px'); }
   return fit;
 }
 
@@ -7141,9 +8182,9 @@ function fitPlayfield(){
    rest rotate through the others, so six questions never sound like one
    sentence six times. Every phrasing says "the letter ___". */
 function questionLine(r){
-  const t = r.activity.target;
-  if(r.index === 0) return 'find.' + t;
-  return 'find.' + t + '.' + (((r.index - 1) % (LETTER_LINES.find.length - 1)) + 1);
+  const a = r.activity, base = ACTIVITY_TYPES['find-letter'].promptCue(a);
+  const list = LETTER_LINES[a.from ? (a.form === 'lower' ? 'pairLower' : 'pairUpper') : (a.form === 'lower' ? 'little' : 'find')];
+  return r.index === 0 ? base : base + '.' + questionIndex(r, list);
 }
 /* The same rule for any family of questions: plainest first, then rotate. */
 function questionIndex(r, lines){ return r.index === 0 ? 0 : ((r.index - 1) % (lines.length - 1)) + 1; }
@@ -7287,7 +8328,281 @@ function soundPulse(){
 function revealChoices(){ const el = document.getElementById('missionChoices'); if(el) el.classList.add('is-revealed'); }
 function showSoundLetter(r){
   const L = soundLetter(r.activity.sound);
-  if(L) setHtml('gameSignal', artImg('prop.scannerOn', 'scanner-art') + '<span class="signal-letter" aria-hidden="true">' + L + '</span>');
+  if(L) setHtml('gameSignal', artImg('prop.scannerOn', 'scanner-art') + '<span class="signal-letter" aria-hidden="true" data-letter="' + L + '">' + printSvg(L) + '</span>');
+}
+
+/* ---- Moon Writer ----
+   The letter is drawn on a slate between its writing lines, from its
+   letterform. With full help: a wide soft lane for every stroke, the one
+   to trace brighter with a dashed middle and an arrow, and a green dot
+   where it starts. With light help: a faint outline and the green dot.
+   The child's ink follows the finger or the Pencil; a stroke done stays
+   inked. All the judging is the engine's (traceDown, traceMove, traceUp):
+   here is only drawing, input and what Pip says. */
+const WRITE_FRAME = { w: 1.6, y0: -0.3, y1: 1.65 };
+function writeBegin(r){
+  const a = r.activity;
+  const strokes = formOf(a.target, a.form), plan = tracePlan(strokes);
+  const box = plan ? inkBox(strokes) : { x0: 0, x1: 1 };
+  const cx = (box.x0 + box.x1) / 2;
+  session.write = { plan: plan, t: traceStart(plan), strokes: plan ? strokes : [], ink: [], current: [],
+                    view: [cx - WRITE_FRAME.w / 2, WRITE_FRAME.y0, WRITE_FRAME.w, WRITE_FRAME.y1 - WRITE_FRAME.y0],
+                    help: a.help, lower: a.form === 'lower', hintAt: 0, demo: '' };
+  writeInput.id = null;
+  const pad = document.getElementById('writePad');
+  if(pad){
+    pad.classList.remove('is-written');
+    pad.setAttribute('aria-label', (a.form === 'lower' ? 'The little letter ' + a.target.toLowerCase() : 'The big letter ' + a.target) + ', to trace');
+  }
+  setHtml('writeWatchBtn', glyph('eye', 40));
+  setHtml('writeRestartBtn', glyph('again', 40));
+  drawWrite();
+}
+function inkD(pts){ return pts.length ? 'M' + pts.map(p => n3(p[0]) + ' ' + n3(p[1])).join('L') : ''; }
+/* A small arrow on the stroke to trace, a little way in, pointing the way. */
+function writeArrow(pts){
+  const i = Math.min(pts.length - 2, Math.max(1, Math.round(pts.length * 0.22)));
+  const a = pts[i], b = pts[Math.min(pts.length - 1, i + 3)];
+  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+  return '<path class="w-arrow" d="M-0.07 -0.07L0.07 0L-0.07 0.07" transform="translate(' + n3(a[0]) + ' ' + n3(a[1]) + ') rotate(' + n3(ang) + ')"/>';
+}
+function drawWrite(){
+  const w = session.write;
+  if(!w) return;
+  const t = w.t, vx = w.view[0], vw = w.view[2];
+  const line = (y, cls) => '<line class="' + cls + '" x1="' + n3(vx) + '" x2="' + n3(vx + vw) + '" y1="' + y + '" y2="' + y + '"/>';
+  let g = '<g class="w-lines">' + line(0, 'w-line') + line(0.5, 'w-mid') + line(1, 'w-line') + (w.lower ? line(WRITING_LINES.tail, 'w-tail') : '') + '</g>';
+  w.strokes.forEach((st, i) => {
+    const done = t.done || i < t.stroke, now = !t.done && i === t.stroke;
+    const state = (done ? ' is-done' : '') + (now ? ' is-now' : '');
+    if(isDot(st)){ g += '<circle class="w-spot' + state + '" cx="' + n3(st[0][1]) + '" cy="' + n3(st[0][2]) + '" r="0.1"/>'; return; }
+    const d = strokePathD(st);
+    g += '<path class="' + (w.help === 'full' ? 'w-lane' : 'w-faint') + state + '" d="' + d + '"/>';
+    if(now && w.help === 'full') g += '<path class="w-dash" d="' + d + '"/>';
+  });
+  g += '<g class="w-ink">' + w.ink.map(pts => '<path d="' + inkD(pts) + '"/>').join('') + '<path id="writeInk" d="' + inkD(w.current) + '"/></g>';
+  if(!t.done && w.plan){
+    const s = w.plan[t.stroke], p0 = t.at >= 0 ? s.pts[t.at] : s.pts[0];
+    if(w.help === 'full' && !s.dot) g += writeArrow(s.pts);
+    g += '<circle class="w-start" id="writeStart" cx="' + n3(p0[0]) + '" cy="' + n3(p0[1]) + '" r="0.085"/>';
+  }
+  g += w.demo;
+  setHtml('writePad', '<svg class="w-svg" viewBox="' + w.view.map(n3).join(' ') + '" aria-hidden="true" focusable="false">' + g + '</svg>');
+  const pad = document.getElementById('writePad');
+  if(pad && pad.style && typeof pad.style.setProperty === 'function') pad.style.setProperty('--pad-ratio', String(n3(vw / w.view[3])));
+}
+/* The ink under the finger, redrawn at most once a frame. */
+let _inkQueued = false;
+function drawInk(){
+  if(_inkQueued) return;
+  _inkQueued = true;
+  const paint = () => {
+    _inkQueued = false;
+    const el = document.getElementById('writeInk'), w = session.write;
+    if(el && w) el.setAttribute('d', inkD(w.current));
+  };
+  if(typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') window.requestAnimationFrame(paint); else paint();
+}
+function pulseWriteStart(){
+  const el = document.getElementById('writeStart');
+  if(!el || !el.classList) return;
+  el.classList.remove('is-pulsing'); void el.offsetWidth; el.classList.add('is-pulsing');
+}
+/* Pip writes the letter (or one stroke of it): each stroke drawn along its
+   path, a pen moving with it, in stroke order. Reduce Motion: each stroke
+   appears whole, in order, with a pause between. */
+function watchLetter(run, how, only){
+  const r = run.round, w = session.write;
+  if(!r || r.resolved || !w || !w.plan) return Promise.resolve();
+  setInput('wait');
+  const a = r.activity;
+  const line = how === 'first' ? 'write.watch.' + a.target + '.' + a.form + '.' + (r.index % 2) : (how === 'again' ? 'write.watchAgain' : null);
+  const said = line ? Voice.say(line) : Promise.resolve();
+  const drawn = drawDemo(w, only);
+  return Promise.all([said, drawn]).then(() => {
+    if(session.write === w){ w.demo = ''; drawWrite(); }
+    if(session.run === run && !r.resolved){ setInput('open'); armReprompt(run); }
+  });
+}
+function drawDemo(w, only){
+  const reduced = motionReduced();
+  w.demo = '<g class="w-demo">' + w.strokes.map((st, i) => (only !== undefined && i !== only) ? '' : isDot(st)
+      ? '<circle class="w-demo-spot" id="demo-' + i + '" cx="' + n3(st[0][1]) + '" cy="' + n3(st[0][2]) + '" r="0.09" opacity="0"/>'
+      : '<path class="w-demo-stroke" id="demo-' + i + '" d="' + strokePathD(st) + '" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>').join('') +
+    '<circle class="w-pen" id="demoPen" r="0.075" cx="0" cy="0" opacity="0"/></g>';
+  drawWrite();
+  let chain = Promise.resolve();
+  w.strokes.forEach((st, i) => {
+    if(only !== undefined && i !== only) return;
+    chain = chain.then(() => (session.write === w ? demoStroke(i, st, reduced) : null))
+                 .then(() => delay(reduced ? 420 : TIMING.writeDemoGap));
+  });
+  return chain;
+}
+function demoStroke(i, st, reduced){
+  const el = document.getElementById('demo-' + i);
+  if(!el) return Promise.resolve();
+  if(isDot(st) || reduced || typeof el.animate !== 'function'){
+    if(isDot(st)) el.setAttribute('opacity', '1'); else el.setAttribute('stroke-dashoffset', '0');
+    return Promise.resolve();
+  }
+  const pts = strokePoints(st, 0.05);
+  let len = 0;
+  for(let k = 1; k < pts.length; k++) len += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+  const ms = Math.max(320, len * TIMING.writeDemo);
+  const pen = document.getElementById('demoPen');
+  try{
+    const anim = el.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: ms, easing: 'linear', fill: 'forwards' });
+    if(pen && typeof pen.animate === 'function'){
+      pen.animate(pts.filter((p, k) => k % 2 === 0 || k === pts.length - 1).map(p => ({ transform: 'translate(' + n3(p[0]) + 'px, ' + n3(p[1]) + 'px)', opacity: 1 })),
+                  { duration: ms, easing: 'linear', fill: 'forwards' });
+    }
+    return new Promise(res => { let fin = false; const end = () => { if(!fin){ fin = true; res(); } }; anim.onfinish = end; setTimeout(end, ms + 250); });
+  }catch(e){ el.setAttribute('stroke-dashoffset', '0'); return Promise.resolve(); }
+}
+/* A letter that cannot be traced (a malformed letterform, which content
+   validation stops at boot) is passed over, and nothing about it is
+   recorded — it never becomes a finished letter. */
+function skipUntraceable(run){
+  const r = run.round;
+  r.guided = true;
+  r.misses = 0;
+  const res = answerRound(run, 'traced');
+  if(res.ignored) return null;
+  return delay(0).then(() => (session.run === run ? nextStep(run) : null));
+}
+/* The buttons beside the slate. */
+function watchAgain(){
+  unlockAudio();
+  const run = session.run, r = run && run.round;
+  if(!r || r.resolved || r.activity.type !== 'letter-trace' || currentScene !== 'mission' || overlayOpen()) return Promise.resolve();
+  if(session.input === 'intro'){ Voice.skip(); return Promise.resolve(); }
+  if(!inputOpen()) return Promise.resolve();
+  disarmReprompt();
+  noteHelp(run);
+  return watchLetter(run, 'again');
+}
+function restartLetter(){
+  unlockAudio();
+  const run = session.run, r = run && run.round, w = session.write;
+  if(!r || r.resolved || r.activity.type !== 'letter-trace' || !w || currentScene !== 'mission' || overlayOpen() || !inputOpen()) return;
+  w.t = traceStart(w.plan);
+  w.ink = []; w.current = [];
+  writeInput.id = null;
+  Sfx.play('lift');
+  drawWrite();
+  armReprompt(run);
+}
+/* ---- a trace, in letter units ----
+   The controller the pointer handlers call (and the contracts drive
+   directly): down, move, up. */
+function writeReady(){
+  const run = session.run, r = run && run.round;
+  return !!(r && !r.resolved && r.activity.type === 'letter-trace' && currentScene === 'mission' && !overlayOpen() &&
+            inputOpen() && session.write && session.write.plan);
+}
+function writeDown(p){
+  if(!writeReady()) return null;
+  unlockAudio();
+  disarmReprompt();
+  const w = session.write;
+  const ev = traceDown(w.plan, w.t, p);
+  w.current = ev === 'start' ? [p] : [];
+  writeEvent(ev);
+  return ev;
+}
+function writeMove(p){
+  const w = session.write;
+  if(!writeReady() || !w.t.down) return null;
+  const ev = traceMove(w.plan, w.t, p);
+  if(ev === 'move') w.current.push(p);
+  writeEvent(ev);
+  return ev;
+}
+function writeUp(){
+  const w = session.write;
+  if(!w) return null;
+  const was = w.t.down;
+  traceUp(w.t);
+  if(was && w.current.length){ w.ink.push(w.current); w.current = []; }
+  /* lifted part-way: the green dot moves to where the finger stopped,
+     which is where it carries on */
+  if(was) drawWrite();
+  if(writeReady()) armReprompt(session.run);
+  return was ? 'up' : null;
+}
+function writeEvent(ev){
+  const w = session.write, run = session.run;
+  if(!ev || !w) return;
+  if(ev === 'move'){ drawInk(); return; }
+  if(ev === 'away'){
+    pulseWriteStart();
+    if(Date.now() - w.hintAt > TIMING.writeHint){ w.hintAt = Date.now(); Voice.say('write.start'); }
+    return;
+  }
+  if(ev === 'wander'){
+    /* only this stroke starts again: its ink fades, the start pulses */
+    noteHelp(run);
+    w.current = [];
+    Sfx.play('almost');
+    drawWrite();
+    pulseWriteStart();
+    Voice.say('write.retry.' + ((w.t.resets - 1) % WRITE_LINES.retry.length));
+    /* twice astray on one stroke: Pip writes that stroke again */
+    if(w.t.resets >= 2 && w.t.resets % 2 === 0) watchLetter(run, null, w.t.stroke);
+    return;
+  }
+  if(ev === 'stroke' || ev === 'letter'){
+    if(w.current.length){ w.ink.push(w.current); w.current = []; }
+    Sfx.play('place');
+    drawWrite();
+    if(ev === 'letter') choose('traced');
+  }
+}
+/* ---- the pointer: a finger or the Pencil, one at a time ----
+   Pointer Events cover both. One pointer draws; a second finger does not.
+   A Pencil coming down while a touch is drawing wins — that touch is
+   most likely a resting palm. A cancelled pointer (a system gesture)
+   just lifts. */
+const writeInput = { id: null, type: null };
+function padPoint(e){
+  const pad = document.getElementById('writePad'), w = session.write;
+  if(!pad || !w || typeof pad.getBoundingClientRect !== 'function') return null;
+  const b = pad.getBoundingClientRect();
+  if(!(b.width > 0 && b.height > 0)) return null;
+  return [w.view[0] + (e.clientX - b.left) / b.width * w.view[2], w.view[1] + (e.clientY - b.top) / b.height * w.view[3]];
+}
+function writePointerDown(e){
+  if(!writeReady()) return;
+  if(writeInput.id !== null){
+    if(e.pointerType === 'pen' && writeInput.type !== 'pen') writeUp();
+    else return;
+  }
+  writeInput.id = e.pointerId;
+  writeInput.type = e.pointerType || 'mouse';
+  try{ if(e.currentTarget && e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); }catch(x){}
+  if(e.cancelable && e.preventDefault) e.preventDefault();
+  writeDown(padPoint(e));
+}
+function writePointerMove(e){
+  if(e.pointerId !== writeInput.id) return;
+  if(e.cancelable && e.preventDefault) e.preventDefault();
+  const list = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : null;
+  (list && list.length ? list : [e]).forEach(ev => writeMove(padPoint(ev)));
+}
+function writePointerEnd(e){
+  if(e.pointerId !== writeInput.id) return;
+  writeInput.id = null;
+  writeUp();
+}
+function wireWritePad(){
+  const pad = document.getElementById('writePad');
+  if(!pad || typeof pad.addEventListener !== 'function') return;
+  pad.addEventListener('pointerdown', writePointerDown);
+  pad.addEventListener('pointermove', writePointerMove);
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => pad.addEventListener(t, writePointerEnd));
+  /* belt and braces for an older Safari: no scrolling under a tracing finger */
+  pad.addEventListener('touchmove', e => { if(e.cancelable) e.preventDefault(); }, { passive: false });
 }
 
 /* ---- Word Builder ----
@@ -7303,14 +8618,16 @@ function drawBuild(r){
   const b = session.build;
   const next = b.slots.indexOf(null);
   const hint = b.guide && next !== -1 && !b.hold ? r.answer[next] : -1;
+  const frame = printFrame(r.options);
+  const letter = L => '<span class="piece-glyph" data-letter="' + L + '">' + printSvg(L, frame) + '</span>';
   setHtml('buildSlots', b.slots.map((pi, s) =>
     '<button class="slot" id="slot-' + s + '" onclick="tapSlot(' + s + ')" aria-label="' +
       (pi === null ? 'Empty place ' + (s + 1) : 'Letter ' + r.options[pi] + ', tap to take it back') + '">' +
-      (pi === null ? '' : '<span class="piece' + (b.wrong.indexOf(s) !== -1 ? ' is-wrong' : '') + '" id="slotPiece-' + s + '" aria-hidden="true">' + r.options[pi] + '</span>') +
+      (pi === null ? '' : '<span class="piece' + (b.wrong.indexOf(s) !== -1 ? ' is-wrong' : '') + '" id="slotPiece-' + s + '" aria-hidden="true">' + letter(r.options[pi]) + '</span>') +
     '</button>').join(''));
   const tray = setHtml('buildTray', r.options.map((L, i) =>
     '<button class="piece' + (b.slots.indexOf(i) !== -1 ? ' is-used' : '') + (i === hint ? ' is-hint' : '') + '" id="piece-' + i + '" ' +
-      'onclick="tapPiece(' + i + ')" aria-label="Letter ' + L + '">' + L + '</button>').join(''));
+      'onclick="tapPiece(' + i + ')" aria-label="Letter ' + L + '">' + letter(L) + '</button>').join(''));
   if(tray) tray.setAttribute('aria-label', 'Letters to build with');
 }
 function builtWord(on){ const el = document.getElementById('buildSlots'); if(el) el.classList.toggle('is-built', !!on); }
@@ -7398,6 +8715,19 @@ function modelBuild(run){
 /* A line, or several in order. */
 function sayLines(x){ return Array.isArray(x) ? Voice.sequence(x) : Voice.say(x); }
 
+/* The words of a sight-word round, each on a word satellite, in one
+   frame so they are one size on one line. The label is for a grown-up's
+   screen reader; the word is never in a caption. */
+function sightChoicesHtml(r){
+  const frame = printFrame(r.options);
+  return r.options.map((w, i) =>
+    '<button class="choice choice-word" id="choice-' + i + '" onclick="choose(' + i + ')" aria-label="The word ' + w + '">' +
+      '<span class="sat-float">' + artImg('prop.wordSat', 'sat-art') +
+      '<span class="word-face" aria-hidden="true" data-word="' + w + '">' + printSvg(w, frame) + '</span></span>' +
+      '<span class="choice-badge" aria-hidden="true">' + glyph('check', 30) + '</span>' +
+    '</button>').join('');
+}
+
 /* One view per kind of activity: how its round is drawn, and what Pip
    says at each step of the help ladder. A new activity type is an engine
    entry, content, and one of these — never a new scene. */
@@ -7406,25 +8736,46 @@ const GAME_VIEWS = {
     progressWord: 'letters found',
     praiseCount: LETTER_LINES.found.length,
     /* Letter stones stand on the Moon. The letter is on a clean plate on
-       the stone's face, never on the clay. */
+       the stone's face, never on the clay, in the school print. A round's
+       letters share one frame, so they are one size on one baseline — and
+       in a pair, the little letters are framed with their big partner, so
+       they look little. */
     draw(r){
-      setHtml('gameSignal', '');
+      const a = r.activity;
+      const inCase = (L, f) => (f === 'lower' ? L.toLowerCase() : L);
+      const partner = a.from ? inCase(a.target, a.from) : null;
+      const frame = printFrame(r.options.map(L => inCase(L, a.form)).concat(partner ? [partner] : []));
+      setHtml('gameSignal', partner ? '<span class="signal-plate" data-letter="' + partner + '">' + printSvg(partner) + '</span>' : '');
+      const game = document.getElementById('missionGame');
+      if(game) game.setAttribute('data-variant', a.from ? 'pair' : a.form);
       const host = setHtml('missionChoices', r.options.map((L, i) =>
-        '<button class="choice choice-stone" id="choice-' + i + '" onclick="choose(' + i + ')" aria-label="Letter ' + L + '">' +
+        '<button class="choice choice-stone" id="choice-' + i + '" onclick="choose(' + i + ')" aria-label="' + letterLabel(L, a.form) + '">' +
           artImg('prop.letterStone', 'stone-art') +
-          '<span class="choice-face" aria-hidden="true"><span class="choice-glyph">' + L + '</span></span>' +
+          '<span class="choice-face" aria-hidden="true"><span class="choice-glyph" data-letter="' + inCase(L, a.form) + '">' + printSvg(inCase(L, a.form), frame) + '</span></span>' +
           '<span class="choice-badge" aria-hidden="true">' + glyph('check', 30) + '</span>' +
         '</button>').join(''));
-      if(host) host.setAttribute('aria-label', 'Letters to choose from');
+      if(host) host.setAttribute('aria-label', a.form === 'lower' ? 'Little letters to choose from' : 'Letters to choose from');
     },
     ask(r){ return [questionLine(r)]; },
     guide(run){ tileClass(run.round.answer, 'is-hint'); },
-    again(r, n){ return 'again.' + r.activity.target + '.' + n; },
-    praise(r, k){ return 'found.' + r.activity.target + '.' + (k % LETTER_LINES.found.length); },
+    again(r, n){
+      const a = r.activity;
+      return a.from ? 'pairAgain.' + a.target + '.' + a.form + '.' + n : (a.form === 'lower' ? 'littleAgain.' : 'again.') + a.target + '.' + n;
+    },
+    praise(r, k){
+      const a = r.activity;
+      if(a.from) return 'pairFound.' + a.target + '.' + a.form + '.' + (k % LETTER_LINES.pairFound.length);
+      return a.form === 'lower' ? 'littleFound.' + a.target + '.' + (k % LETTER_LINES.littleFound.length)
+                                : 'found.' + a.target + '.' + (k % LETTER_LINES.found.length);
+    },
     correct(r, i){ tileClass(i, 'is-correct'); },
     wrong(r, i){ tileClass(i, 'is-wrong'); tileClass(i, 'is-out'); },
-    retry(r){ return ['find.' + r.activity.target]; },
-    show(run){ tileClass(run.round.answer, 'is-hint'); return Voice.sequence(['show.' + run.round.activity.target]); }
+    retry(r){ return [ACTIVITY_TYPES['find-letter'].promptCue(r.activity)]; },
+    show(run){
+      const a = run.round.activity;
+      tileClass(run.round.answer, 'is-hint');
+      return Voice.sequence([a.from ? 'pairShow.' + a.target + '.' + a.form : (a.form === 'lower' ? 'littleShow.' : 'show.') + a.target]);
+    }
   },
   'rhyme-pick': {
     progressWord: 'rhymes found',
@@ -7510,6 +8861,70 @@ const GAME_VIEWS = {
       return Voice.sequence(['sound.show.' + r.activity.answer, { say: 'phoneme.' + r.activity.sound, cue: soundPulse }, 'sound.tap.' + r.activity.answer]);
     }
   },
+  /* Star Words: three word satellites float over Jupiter's clouds. "Find
+     the word…" — the word — and the child taps it. */
+  'sight-find': {
+    progressWord: 'words found',
+    praiseCount: SIGHT_LINES.found.length,
+    draw(r){
+      setHtml('gameSignal', '');
+      const host = setHtml('missionChoices', sightChoicesHtml(r));
+      if(host) host.setAttribute('aria-label', 'Words to choose from');
+    },
+    ask(r){ const w = r.activity.target; return ['sight.ask.' + w + '.' + questionIndex(r, SIGHT_LINES.ask), 'sight.word.' + w]; },
+    guide(run){ tileClass(run.round.answer, 'is-hint'); },
+    again(r, n){ return ['sight.again.' + r.activity.target + '.' + n, 'sight.word.' + r.activity.target]; },
+    praise(r, k){ return 'sight.found.' + r.activity.target + '.' + (k % SIGHT_LINES.found.length); },
+    correct(r, i){ tileClass(i, 'is-correct'); },
+    wrong(r, i){ tileClass(i, 'is-wrong'); tileClass(i, 'is-out'); },
+    retry(r){ return ['sight.word.' + r.activity.target]; },
+    show(run){
+      const w = run.round.activity.target;
+      tileClass(run.round.answer, 'is-hint');
+      return Voice.sequence(['sight.show.' + w, 'sight.word.' + w, 'sight.tap']);
+    }
+  },
+  /* Word Orbit: the word at the centre, three around it on a ring. "Look
+     at this word. It says…" — the word — "Find the same word!" */
+  'sight-match': {
+    progressWord: 'words matched',
+    praiseCount: SIGHT_LINES.matched.length,
+    draw(r){
+      const w = r.activity.target;
+      setHtml('gameSignal', '<span class="signal-word" data-word="' + w + '">' + artImg('prop.wordSat', 'sat-art') +
+        '<span class="word-face" aria-hidden="true">' + printSvg(w, printFrame(r.options)) + '</span></span>');
+      const host = setHtml('missionChoices', sightChoicesHtml(r));
+      if(host) host.setAttribute('aria-label', 'Words around the ring');
+    },
+    ask(r){ const w = r.activity.target; return ['sight.look.' + w, 'sight.word.' + w, 'sight.match.' + w + '.' + questionIndex(r, SIGHT_LINES.match)]; },
+    guide(run){ tileClass(run.round.answer, 'is-hint'); },
+    again(r, n){ return 'sight.matchAgain.' + r.activity.target + '.' + n; },
+    praise(r, k){ return 'sight.matched.' + r.activity.target + '.' + (k % SIGHT_LINES.matched.length); },
+    correct(r, i){ tileClass(i, 'is-correct'); },
+    wrong(r, i){ tileClass(i, 'is-wrong'); tileClass(i, 'is-out'); },
+    retry(r){ return ['sight.match.' + r.activity.target + '.0']; },
+    show(run){ tileClass(run.round.answer, 'is-hint'); return Voice.sequence(['sight.matchShow.' + run.round.activity.target]); }
+  },
+  /* Moon Writer: Pip writes the letter first (with full help), then
+     "Now you! Trace the big letter el." The trace itself is the answer. */
+  'letter-trace': {
+    progressWord: 'letters traced',
+    praiseCount: WRITE_LINES.done.length,
+    draw(r){ setHtml('gameSignal', ''); setHtml('missionChoices', ''); writeBegin(r); },
+    lead(run){
+      const r = run.round;
+      if(!session.write || !session.write.plan) return skipUntraceable(run);
+      return r.activity.help === 'full' ? watchLetter(run, 'first') : null;
+    },
+    ask(r){ return [ACTIVITY_TYPES['letter-trace'].promptCue(r.activity) + '.' + (r.index % 2)]; },
+    guide(){ return null; },
+    again(r, n){ return [{ say: 'write.again.' + n, cue: pulseWriteStart }]; },
+    praise(r, k){ return 'write.done.' + r.activity.target + '.' + r.activity.form + '.' + (k % WRITE_LINES.done.length); },
+    correct(){ const pad = document.getElementById('writePad'); if(pad) pad.classList.add('is-written'); },
+    wrong(){},
+    retry(){ return []; },
+    show(run){ return watchLetter(run, 'again'); }
+  },
   /* Word Builder: "Listen." — the word sound by sound, each slot lighting
      as its sound plays — "Build the word!" */
   'word-build': {
@@ -7555,16 +8970,25 @@ const GAME_VIEWS = {
 };
 
 /* Ask the round's question. What can be tapped opens as soon as the
-   question starts, so a quick child is never kept waiting. */
+   question starts, so a quick child is never kept waiting. A game that
+   shows before it asks (Moon Writer: Pip writes the letter first) does
+   that first, with nothing open. */
 function askRound(run){
   const r = run.round;
   if(!r || r.resolved || session.run !== run) return Promise.resolve();
-  setInput('open');
-  armReprompt(run);
-  r.askLines = GAME_VIEWS[r.activity.type].ask(r);
-  return sayAsk(run).then(() => {
-    if(r.guided && !r.resolved && session.run === run) return GAME_VIEWS[r.activity.type].guide(run);
-  });
+  const view = GAME_VIEWS[r.activity.type];
+  const go = () => {
+    if(r.resolved || session.run !== run) return null;
+    setInput('open');
+    armReprompt(run);
+    r.askLines = view.ask(r);
+    return sayAsk(run).then(() => {
+      if(r.guided && !r.resolved && session.run === run) return view.guide(run);
+    });
+  };
+  if(!view.lead) return go();
+  const lead = view.lead(run);
+  return lead ? Promise.resolve(lead).then(go) : go();
 }
 function sayAsk(run){
   const r = run.round;
@@ -7682,7 +9106,7 @@ function finishMission(run){
      stop, Mercury" are news exactly once — on the return from the mission
      that made them true. */
   if(restoredNow) session.justRelit = m.destinationId;
-  if(opened){ session.revealed = opened; setStoryFlag('shown.' + opened); }
+  if(opened){ session.revealed = opened; setStoryFlag('shown.' + opened); preloadStage(); }
   return celebrate({ mission: m, stars: s.awarded ? m.reward.stars : 0, restoredNow: restoredNow, opened: opened });
 }
 
@@ -7696,6 +9120,7 @@ function celebrate(o){
   const d = DESTINATIONS[dest];
   if(!session.visit || session.visit.dest !== dest) session.visit = { dest: dest, played: false };
   session.visit.played = true;
+  if(o.restoredNow) session.visit.restoredHere = true;
   session.celebrateReadyAt = Date.now() + TIMING.celebrateGuard;
   session.markerHold = markerOf(o.mission.id);
   session.revealHold = o.opened;
@@ -8125,13 +9550,15 @@ function evidenceLabel(e){
   const shows = SKILLS[e.skillId] && SKILLS[e.skillId].shows;
   if(shows === 'sound' && PHONEMES[e.item]) return '/' + PHONEMES[e.item].ipa + '/';
   if(shows === 'built') return e.item.toUpperCase();
+  if(shows === 'letter') return e.form === 'lower' ? e.item.toLowerCase() : e.form === 'match' ? e.item + ' ' + e.item.toLowerCase() : e.item;
   return e.item;
 }
 function letterRowHtml(e){
   const label = evidenceLabel(e);
   const word = label.length > 1;
+  const did = (SKILLS[e.skillId] && SKILLS[e.skillId].did) || 'Practiced';
   return '<div class="letter-row"><span class="letter-row-glyph' + (word ? ' is-word' : '') + '">' + escapeHtml(label) + '</span>' +
-    '<span class="letter-row-text">Heard ' + e.seen + (e.seen === 1 ? ' time' : ' times') +
+    '<span class="letter-row-text">' + did + ' ' + e.seen + (e.seen === 1 ? ' time' : ' times') +
       ' · ' + ((SKILLS[e.skillId] && SKILLS[e.skillId].firstTry) || 'right on the first try') + ' ' + e.firstTry + (e.firstTry === 1 ? ' time' : ' times') + '</span>' +
     '<span class="letter-row-date">' + escapeHtml(formatDate(e.lastPracticed)) + '</span></div>';
 }
@@ -8160,16 +9587,21 @@ function renderGrownups(){
     detailRow('Stars spent', String(ledgerTotal(journey.stars, 'spend'))) +
     detailRow('Explorer since', journey.profile ? formatDate(journey.profile.createdAt) : 'Not started'));
 
-  /* Practice, skill by skill: plain counts, never a grade. */
-  const groups = Object.keys(SKILLS).filter(k => SKILLS[k].status === 'active').map(k => {
-    const rows = journey.evidence.filter(e => e.skillId === k).sort((a, b) => a.item.localeCompare(b.item));
+  /* Practice, skill by skill: plain counts, never a grade. First how many
+     of each were practiced, then each one. */
+  const active = Object.keys(SKILLS).filter(k => SKILLS[k].status === 'active');
+  const practiced = k => new Set(journey.evidence.filter(e => e.skillId === k).map(e => e.item)).size;
+  const groups = active.map(k => {
+    const rows = journey.evidence.filter(e => e.skillId === k).sort((a, b) => a.item.localeCompare(b.item) || a.form.localeCompare(b.form));
     return rows.length ? '<div class="practice-skill">' + escapeHtml(SKILLS[k].label) + '</div>' +
                          '<div class="letter-table">' + rows.map(letterRowHtml).join('') + '</div>' : '';
   }).filter(Boolean);
   setHtml('gLetters', groups.length
-    ? groups.join('') +
-      '<p class="field-hint" style="margin-top:var(--space-md)">Counts include only questions asked out loud. ' +
-      '"First try" means without help. These are practice notes, not a grade.</p>'
+    ? active.map(k => detailRow(SKILLS[k].practiced, String(practiced(k)))).join('') +
+      groups.join('') +
+      '<p class="field-hint" style="margin-top:var(--space-md)">A question asked out loud counts only when it could be heard; ' +
+      'matching, pairing and tracing are seen, so they count either way. ' +
+      '"First try" and "without help" mean no help was needed. These are practice notes, not a grade.</p>'
     : emptyStateHtml({ title: 'Nothing practiced yet',
                        body: 'After a mission, each letter or word your child worked on shows up here, under its skill.' }));
 
@@ -8242,6 +9674,8 @@ function wireProduct(){
   document.addEventListener('click', unlock, true);
   /* Any touch means the child is doing something, so an idle hint waits. */
   document.addEventListener('pointerdown', noteActivity, true);
+
+  wireWritePad();
 
   const gate = document.getElementById('gateBtn');
   if(gate){

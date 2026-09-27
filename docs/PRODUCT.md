@@ -26,9 +26,10 @@ experience and keep the complexity behind the scenes.
 
 The child is a new space explorer, and Earth is home base. Across the solar
 system, things have gone quiet: the Moon's beacon is dim, Mercury's signal
-is fuzzy, and Mars's sound scanner cannot hear. The explorer flies from
-world to world, finding letters, rhymes, beats, sounds and words to set them
-right. Every restored place brightens, and
+is fuzzy, Mars's sound scanner cannot hear, and Jupiter's sky signs have
+lost their words. The explorer flies from world to world, finding letters,
+rhymes, beats, sounds and words to set them right, and learns to write
+letters on the Moon's writing slate. Every restored place brightens, and
 opens the route to the next.
 
 The story is hopeful, curious and warm. It has no villain, no danger and no
@@ -47,6 +48,32 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 **The world is the navigation.** There are no menus: places are the
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
+
+## Phase 4: what is built (v0.6.0)
+
+Phase 4 completed the learning product's shape: all seven learning areas
+now have a first game. It added little letters and big-and-little pairs,
+handwriting (Moon Writer), and sight words on a new world, Jupiter. The
+flow runs Moon (letters, writing) → Mercury (rhymes, beats) → Mars
+(sounds, words) → Jupiter (sight words).
+
+| Area | Built |
+|---|---|
+| Little letters | Every letter has a little shape, a little-letter family and its own look-alikes (b d p q; n h u; i l j). Letter Explorer finds little letters by name ("Find the little letter em."), and matches big and little partners (one shown on a plate, find the other). A child hears "big" and "little"; "uppercase" and "lowercase" stay in grown-up docs. Evidence is kept per case |
+| The school print | Every letter a child reads is drawn from the same strokes a child learns to write: ball-and-stick, a single-storey a and g, a capital I with bars, round-ended strokes, one shared baseline in a round. No font is bundled; the device font was rejected |
+| Moon Writer | On the Moon's writing slate: Pip writes a letter (the stroke drawn along its path, a pen moving with it; whole, stroke by stroke, with Reduce Motion), the child traces it with the path shown (lanes, a dashed middle, an arrow, a green start), then again with less help. Watch again and start again beside the slate. L, T, H; O, C and a review; little c, a, d |
+| Tracing by geometry | No recognition, no score: a trace follows each stroke from its start, in its direction, to its end, within a corridor. Wandering well off restarts that stroke alone; a lifted finger carries on (the green dot moves there); going back to a stroke's start begins it again. Watching again or a restart counts as help, never as wrong |
+| Touch and the Pencil | Pointer Events on the slate only: a finger or an Apple Pencil (never required), one pointer at a time, a Pencil beats a resting palm, a cancelled touch lifts, no page scroll or selection under the slate. On a short phone the slate stands in front of the ground, so letters stay big enough for a finger |
+| Jupiter | A giant, friendly clay world of rolled cream, amber and orange bands with one big storm swirl, after Mars. Its markers are a sky sign (Star Words) and an orbit ring (Word Orbit). Restored by one of each |
+| Star Words | Hear a sight word; find it among three floating word satellites. The word is never on screen as the clue. The harder level puts a look-alike beside it (it, is) |
+| Word Orbit | A word at the centre; find the one just the same on the ring below. Seen, not heard, so it counts with the sound off |
+| Sight-word source | Twelve words of the Dolch pre-primer list (the, and, see, you, to, go, is, it, in, can, we, my), chosen from three candidate sources and recorded in [CONTENT-SOURCES.md](CONTENT-SOURCES.md) as a source, never claimed as alignment. Each says whether it can be sounded out |
+| More missions | 20 missions and 117 rounds (from 11 and 64): the Moon 8 (Letter Explorer ×5, Moon Writer ×3), Mercury 4, Mars 4, Jupiter 4 (Star Words ×2, Word Orbit ×2) |
+| Meeting new games | The visit that restores a place also offers the first mission of any game there not yet played, so a new child meets the writing slate straight after relighting the Moon. With every open place restored, Earth points to the first place with something new |
+| Review across skills | A little letter needing help comes back as a little letter and brings back its sound; a sound brings back a word starting with it; a hard sight word comes back in either sight game; a letter traced with help comes back with less help |
+| Grown-ups | Seven plain counts: Letters practiced, Rhyming words practiced, Beginning sounds practiced, Syllable words practiced, Words built, Sight words practiced, Letters traced; then each item ("Traced 2 times · traced without help 1 time"). A letter counts once whatever its case |
+| Pictures by tier | The precache holds only the core pictures (78, 1.04 MB) and the shell; the home-screen icons are fetched at install; Jupiter's 8 pictures (196 KB) are fetched once its route is near and kept offline, and carried into each new version's cache |
+| Upgrades | A v0.5.0 journey opens with everything it had: Jupiter arrives in the sky once, Launch goes there, and the Moon's writing slate waits |
 
 ## Phase 3: what is built (v0.5.0)
 
@@ -124,15 +151,18 @@ rocket → fly home → reload, with everything persisted.
 
 These are not built yet:
 
-- sight words and handwriting (beginning sounds and CVC words are built:
-  Phase 3)
+- sight words in a sentence (a sentence with a word missing): a sentence
+  with exactly one right answer is hard to write ("I see ___ dog" has
+  several), so it waits
+- more letters to write (the rest of the alphabet has its strokes, for
+  reading), and writing without an outline
+- the rest of the sight-word list (28 more pre-primer words, then primer)
 - short i, o and e CVC words, consonant blends and digraphs (sh, ch, th),
   and a bigger word bank
 - recordings: every sound, word and line is still the development phonics
   voice or the device voice (see "placeholder" below)
 - the other planets (declared as `planned`, never drawn)
 - a review mission
-- lowercase letters or a school font
 - student profiles
 - final (signed-off) artwork: the current pictures are draft renders
 - more rocket looks: the dinosaur and space-puppy themes, and more gear
@@ -179,6 +209,9 @@ These are never planned:
   on an iPad yet.
 - **Sound effects:** synthesised with Web Audio, soft and short. Final sound
   design is still to come.
+- **The letterforms and their stroke order** are original to this app and
+  await an educator's review ([CONTENT-REVIEW.md](CONTENT-REVIEW.md) section
+  21); so do the sight-word set and the tracing tolerances.
 - **The working title,** "Space Kindergarten". The permanent internal id is
   `space-kindergarten`, which the name can change without affecting.
 
@@ -199,6 +232,64 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Phase 4 QA record (2026-09-27)
+
+**Tested in Chromium (headless Edge on Windows) with emulated iPad and
+phone viewports, emulated touch and an emulated pen, and in the test
+harness. Nothing was tested on a physical iPad, with a real finger or an
+Apple Pencil: device QA is deferred to the next major device gate.**
+
+| Check | How | Result |
+|---|---|---|
+| The whole journey | Headless Edge, scripted through the app's own functions, at 1180×820 (2×) and 1024×768: Earth → the Moon → Letter Explorer in the school print → the slate offered in the same visit → Moon Writer (Pip's demo mid-stroke, full help, mid-stroke ink, a lift with the dot moving, the letter done, less help, a stroke that wandered) → little letters → big and little partners → little c → home, Jupiter revealed → the first flight to Jupiter → Star Words (found, a wrong pick) → Word Orbit → Jupiter restored → home, Jupiter lit → Moon Writer with Reduce Motion → grown-ups. At 1366×1024, 844×390 and 667×375: the Moon with the slate, Moon Writer, partners, Earth with Jupiter, Jupiter, Star Words, Word Orbit | No page errors, no resting-stage problem and no display repair at any size |
+| Real input | Headless Edge, touch and pen dispatched through the browser's own input pipeline (not by calling the code) | A finger traces a letter with the page never scrolling; a cancelled touch lifts and the dot moves to where it stopped, then carries on; a second finger is ignored; a resting palm, then the Pencil takes over and finishes; twelve quick taps away from the dot give one reminder and draw nothing; the eye button counts as help; the arrow button clears the letter; a reload mid-letter records nothing and boots clean |
+| A real v0.5.0 → v0.6.0 update, then offline | Headless Edge: the v0.5.0 build (`168ac8f`) served and played through Mars with a stand-in speech engine (the letter S found after a miss; grape paint bought). Its worker cached 81 files. Then v0.6.0 was served on the same origin and the page reloaded; reloaded again; then the network cut and the server stopped, and Jupiter and Moon Writer played offline | Completions, stars, the rocket and all 21 practice records byte-identical; only a story flag (`shown.jupiter`) added. Moon, Mercury and Mars stay restored; Jupiter opens and arrives once, never after a reload; Launch goes to Jupiter; the Moon offers the writing slate. Jupiter's 8 pictures were fetched once, through the old worker, and carried into the v0.6.0 cache (89 entries). Offline: Jupiter drawn with every picture, Star Words and Word Orbit played and Jupiter restored, then Moon Writer traced; no missing picture, no error |
+| Contracts | `npm run verify` | 1338 passed, 0 failed; config verify ok |
+| Mutation check | 41 defects planted one at a time in a copy: little letters and pairs, the print, sight words, tracing geometry, the slate's input, progression, picture tiers, review across skills, grown-ups | First run: 32 of 41 caught. All 9 missed exposed weak or missing tests (a little-letter round built from big-letter shapes; the near/far line for sight words; the tracing corridor; a trace with the sound off; Pip's reminder throttle; the demo under Reduce Motion; the precache list config:sync writes; a little letter bringing back its sound; the tracing review). Each now has a contract, and a rerun caught all 9: 41 of 41 |
+| Performance | Headless Edge, cold loads, median of five, v0.5.0 against v0.6.0 | index.html 146 KB on the wire (124 KB before). DOMContentLoaded 59 ms (50) at full speed and 296 ms (225) with 4× CPU throttling; script 98 ms (61) throttled. Kept as one file: see ARCHITECTURE.md |
+| Economy | `npm run economy`: 20 missions at 3 stars | The whole journey once earns 60 stars and 12 of 15 things; everything after 28 missions. Kept at 3 stars a mission |
+
+**Found and fixed in Phase 4 QA:**
+
+1. **The slate could not be traced with a real finger.** The scene layer lets
+   taps through and only its buttons catch them; the slate is not a button,
+   so every touch passed through it. The contracts dispatch events straight
+   at the element and could not see it; a browser test with real input did.
+   The slate now catches its own pointer, and a contract holds it.
+2. **A lifted finger was sent back to a stale dot.** After a lift the trace
+   carries on from where it stopped, but the green dot stayed at the
+   stroke's start, so a child who went back to it heard "Start at the green
+   dot" again. The dot now moves, and the stroke's own start begins it again.
+3. **An update could drop a world offline.** Jupiter's pictures, fetched
+   through the old worker at the first start after an update, were deleted
+   with its cache. The new worker now carries them into its own cache first.
+4. **Restarts counted across a letter,** so Pip re-wrote a stroke after one
+   miss on each of two strokes. They are counted stroke by stroke.
+5. **Jupiter's ring sat under Pip's words** on 1180×820 and 1024×768, and on
+   phones its label fell behind a cloud. It sits lower and more central.
+6. **Tracing was too tight on a phone** (a corridor about 13 px wide). Widening
+   the corridor was tried and rejected: wide enough to help, a finger
+   wiggling in the middle of a little o finished it. Instead the slate is
+   bigger on short screens (about 20 px), and a contract proves the
+   wiggle never traces.
+7. **The Moon Writer slate touched the title** on 1180×820; it keeps a gap.
+8. Grown-up text said "practised"; it is US English: "practiced".
+
+**Not physically tested on an iPad** (deferred to the next device gate):
+
+- tracing with a real finger and an Apple Pencil, palm rejection and
+  pointer cancellation on iPad Safari, and whether the page ever scrolls or
+  selects under the slate there
+- how forgiving the tracing tolerances feel to a five-year-old
+- Pip's demo animation and the stroke order, judged by a person
+- the sight words and letter-case lines in the device voice (for example,
+  "to" not heard as a number)
+- the new pictures (Jupiter, the slate, the word satellite) at iPad size
+- the v0.5.0 → v0.6.0 update on a device with progress, and Jupiter's
+  pictures offline after it; the Home Screen install
+- everything still deferred from Phase 3 (every sound, Silent Mode, the
+  Phase 2.2 device batches)
 
 ## Phase 3 QA record (2026-09-27)
 

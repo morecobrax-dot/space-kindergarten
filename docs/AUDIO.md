@@ -83,6 +83,34 @@ These are different educational assets, and the data keeps them apart:
 Word Builder never says a letter's name when a letter is tapped. It plays
 the letter's sound.
 
+## Phase 4: little letters, sight words and writing
+
+Phase 4 added three kinds of lines, all through the same typed cues, the
+same `Voice` and the same `audioRoute()`. **It added no phonics and no
+recording to the required list**: a phoneme is still never given to the
+device voice, and [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md) is unchanged
+in what it asks for.
+
+| Family | Cue ids (`voiceCue()`) | Type | Who says it until recorded |
+|---|---|---|---|
+| Big and little letters (`letterCaseCue()`) | `little.M.k`, `pair.M.lower.k` and their again, found and show lines | question, praise, correction | the device voice: letter NAMES only ("the little letter em") |
+| Sight words (`sightCue()`) | `sight.ask.the.k` (the question, ending "…"), then `sight.word.the` (the word alone); found, show, match lines | question, then **word**; praise, correction | the device voice: an ordinary word, as for a picture's name. `sight.word.*` has no caption text, so a question's caption never shows the word being asked |
+| Writing (`writeCue()`) | `write.watch.L.upper.k`, `write.trace…`, `write.light…`, `write.done…`, `write.again.n`, `write.start`, `write.retry.k`, `write.watchAgain` | instruction, question, praise, hint, correction | the device voice. The letter is on the slate, so its name may be shown and said |
+
+**What is and is not development audio here.** None of these lines is a
+phonics sound, so none uses the development phonics voice. They are the
+device voice, the same temporary stand-in as every other line, and each has
+a script in `VOICE_CUES` or a line template ready for a voice actor. A sight
+word said by the device voice must be checked on the target iPad voice: "to"
+must not be heard as a number, and "see" is a word, not a letter C. The
+screen only ever shows the one spelling being asked.
+
+**Rounds that count with the sound off.** A pair of cases, Word Orbit and
+Moon Writer are seen, not heard (`silentOk`), so they count as evidence
+with the voice off; Letter Explorer's little letters and Star Words are
+asked by sound, and like every heard question they fall back to a visual
+caption and are not counted when nothing can be heard.
+
 ## Phonics safety
 
 - The device voice is never the authority for a sound. It says /m/ as

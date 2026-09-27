@@ -2,25 +2,35 @@
 
 A space-adventure learning game for kindergarten children, aged about five to
 six, on iPad. A child starts on Earth, launches a rocket through one
-continuous clay world, lands on the Moon, finds letters to relight its
-beacon, flies on to Mercury to fix its fuzzy signal with rhymes and beats,
-then to Mars to wake its sound scanner with first sounds and short words,
-earns stars, and flies up to a space station to dress up the rocket with
-paint, gear and themes. Learning comes first; the adventure is what makes it
-fun.
+continuous clay world, lands on the Moon, finds letters big and little to
+relight its beacon and learns to write them on its writing slate, flies on
+to Mercury to fix its fuzzy signal with rhymes and beats, to Mars to wake
+its sound scanner with first sounds and short words, and to Jupiter to give
+its sky signs their words back. Stars earned there dress up the rocket at a
+space station with paint, gear and themes. Learning comes first; the
+adventure is what makes it fun.
 
-**Status: Phase 3 (v0.5.0).** The world is the navigation: one stage,
-planets as places, and flights that are one camera journey. Eleven missions
-across five games are built:
+**Status: Phase 4 (v0.6.0).** All seven learning areas have a first game.
+The world is the navigation: one stage, planets as places, and flights that
+are one camera journey. Twenty missions across eight games are built:
 
-- Letter Explorer ×3 on the Moon
+- Letter Explorer ×5 on the Moon (big letters, little letters, big and
+  little partners) and Moon Writer ×3 on its writing slate (watch, trace,
+  trace with less help)
 - Rhyme Radar ×2 and Syllable Meteors ×2 on Mercury
 - Sound Scout (beginning sounds) ×2 and Word Builder (CVC words) ×2 on Mars
+- Star Words ×2 and Word Orbit ×2 (sight words) on Jupiter
 
-The rhyming, beats, sounds and words are development content, awaiting
-review. Letter sounds and blended words are **development audio**: a small
-synthesiser made for this app, never the device voice, until recordings
-replace them ([docs/AUDIO.md](docs/AUDIO.md)).
+Every letter a child reads is drawn in one school print, from the same
+strokes a child learns to write. Tracing is checked by geometry, never by
+handwriting recognition. The sight words are twelve from the Dolch
+pre-primer list, used as a source, not claimed as alignment
+([docs/CONTENT-SOURCES.md](docs/CONTENT-SOURCES.md)).
+
+All of it is development content, awaiting review. Letter sounds and blended
+words are **development audio**: a small synthesiser made for this app,
+never the device voice, until recordings replace them
+([docs/AUDIO.md](docs/AUDIO.md)).
 
 The artwork is a set of draft clay renders made in this repository by
 `tools/art`. Spoken instructions use the device's own speech voice as a
@@ -43,7 +53,7 @@ temporary stand-in for recorded narration. See
 index.html              the whole app: tokens, scenes, engine, content, audio
 sw.js                   offline cache; name and precache list derived
 manifest.webmanifest    install metadata, derived from APP_CONFIG
-assets/                 every picture (WebP), each registered in ASSET_REGISTRY
+assets/                 every picture (WebP), each registered in ASSET_REGISTRY with when it is fetched
 icon-192/512.png        home-screen icons (draft clay renders)
 tools/art/              the clay renderer that makes every picture (see its README)
 docs/                   product, learning, art, content and asset docs

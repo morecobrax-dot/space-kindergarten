@@ -95,7 +95,7 @@ Every destination is shown the same two ways, so a planet added later
 belongs to the same universe:
 
 - **From afar** (`asset`, `restoredAsset`): the sphere centred, filling 84%
-  of a square canvas (640 px for the Moon, 560 for Mercury and Mars), in two states:
+  of a square canvas (640 px for the Moon, 560 for Mercury, Mars and Jupiter), in two states:
   - **Waiting:** cooler and quieter, its landmark unlit.
   - **Restored:** the same model, with a warm accent light at its landmark,
     faint warmth in its hollows and a warm halo. The app crossfades from one
@@ -114,9 +114,10 @@ on the ground.
 
 A restored world is a **brighter** world: warm light pools around what the
 child fixed (`--world-warmth`). Warm light always comes from something
-meaningful: the beacon's lamp, the radar's tip, the meteor rocks, Mars's
-sound scanner and word machine, the rocket's flame, the reward stars, and
-the Sun's spill over Mercury's and Mars's skies.
+meaningful: the beacon's lamp, the writing slate, the radar's tip, the
+meteor rocks, Mars's sound scanner and word machine, Jupiter's sky sign and
+orbit ring, the rocket's flame, the reward stars, and the Sun's spill over
+Mercury's and Mars's skies.
 
 | World | Clay colours | Signature feature | State |
 |---|---|---|---|
@@ -125,7 +126,7 @@ the Sun's spill over Mercury's and Mars's skies.
 | Mercury | warm stone, amber; the Sun's warm spill | overlapping shallow dimples | built |
 | Venus | peach, coral, warm yellow | soft swirled cloud bands, sculpted in relief | planned |
 | Mars | warm coral-rust, deep-red accents, a sunset-orange edge glow | soft rolled craters, huddles of round rust stones, a cream polar cap from afar: a red clay playground, never a hostile one | built |
-| Jupiter | cream, orange, warm brown | rolled clay bands and one thumbprint storm | planned |
+| Jupiter | cream, amber, warm orange, one thin warm-brown coil; an amber edge glow | bands rolled like pressed plasticine coils, one big red-orange storm spiral in a cream collar, two small swirls; huge and friendly, never stormy; no ring (Saturn has that) | built |
 | Saturn | gold, peach, lavender | a thick clay ring, matte, with pressed grooves | planned |
 | Uranus | aqua, cyan | smooth, softly banded, a gentle tilt | planned |
 | Neptune | deep blue, violet | wind streaks drawn in the clay | planned |
@@ -250,8 +251,14 @@ own, as it looks now.
   wide, smooth top a child taps once for each beat.
 - **Meteors** (`prop.meteor`, `prop.meteorLit`): a beat waiting to be
   tapped, and a beat tapped.
-- **Markers** (the beacon, the radar dish, the meteor rocks): each in a
-  waiting and a restored state, standing on its world.
+- **Markers** (the beacon, the writing slate, the radar dish, the meteor
+  rocks, the sound scanner, the word machine, the sky sign, the orbit
+  ring): each in a waiting and a restored state, standing on its world.
+  A marker never carries a letter or a word: the slate and the sky sign
+  are blank, always.
+- **The word satellite** (`prop.wordSat`): one clay satellite for every
+  sight word, with a flat, light face the app writes the word on, as the
+  letter stones carry a letter.
 
 ## UI: a hybrid, on purpose
 
@@ -278,7 +285,16 @@ the UI back to the minimum; Phase 2.2 made it quieter still.
   what reading needs (a contract holds it there); a picture choice sits on a
   clean cream card.
 - **Child-readable type:** the rounded system face, large, bold, and only a
-  few words at a time.
+  few words at a time — for captions and titles. **Letters and words a child
+  is learning are not type:** they are the school print, drawn from the
+  same strokes the child learns to write (ball-and-stick: a single-storey a,
+  a capital I with bars), as round-capped vector strokes in the tile ink.
+- **The writing slate on screen is clean UI, not clay:** a flat deep-blue
+  surface (`--slate-surface`) with a light rim, the classroom's writing
+  lines (solid top and base, a dashed middle, a faint tail line for little
+  letters), cream lanes, a yellow dashed path and arrow, the child's ink in
+  warm yellow, and the green start dot (`--success`). Nothing textured
+  sits behind a letter being traced.
 - **One primary action per screen** keeps the warm yellow. On a planet it is
   the marker's ring, until nothing is left to play and the way home turns
   yellow.

@@ -182,6 +182,90 @@ function rocks(u, list){
   return [h, up];
 }
 
+/* Jupiter: you stand on its cloud tops. Coils of cream, amber and warm
+   orange cloud clay lie side by side along the curve, as they wrap the
+   planet seen from afar, only seen from on top of them now: thin at the
+   horizon, wide underfoot. The only relief is soft: each coil a gentle
+   roll, the big storm a shallow coiled dome (red-orange clay wound like a
+   cinnamon roll) in a collar of cream where a belt meets a zone, and two
+   small swirls; faint wisps of lighter cloud run along the coils. It is as
+   low as Mars's (a coil or the storm 0.004 high), and every feature keeps
+   clear of where the markers stand (37%, 50% and 58%, 55%) and the rocket
+   lands (76.5%, 45%): all three stand on the wide cream zone. */
+const JUP_SEAMS = [
+  { s: 0.085, a: 0.004, n: 9, p: 0.6 }, { s: 0.175, a: 0.006, n: 7, p: 2.3 }, { s: 0.265, a: 0.007, n: 6, p: 4.4 },
+  { s: 0.455, a: 0.008, n: 5, p: 1.1 }, { s: 0.53, a: 0.008, n: 6, p: 3.0 }
+];
+const JUP = {
+  cream: hex('#CDAE7D'), amber: hex('#CA8430'), amberLight: hex('#D29A4C'), orange: hex('#C6701F'),
+  spot: hex('#BA4A1E'), spotLight: hex('#C45E22'), collar: hex('#D6B689'), swirl: hex('#D8BD92')
+};
+const JUP_TONES = [JUP.amber, JUP.cream, JUP.orange, JUP.cream, JUP.amber, JUP.orange];
+/* a coil's roll: round on top, a soft groove at each seam, and a finite
+   slope there (a bare square root is infinitely steep at a seam, steeper
+   than the ground's distance bound allows) */
+const JUP_ROLL = 0.004;
+function jupRoll(t){ return (Math.sqrt(Math.sin(Math.PI * t) + 0.02) - 0.1414) / 0.8686; }
+/* a coiled swirl: where, its size along and across the coils, how many
+   turns, how high, its clay, and whether it sits in a cream collar */
+function jupSwirl(at, rx, ry, turns, h, tone, light, collar){
+  const d = dirAt(at[0], at[1]), t1 = norm3(C.cross3([0, 0, 1], d)), t2 = C.cross3(d, t1);
+  return { d: d, t1: t1, t2: t2, rx: rx, ry: ry, turns: turns, h: h, tone: tone, light: light, collar: collar };
+}
+const JUP_STORM = jupSwirl([0.175, 0.755], 0.06, 0.048, 2.2, 0.004, JUP.spot, JUP.spotLight, true);
+const JUP_SWIRLS = [jupSwirl([0.875, 0.73], 0.03, 0.025, 1.4, 0.0022, JUP.amber, JUP.amberLight, false),
+                    jupSwirl([0.6, 0.875], 0.034, 0.028, 1.4, 0.0024, JUP.cream, JUP.swirl, false)];
+/* the coils at a point: [roll height, colour]. The seams wander a little */
+function jupBands(u){
+  const s = u[2], lon = Math.atan2(u[0], u[1]);
+  let found = false, lo = 0, hi = 0.8, col = JUP_TONES[0];
+  for(let k = 0; k < JUP_SEAMS.length; k++){
+    const K = JUP_SEAMS[k], e = K.s + K.a * Math.sin(K.n * lon + K.p);
+    if(s < e && !found){ found = true; hi = e; }
+    if(s >= e) lo = e;
+    col = mix3(col, JUP_TONES[k + 1], smoothstep(e - 0.0025, e + 0.0025, s));
+  }
+  return [JUP_ROLL * jupRoll(clamp((s - lo) / (hi - lo), 0, 1)), col];
+}
+/* a swirl at a point: [height, how far out (1 at the coil's edge), coil, inside] or null.
+   The coil is a lump of clay wound from the middle out, its edge a rounded
+   shoulder; the storm's collar is a fat ring of cream clay round it */
+function jupSwirlAt(u, S){
+  const qx = u[0] - S.d[0], qy = u[1] - S.d[1], qz = u[2] - S.d[2];
+  const a = (qx * S.t1[0] + qy * S.t1[1] + qz * S.t1[2]) / S.rx;
+  const b = (qx * S.t2[0] + qy * S.t2[1] + qz * S.t2[2]) / S.ry;
+  const rho = Math.sqrt(a * a + b * b);
+  if(rho > 1.45) return null;
+  let w = rho * S.turns - Math.atan2(b, a) / (Math.PI * 2);
+  w -= Math.floor(w);
+  const coil = Math.sin(Math.PI * w) * smoothstep(0.02, 0.2, rho);
+  const inside = smoothstep(1.0, 0.985, rho);
+  const lump = smoothstep(1.0, 0.8, rho) * (0.75 + 0.25 * (1 - rho * rho)) * (0.62 + 0.38 * coil);
+  const collar = S.collar && rho > 1 ? Math.pow(Math.sin(Math.PI * clamp((rho - 1) / 0.34, 0, 1)), 0.8) : 0;
+  return [S.h * (lump + 0.55 * collar), rho, coil, inside];
+}
+function jupHeight(u){
+  let h = jupBands(u)[0] + 0.0007 * noise(u[0] * 12 + 2, u[1] * 12, u[2] * 12 - 5);
+  const st = jupSwirlAt(u, JUP_STORM);
+  if(st) h = h * smoothstep(1.3, 1.45, st[1]) + st[0];
+  for(const S of JUP_SWIRLS){ const sw = jupSwirlAt(u, S); if(sw) h = h * smoothstep(0.9, 1.2, sw[1]) + sw[0]; }
+  return h;
+}
+function jupAlbedo(u){
+  let a = jupBands(u)[1];
+  // faint wisps of lighter cloud along the coils
+  const lon = Math.atan2(u[0], u[1]);
+  const k = noise(lon * 9 + 3, u[2] * 34, 1.7);
+  a = k > 0 ? mix3(a, JUP.collar, Math.min(1, k * 2.5) * 0.16) : mix3(a, JUP.orange, Math.min(1, -k * 2.5) * 0.08);
+  const st = jupSwirlAt(u, JUP_STORM);
+  if(st){
+    a = mix3(a, JUP.collar, smoothstep(1.36, 1.32, st[1]));
+    a = mix3(a, mix3(JUP.spot, JUP.spotLight, st[2] * 0.6), st[3]);
+  }
+  for(const S of JUP_SWIRLS){ const sw = jupSwirlAt(u, S); if(sw) a = mix3(a, mix3(S.tone, S.light, sw[2]), sw[3]); }
+  return a;
+}
+
 const WORLDS = {
   earth: {
     halo: hex('#5BC4FF'), haloStrength: 0.5,
@@ -221,6 +305,11 @@ const WORLDS = {
       const ground = mix3(mix3(MARS.clay, MARS.light, m * 0.4), MARS.floor, f * 0.7);
       return mix3(ground, mix3(MARS.rock, MARS.rockTop, smoothstep(0.5, 0.95, k)), smoothstep(0.04, 0.2, k));
     }
+  },
+  jupiter: {
+    halo: hex('#FFB468'), haloStrength: 0.5,
+    height: jupHeight,
+    albedo: jupAlbedo
   }
 };
 
