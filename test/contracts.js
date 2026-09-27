@@ -969,14 +969,14 @@ function testPWA(){
   sub('the service worker');
   T('registration is guarded to http(s)',
     /location\.protocol\.indexOf\('http'\) === 0/.test(js()));
-  T('a failed registration cannot break boot', /register\('sw\.js'\)\.catch\(\(\) => \{\}\)/.test(js()));
+  T('a failed registration cannot break boot', /register\('sw\.js'\)[\s\S]{0,600}\.catch\(\(\) => \{\}\)/.test(fnBody(js(), 'startUpdates')));
   T('the shell is network-first, so a deploy is picked up promptly',
-    /fetch\(req\)[\s\S]{0,400}\.catch\(\(\) => caches\.match\(req\)/.test(sw));
+    /fetch\(req\)[\s\S]{0,900}\.catch\(\(\) => caches\.match\(req\)/.test(sw));
   T('index.html is the offline fallback', /caches\.match\('\.\/index\.html'\)/.test(sw));
   T('cross-origin requests are left alone',
     /new URL\(req\.url\)\.origin !== location\.origin/.test(sw));
   T('non-GET requests are left alone', /req\.method !== 'GET'/.test(sw));
-  T('a failed precache still activates', /\.catch\(\(\) => self\.skipWaiting\(\)\)/.test(sw));
+  T('a new version never takes over by itself: it waits for the app (contract 56 plays it)', !/skipWaiting/.test(sw.slice(sw.indexOf("addEventListener('install'"), sw.indexOf("addEventListener('activate'"))));
   T('it says out loud that it never touches user data',
     /never touched here/.test(sw) || /cannot lose a single record/.test(sw));
 }
@@ -2048,7 +2048,7 @@ function testAssets(){
   })());
   T('an update carries a world\'s pictures, fetched when it came near, into the new cache before the old one goes',
     /function carryPictures\(older\)/.test(sw) && /carryPictures\(older\)\.then\(\(\) => Promise\.all\(older\.map\(k => caches\.delete\(k\)\)\)\)/.test(sw) &&
-    /!precached\.has\(req\.url\) && new URL\(req\.url\)\.pathname\.indexOf\('\/assets\/'\) !== -1/.test(sw));
+    /!PRECACHED\.has\(req\.url\) && new URL\(req\.url\)\.pathname\.indexOf\('\/assets\/'\) !== -1/.test(sw));
   const manifest = fs.readFileSync(path.join(H.ROOT, 'docs', 'ASSET-MANIFEST.md'), 'utf8');
   T('the asset manifest lists every registered file', reg.every(a => manifest.indexOf('`' + a.path + '`') !== -1));
   T('and is marked as generated', /Do not hand-edit/.test(manifest));
@@ -4363,8 +4363,25 @@ async function testSightWords(){
   T('twelve sight words, each naming a recorded list', sw.length === 12 && sw.every(w => c.WORD_LISTS[c.WORDS[w].sight.list]), sw.join(','));
   T('every one is on the Dolch pre-primer list', sw.every(w => DOLCH.indexOf(w) !== -1) && DOLCH.length === 40);
   T('no single-letter word yet: "a" and "I" look like the letters found on the Moon', sw.every(w => w.length > 1));
-  T('each says whether it can be sounded out with the letter sounds taught', sw.every(w => typeof c.WORDS[w].sight.decodable === 'boolean') &&
-    c.WORDS.and.sight.decodable && c.WORDS.can.sight.decodable && !c.WORDS.the.sight.decodable && !c.WORDS.you.sight.decodable);
+  T('no sight word says by hand whether it can be sounded out: that is derived', sw.every(w => c.WORDS[w].sight.decodable === undefined) &&
+    (() => { const k = c.WORDS.and.sight; k.decodable = true; const bad = c.validateContent().some(x => /says by hand whether it can be sounded out/.test(x)); delete k.decodable; return bad; })());
+  T('whether a word sounds out letter by letter comes from its letters and its sounds: and, it, in, can do; the, see, is, go do not',
+    ['and', 'it', 'in', 'can'].every(c.soundsOutByLetter) && !['the', 'see', 'is', 'go', 'you', 'to', 'we', 'my'].some(c.soundsOutByLetter));
+  const taught = c.taughtSounds();
+  T('the sounds this app teaches come from its missions: what Sound Scout asks and Word Builder builds — and /d/ and short i are not among them',
+    ['m', 's', 'f', 'n', 'r', 'a', 'u', 'p', 't', 'k', 'b', 'g', 'h'].every(p => taught.has(p)) && !taught.has('d') && !taught.has('i') && taught.size === 13, [...taught].sort().join(' '));
+  T('a sound the app can make is not a sound it teaches', !!c.PHONEMES.d && !!c.PHONEMES.i && !taught.has('d') && !taught.has('i'));
+  T('so only "can" is decodable with what this app teaches: "and" needs /d/, "it" and "in" need short i',
+    sw.filter(c.decodableHere).join(',') === 'can' && !c.decodableHere('and') && !c.decodableHere('it') && !c.decodableHere('in'));
+  const srcDoc = fs.readFileSync(path.join(H.ROOT, 'docs', 'CONTENT-SOURCES.md'), 'utf8');
+  const rows = {};
+  srcDoc.split('\n').forEach(line => { const m = line.match(/^\| `([a-z]+)` \| [^|]+\| (yes|no)[^|]*\| (yes|no)[^|]*\|/); if(m) rows[m[1]] = [m[2] === 'yes', m[3] === 'yes']; });
+  T('CONTENT-SOURCES.md says the same for every word, in two columns: letter by letter, and with what this app teaches',
+    sw.every(w => rows[w] && rows[w][0] === c.soundsOutByLetter(w) && rows[w][1] === c.decodableHere(w)),
+    sw.filter(w => !rows[w] || rows[w][0] !== c.soundsOutByLetter(w) || rows[w][1] !== c.decodableHere(w)).join(','));
+  const reviewDoc = fs.readFileSync(path.join(H.ROOT, 'docs', 'CONTENT-REVIEW.md'), 'utf8');
+  T('and no other document calls a sight word decodable with the sounds taught unless it is',
+    !/\| (and|it|in) \| sight word, decodable/.test(reviewDoc) && !/Decodable with the sounds taught \|/.test(srcDoc));
   T('a sight word has no picture, and no picture game can ever offer one', sw.every(w => !c.WORDS[w].picture) &&
     Object.keys(c.MISSIONS).every(id => c.MISSIONS[id].activities.every(a => {
       if(a.type === 'rhyme-pick'){ const pl = c.rhymeDistractorPools(a); return pl.sameStart.concat(pl.other).every(c.hasPicture); }
@@ -4862,7 +4879,7 @@ function testAssetLoading(){
   T('the icons are never fetched by the page', c.stageAssets(has(Object.keys(c.MISSIONS))).every(a => a.load !== 'install'));
   T('fetched at every start, and whenever a route opens — so a new version\'s cache keeps an open world too',
     /setTimeout\(preloadStage/.test(js()) && /preloadStage\(\)/.test(fnBody(js(), 'finishMission')));
-  T('and never twice for one picture', /_preloaded\[a\.id\]/.test(fnBody(js(), 'preloadStage')));
+  T('and never twice for one picture: contract 54 plays it, with loads that fail, hang and recover', typeof c.preloadStage === 'function' && !!c.Preload);
   const manifest = fs.readFileSync(path.join(H.ROOT, 'docs', 'ASSET-MANIFEST.md'), 'utf8');
   T('ASSET-MANIFEST.md says when each picture is kept offline', /\| Kept offline \|/.test(manifest) && /when Jupiter is near/.test(manifest) && /at install only/.test(manifest));
 }
@@ -4889,6 +4906,431 @@ function testGrownupsSeven(){
   T('no grades, ranks or judgements: practice notes only', !/\b(grade|rank|score|behind|failing|weak|IQ|percent)\b/i.test(text.replace('These are practice notes, not a grade.', '')));
 }
 
+/* A MessageChannel stand-in: what one port posts arrives at the other's
+   onmessage, on the next tick. */
+class FakeChannel {
+  constructor(){
+    const a = { onmessage: null }, b = { onmessage: null };
+    a.postMessage = d => setTimeout(() => { if(b.onmessage) b.onmessage({ data: d }); }, 0);
+    b.postMessage = d => setTimeout(() => { if(a.onmessage) a.onmessage({ data: d }); }, 0);
+    this.port1 = a; this.port2 = b;
+  }
+}
+function clearPreloadTimers(c){
+  if(c.Preload.retry.timer){ clearTimeout(c.Preload.retry.timer); c.Preload.retry.timer = null; }
+  Object.keys(c.Preload.assets).forEach(k => { const r = c.Preload.assets[k]; if(r && r.timer){ clearTimeout(r.timer); r.timer = null; } });
+  if(c.Updates.timer){ clearTimeout(c.Updates.timer); c.Updates.timer = null; }
+}
+
+/* =========================================================
+   CONTRACT 54 — A WORLD'S PICTURES: TRIED AGAIN, AND KEPT ONLY WHEN STORED
+   An independent audit found a picture that failed to load marked as
+   done for good: eight failed Jupiter requests, and none again after the
+   network came back. A picture that fails is tried again — when the
+   network returns, when the app comes back to the front, and on a timer
+   that backs off — never twice at once and never in a storm. A near
+   world's pictures count as kept offline only when the service worker
+   says it holds them: asked for, or even decoded, is not kept.
+   ========================================================= */
+async function testWorldKeeping(){
+  section('CONTRACT 54 — a world\'s pictures: tried again, and kept only when stored');
+  const isWorld = src => /jupiter|skysign|orbit|word-satellite/.test(src);
+  /* the page's pictures load, fail or hang as the "network" says; the
+     worker keeps what the network lets it fetch */
+  const rig = () => {
+    const net = { up: false, hang: false, requests: [], asks: [], kept: new Set(), storeWorks: true };
+    const app = H.loadApp();
+    const c = fast(app.ctx);
+    c.window.Image = class {
+      constructor(){ this.onload = null; this.onerror = null; }
+      set src(v){ this._src = v; net.requests.push(v); if(net.hang) return;
+        const ok = net.up || !isWorld(v); setTimeout(() => { const f = ok ? this.onload : this.onerror; if(f) f(); }, 0); }
+      get src(){ return this._src; }
+    };
+    const worker = { state: 'activated', postMessage(msg, ports){ net.asks.push(msg.type); if(msg.type !== 'keep') return;
+      (msg.paths || []).forEach(p => { if(net.storeWorks && (net.up || !isWorld(p))) net.kept.add(p); });
+      ports[0].postMessage({ kept: (msg.paths || []).filter(p => net.kept.has(p)) }); } };
+    c.MessageChannel = FakeChannel;
+    c.navigator = { serviceWorker: { ready: Promise.resolve({ active: worker }), register: () => Promise.resolve({ active: worker }), addEventListener(){} } };
+    seedDone(c, ['moon-1', 'mercury-1', 'mercury-2']);      // Mars open: Jupiter is next, so near
+    return { app, c, net, worldReqs: () => net.requests.filter(isWorld).length };
+  };
+
+  const r = rig(), c = r.c;
+  const world = c.stageAssets(c.journey.completions).filter(a => c.assetWorld(a) === 'jupiter');
+  T('Jupiter is next on the route, so its eight pictures are wanted', world.length === 8, String(world.length));
+
+  sub('the network is down');
+  c.preloadStage();
+  await wait(10);
+  T('each of Jupiter\'s pictures is asked for once', r.worldReqs() === 8, String(r.worldReqs()));
+  T('each is marked failed, and none is counted kept', world.every(a => c.Preload.assets[a.id] && c.Preload.assets[a.id].state === 'failed') &&
+    world.every(a => !c.Preload.kept[a.path]));
+  c.preloadStage(); c.preloadStage(); c.preloadStage();
+  await wait(10);
+  T('asking again straight away sends nothing: no storm', r.worldReqs() === 8, String(r.worldReqs()));
+  T('a retry waits on a timer that backs off', !!c.Preload.retry.timer && c.Preload.retry.wait > c.PRELOAD_RETRY);
+  T('the worker was asked to keep them once, and holds none', r.net.asks.filter(x => x === 'keep').length === 1 && r.net.kept.size === 0, r.net.asks.join(','));
+
+  sub('the network comes back');
+  r.net.up = true;
+  c.window.dispatch('online');
+  await wait(20);
+  T('each failed picture is tried once more, at once', r.worldReqs() === 16, String(r.worldReqs()));
+  T('and loads', world.every(a => c.Preload.assets[a.id].state === 'loaded'));
+  T('the worker is asked again and now holds them — only then are they counted kept', world.every(a => c.Preload.kept[a.path]) && r.net.kept.size === 8);
+  T('with nothing missing, no retry is left waiting', !c.Preload.retry.timer);
+  c.preloadStage();
+  await wait(10);
+  T('a picture loaded and kept is not asked for again', r.worldReqs() === 16 && r.net.asks.filter(x => x === 'keep').length === 2, r.worldReqs() + ' ' + r.net.asks.join(','));
+  clearPreloadTimers(c);
+
+  sub('never twice at once');
+  const h = rig();
+  h.net.hang = true;
+  h.c.preloadStage(); h.c.preloadStage(); h.c.preloadStage({ force: true });
+  await wait(10);
+  T('a picture still loading is never asked for a second time, even when forced', h.worldReqs() === 8, String(h.worldReqs()));
+  const stuck = world.map(a => h.c.Preload.assets[a.id]);
+  T('while loading it is pending, not failed and not kept', stuck.every(x => x && x.state === 'pending') && world.every(a => !h.c.Preload.kept[a.path]));
+  T('a load that never answers has a give-up timer, so it can be tried again', stuck.every(x => !!x.timer));
+  clearPreloadTimers(h.c);
+
+  sub('loaded is not kept');
+  const k = rig();
+  k.net.up = true;
+  k.net.storeWorks = false;
+  k.c.preloadStage();
+  await wait(20);
+  T('every picture loaded in the page, but the worker could not store them: none is counted kept',
+    world.every(a => k.c.Preload.assets[a.id].state === 'loaded') && world.every(a => !k.c.Preload.kept[a.path]));
+  T('so a retry is waiting for them', !!k.c.Preload.retry.timer);
+  clearPreloadTimers(k.c);
+
+  sub('a first visit, before the worker has started');
+  const f = rig();
+  f.net.up = true;
+  let start;
+  const ready = new Promise(res => { start = res; });
+  const worker = { state: 'activated', postMessage(msg, ports){ f.net.asks.push(msg.type); (msg.paths || []).forEach(p => f.net.kept.add(p)); ports[0].postMessage({ kept: msg.paths }); } };
+  f.c.navigator = { serviceWorker: { ready: ready, register: () => ready, addEventListener(){} } };
+  f.c.preloadStage();
+  await wait(10);
+  T('nothing is counted kept before there is a worker to keep it', world.every(a => !f.c.Preload.kept[a.path]));
+  start({ active: worker });
+  await wait(20);
+  T('once the worker starts, in the same session, the near world is handed to it and kept', world.every(a => f.c.Preload.kept[a.path]));
+  clearPreloadTimers(f.c);
+  T('no console errors', [r, h, k, f].every(x => x.app.errors.length === 0), [r, h, k, f].map(x => x.app.errors.join('|')).join(' '));
+}
+
+/* =========================================================
+   CONTRACT 55 — UPDATES ARRIVE BY THEMSELVES, AT A QUIET MOMENT
+   A new version installs by itself and takes over only at a quiet
+   moment: home on Earth, at rest, the child still. Never mid-mission,
+   mid-letter or mid-flight; one reload per page and only into a newer
+   version; a failed check changes nothing.
+   ========================================================= */
+async function testUpdates(){
+  section('CONTRACT 55 — updates arrive by themselves, at a quiet moment');
+  /* the browser's part: a service-worker container, a registration, and
+     workers that answer "version" and take over on "activate" */
+  const rig = waitingVersion => {
+    const box = { reloads: 0, messages: [], updates: 0, failUpdate: false };
+    const listeners = {};
+    const container = { controller: {},
+      addEventListener(t, fn){ (listeners[t] = listeners[t] || []).push(fn); },
+      fire(t){ (listeners[t] || []).forEach(fn => fn({})); } };
+    const reg = { waiting: null, installing: null, active: null, ls: {},
+      addEventListener(t, fn){ (reg.ls[t] = reg.ls[t] || []).push(fn); },
+      update(){ box.updates++; return box.failUpdate ? Promise.reject(new Error('no network')) : Promise.resolve(); } };
+    const worker = version => {
+      const w = { version: version, state: 'installed', ls: {},
+        addEventListener(t, fn){ (w.ls[t] = w.ls[t] || []).push(fn); },
+        setState(st){ w.state = st; (w.ls.statechange || []).forEach(fn => fn({})); },
+        postMessage(msg, ports){ box.messages.push(msg.type + '@' + w.version);
+          if(msg.type === 'version' && ports) ports[0].postMessage({ version: w.version });
+          if(msg.type === 'activate'){ w.state = 'activated'; reg.waiting = null; reg.active = w; setTimeout(() => container.fire('controllerchange'), 0); } } };
+      return w;
+    };
+    reg.active = worker('before');
+    reg.active.state = 'activated';
+    if(waitingVersion) reg.waiting = worker(waitingVersion);
+    container.register = () => Promise.resolve(reg);
+    container.ready = Promise.resolve(reg);
+    /* a new version finishing its install while the app runs */
+    box.install = version => { const w = worker(version); w.state = 'installing'; reg.installing = w;
+      (reg.ls.updatefound || []).forEach(fn => fn({})); reg.installing = null; reg.waiting = w; w.setState('installed'); return w; };
+    const sp = fakeSpeech();
+    const app = H.loadApp({ windowExtras: sp.extras });
+    const c = fast(app.ctx);
+    c.MessageChannel = FakeChannel;
+    c.navigator = { serviceWorker: container };
+    c.location.reload = () => { box.reloads++; };
+    if(waitingVersion === 'same') reg.waiting = worker(c.APP_VERSION);
+    box.app = app; box.c = c; box.container = container; box.reg = reg; box.worker = worker;
+    return box;
+  };
+  const activated = (b, v) => b.messages.indexOf('activate@' + v) !== -1;
+
+  sub('a waiting worker of this page\'s own version');
+  const same = rig('same');
+  await same.c.startAdventure();
+  await same.c.startUpdates();
+  await wait(20);
+  T('takes over at once — the page already is that version — and the page does not reload', activated(same, same.c.APP_VERSION) && same.reloads === 0, same.messages.join(','));
+  T('the app asked for a new version at launch', same.updates === 1);
+
+  sub('a newer version already waiting at launch, the child at rest on Earth');
+  const idle = rig('9.9.9');
+  await idle.c.startAdventure();
+  await wait(5);
+  await idle.c.startUpdates();
+  await wait(20);
+  T('it takes over, and the page reloads once, into it', activated(idle, '9.9.9') && idle.reloads === 1, idle.messages.join(',') + ' reloads ' + idle.reloads);
+  idle.container.fire('controllerchange');
+  idle.container.fire('controllerchange');
+  T('a worker taking over again never reloads twice: no loop', idle.reloads === 1);
+  clearPreloadTimers(idle.c);
+
+  sub('a newer version that finishes installing in the middle of a letter');
+  const mid = rig(null);
+  await mid.c.startAdventure();
+  seedDone(mid.c, ['moon-1']);
+  mid.c.pickDestination('moon');
+  await mid.c.launch();
+  await mid.c.tapMarker('slate');
+  await mid.c.startUpdates();
+  const wt = mid.c.session.write;
+  mid.c.writeDown(wt.plan[0].pts[0]);
+  for(let q = 1; q < wt.plan[0].pts.length / 2; q++) mid.c.writeMove(wt.plan[0].pts[q]);
+  mid.install('9.9.9');
+  await wait(20);
+  T('it installs and waits: the page asks its version and does not ask it to take over', mid.messages.indexOf('version@9.9.9') !== -1 && !activated(mid, '9.9.9') && mid.reloads === 0, mid.messages.join(','));
+  T('the letter goes on, under the same finger', mid.c.session.write === wt && wt.t.down && wt.t.at > 5);
+  T('it keeps looking for a quiet moment', !!mid.c.Updates.timer && mid.c.Updates.waiting !== null);
+  await traceLetter(mid.c, false);
+  await playMission(mid.c);
+  T('the mission is finished, with nothing taken over and nothing reloaded', mid.c.missionDone('writer-1') && !activated(mid, '9.9.9') && mid.reloads === 0);
+  for(let q = 0; q < 300 && mid.c.Voice.speaking(); q++) await wait(2);
+  mid.c.Updates.touchedAt = 0;
+  T('on the planet, even at rest with Pip quiet and no touch, a reload would move the child: still not',
+    mid.c.currentScene === 'planet' && !mid.c.Voice.speaking() && !mid.c.session.busy && mid.c.Domain.safeToReload() === false &&
+    mid.c.applyUpdate() === false && mid.reloads === 0);
+  await mid.c.flyHome();
+  await wait(5);
+  mid.c.Updates.touchedAt = 0;
+  T('home on Earth, at rest: at the next look it takes over, and the page reloads once', mid.c.currentScene === 'earth' && mid.c.applyUpdate() === true);
+  await wait(20);
+  T('into the new version', activated(mid, '9.9.9') && mid.reloads === 1, mid.messages.join(','));
+  clearPreloadTimers(mid.c);
+
+  sub('never in the station, nor with a grown-ups page open');
+  const where = rig(null);
+  await where.c.startAdventure();
+  await wait(5);
+  const earthQuiet = where.c.Domain.safeToReload();
+  await where.c.openDock();
+  for(let q = 0; q < 300 && where.c.Voice.speaking(); q++) await wait(2);
+  const stationQuiet = where.c.Domain.safeToReload();
+  await where.c.leaveDock();
+  for(let q = 0; q < 300 && where.c.Voice.speaking(); q++) await wait(2);
+  where.c.openGrownups();
+  const grownupsQuiet = where.c.Domain.safeToReload();
+  T('home on Earth at rest is a quiet moment; the space station (something may be tried on) and an open grown-ups page are not',
+    earthQuiet === true && where.c.currentScene === 'earth' && stationQuiet === false && grownupsQuiet === false,
+    [earthQuiet, stationQuiet, grownupsQuiet].join(','));
+  clearPreloadTimers(where.c);
+
+  sub('the child still touching');
+  const touch = rig('9.9.9');
+  await touch.c.startAdventure();
+  await wait(5);
+  touch.c.Updates.touchedAt = Date.now();
+  await touch.c.startUpdates();
+  await wait(20);
+  T('a touch just now: it waits until the child has been still', !activated(touch, '9.9.9') && touch.reloads === 0);
+  touch.c.Updates.touchedAt = Date.now() - touch.c.UPDATE_IDLE - 1;
+  touch.c.applyUpdate();
+  await wait(20);
+  T('then it takes over', activated(touch, '9.9.9') && touch.reloads === 1);
+  clearPreloadTimers(touch.c);
+
+  sub('coming back to the front, again and again');
+  const fg = rig(null);
+  await fg.c.startAdventure();
+  await fg.c.startUpdates();
+  await wait(10);
+  for(let q = 0; q < 12; q++) fg.app.dom.document.dispatch('visibilitychange');
+  await wait(10);
+  T('the app asks for a new version at most every so often, not every time', fg.updates === 1, String(fg.updates));
+  fg.c.Updates.checkedAt = Date.now() - fg.c.UPDATE_EVERY - 1;
+  fg.app.dom.document.dispatch('visibilitychange');
+  await wait(10);
+  T('and asks again once that time has passed', fg.updates === 2, String(fg.updates));
+  fg.failUpdate = true;
+  fg.c.Updates.checkedAt = 0;
+  fg.app.dom.document.dispatch('visibilitychange');
+  await wait(20);
+  T('with no network the check fails quietly: the same version, nothing reloaded, no error', fg.updates === 3 && fg.reloads === 0 && fg.app.errors.length === 0 && fg.c.currentScene === 'earth');
+  T('and nothing was taken over', fg.messages.every(m => !/^activate/.test(m)));
+  clearPreloadTimers(fg.c);
+
+  sub('a version that failed to install');
+  const bad = rig('9.9.9');
+  await bad.c.startAdventure();
+  bad.reg.waiting.state = 'redundant';
+  bad.c.Updates.waiting = bad.reg.waiting;
+  T('a waiting worker that turned redundant is dropped, and nothing reloads', bad.c.applyUpdate() === false && bad.c.Updates.waiting === null && bad.reloads === 0);
+  clearPreloadTimers(bad.c);
+
+  sub('what stays');
+  const keep = rig('9.9.9');
+  await keep.c.startAdventure();
+  const saved = () => JSON.stringify([...keep.app.storage._map.entries()].sort());
+  const beforeKeys = saved();
+  await keep.c.startUpdates();
+  await wait(20);
+  T('taking over touches no saved record: progress, stars, the rocket and settings are all as they were',
+    saved() === beforeKeys && beforeKeys.length > 20 && !/localStorage|Store\.(set|remove)/.test(fnBody(js(), 'applyUpdate') + fnBody(js(), 'considerUpdate') + fnBody(js(), 'startUpdates')));
+  T('nothing about updates is ever shown or said to a child', !/Voice\.say|toast\(|setHtml\(/.test(fnBody(js(), 'applyUpdate') + fnBody(js(), 'considerUpdate') + fnBody(js(), 'startUpdates') + fnBody(js(), 'checkForUpdate')));
+  clearPreloadTimers(keep.c);
+  T('no console errors', [same, idle, mid, touch, fg, bad, keep].every(b => b.app.errors.length === 0), [same, idle, mid, touch, fg, bad, keep].map(b => b.app.errors.join('|')).join(' '));
+}
+
+/* =========================================================
+   CONTRACT 56 — THE SERVICE WORKER: INSTALLS WHOLE, WAITS, KEEPS WHAT IT HOLDS
+   Played in a sandbox with a fake network and fake caches: sw.js itself,
+   not a reading of it. A half-downloaded version must never replace one
+   that works offline; a server error must never stand in for a file.
+   ========================================================= */
+async function testWorker(){
+  section('CONTRACT 56 — the service worker: installs whole, waits, keeps only what it holds');
+  const vm = require('vm');
+  const BASE = 'https://example.github.io/app/sw.js';
+  const mk = status => {
+    const handlers = {}, stores = new Map(), fetched = [];
+    let skipped = 0, claimed = 0;
+    const net = { offline: false, status: status || (() => 200) };
+    const keyOf = r => (typeof r === 'string' ? new URL(r, BASE).href : r.url);
+    const res = (url, st) => ({ url: url, status: st, ok: st >= 200 && st < 300, clone(){ return this; } });
+    const sandbox = {
+      URL, Set, Map, Promise, Array, String, Object, TypeError, Error,
+      location: { href: BASE, origin: 'https://example.github.io' },
+      Request: function(u, init){ this.url = new URL(u, BASE).href; this.cache = (init && init.cache) || 'default'; this.method = 'GET'; },
+      fetch: (r, init) => {
+        const url = keyOf(r);
+        fetched.push({ url: url, cache: (init && init.cache) || r.cache || 'default' });
+        if(net.offline) return Promise.reject(new TypeError('offline'));
+        return Promise.resolve(res(url, net.status(url)));
+      }
+    };
+    const cacheOf = name => {
+      if(!stores.has(name)) stores.set(name, new Map());
+      const m = stores.get(name);
+      return { match: r => Promise.resolve(m.get(keyOf(r))), put: (r, v) => { m.set(keyOf(r), v); return Promise.resolve(); },
+               keys: () => Promise.resolve([...m.keys()].map(u => ({ url: u }))),
+               addAll: reqs => Promise.all(reqs.map(q => sandbox.fetch(q))).then(list => {
+                 if(list.some(x => !x.ok)) throw new TypeError('a response was not ok');
+                 list.forEach((x, i) => m.set(keyOf(reqs[i]), x)); }) };
+    };
+    sandbox.caches = { open: n => Promise.resolve(cacheOf(n)), keys: () => Promise.resolve([...stores.keys()]),
+                       delete: n => Promise.resolve(stores.delete(n)),
+                       match: r => Promise.resolve([...stores.values()].map(m => m.get(keyOf(r))).find(Boolean)) };
+    sandbox.self = { addEventListener: (t, fn) => { handlers[t] = fn; }, location: sandbox.location,
+                     skipWaiting: () => { skipped++; return Promise.resolve(); }, clients: { claim: () => { claimed++; return Promise.resolve(); } } };
+    vm.runInNewContext(H.readSW(), sandbox, { filename: 'sw.js' });
+    const run = (type, ev) => { handlers[type](ev); return ev.p || Promise.resolve(); };
+    return { handlers, stores, fetched, net, sandbox, run, res, keyOf, skipped: () => skipped, claimed: () => claimed };
+  };
+  const evt = extra => Object.assign({ waitUntil(p){ this.p = p; }, respondWith(p){ this.p = p; } }, extra || {});
+  const c = H.loadApp().ctx;
+  const cacheName = c.CACHE_NAMESPACE;
+
+  sub('installing');
+  const w = mk();
+  await w.run('install', evt());
+  const own = w.stores.get(cacheName);
+  const assets = w.sandbox.ASSETS || [];
+  T('it stores every file the app needs', !!own && own.size >= 80, own ? String(own.size) : 'no cache');
+  T('each fetched fresh from the server, not from the browser\'s HTTP cache', w.fetched.length > 0 && w.fetched.every(f => f.cache === 'reload'));
+  T('and it does not take over by itself', w.skipped() === 0);
+  const broken = mk(url => (/manifest\.webmanifest/.test(url) ? 404 : 200));
+  let failed = false;
+  await broken.run('install', evt()).catch(() => { failed = true; });
+  T('one file missing and the install fails: the version already working stays', failed);
+  const off = mk();
+  off.net.offline = true;
+  let failedOff = false;
+  await off.run('install', evt()).catch(() => { failedOff = true; });
+  T('no network and the install fails too', failedOff);
+
+  sub('taking over');
+  const t = mk();
+  const oldName = cacheName.replace(/-v[\d.]+$/, '-v0.5.0');
+  const oldCache = new Map([[new URL('assets/props/orbit.webp', BASE).href, t.res('x', 200)], [new URL('assets/props/skysign.webp', BASE).href, t.res('y', 503)]]);
+  t.stores.set(oldName, oldCache);
+  t.stores.set('another-app-v1.0.0', new Map([['https://example.github.io/other/a.png', t.res('z', 200)]]));
+  await t.run('install', evt());
+  await t.run('activate', evt());
+  const fresh = t.stores.get(cacheName);
+  T('this app\'s older cache is gone, another app\'s is left alone', !t.stores.has(oldName) && t.stores.has('another-app-v1.0.0'));
+  T('a world\'s picture it held is carried into the new cache', !!fresh.get(new URL('assets/props/orbit.webp', BASE).href));
+  T('a server error it held is not', !fresh.get(new URL('assets/props/skysign.webp', BASE).href));
+  T('it takes charge of the open pages', t.claimed() === 1);
+
+  sub('what the app may ask');
+  const m = mk(url => (/skysign/.test(url) ? 503 : 200));
+  await m.run('install', evt());
+  const replies = [];
+  const port = { postMessage: d => replies.push(d) };
+  await m.run('message', evt({ data: { type: 'version' }, ports: [port] }));
+  T('"version": the version it serves, from its cache name', replies[0] && replies[0].version === c.APP_VERSION, JSON.stringify(replies[0]));
+  await m.run('message', evt({ data: { type: 'activate' }, ports: [port] }));
+  T('"activate": it takes over, and only when asked', m.skipped() === 1);
+  const before = m.fetched.length;
+  await m.run('message', evt({ data: { type: 'keep', paths: ['assets/props/orbit.webp', 'assets/props/skysign.webp', 'index.html', 'https://elsewhere.example/x.webp'] }, ports: [port] }));
+  const kept = replies[replies.length - 1].kept;
+  const asked = m.fetched.slice(before).map(f => f.url);
+  T('"keep": only this app\'s own pictures are fetched — never a page, never another site', asked.length === 2 && asked.every(u => /\/app\/assets\//.test(u)), asked.join(' '));
+  T('it answers with the ones it now holds, and not the one that failed', JSON.stringify(kept) === JSON.stringify(['assets/props/orbit.webp']), JSON.stringify(kept));
+  m.net.status = () => 200;
+  await m.run('message', evt({ data: { type: 'keep', paths: ['assets/props/orbit.webp', 'assets/props/skysign.webp'] }, ports: [port] }));
+  T('asked again once the server answers, it holds both', JSON.stringify(replies[replies.length - 1].kept) === JSON.stringify(['assets/props/orbit.webp', 'assets/props/skysign.webp']));
+
+  sub('fetching');
+  const f = mk(url => (/orbit/.test(url) ? 503 : 200));
+  await f.run('install', evt());
+  const pic = new URL('assets/props/orbit.webp', BASE).href;
+  const got = await f.run('fetch', evt({ request: { url: pic, method: 'GET', mode: 'no-cors' } }));
+  T('a server error is passed on, but never stored in place of the file', got && got.status === 503 && !f.stores.get(cacheName).get(pic));
+  const nav = new URL('./', BASE).href;
+  const before2 = f.fetched.length;
+  await f.run('fetch', evt({ request: { url: nav, method: 'GET', mode: 'navigate' } }));
+  T('the page itself is asked of the server afresh, never an old copy from the HTTP cache', f.fetched.slice(before2).some(x => x.url === nav && x.cache === 'no-cache'));
+  f.net.offline = true;
+  const offPage = await f.run('fetch', evt({ request: { url: nav, method: 'GET', mode: 'navigate' } }));
+  T('offline, the page comes from the cache', !!offPage && offPage.ok);
+
+  sub('one version offline, whatever was seen online');
+  const v = mk();
+  await v.run('install', evt());
+  const home = new URL('./index.html', BASE).href, horizon = new URL('assets/horizons/moon.webp', BASE).href;
+  const installedPage = v.stores.get(cacheName).get(home), installedHorizon = v.stores.get(cacheName).get(horizon);
+  const n0 = v.fetched.length;
+  const newer = await v.run('fetch', evt({ request: { url: home, method: 'GET', mode: 'navigate' } }));
+  const fresher = await v.run('fetch', evt({ request: { url: horizon, method: 'GET', mode: 'no-cors' } }));
+  await new Promise(res => setTimeout(res, 5));
+  T('online, the page and a picture come fresh from the server', !!newer && newer.ok && newer !== installedPage && !!fresher && fresher !== installedHorizon &&
+    v.fetched.length === n0 + 2);
+  T('but neither replaces what this version installed: a newer deploy whose install failed can never be half-served offline',
+    !!installedPage && !!installedHorizon && v.stores.get(cacheName).get(home) === installedPage && v.stores.get(cacheName).get(horizon) === installedHorizon);
+  const world = new URL('assets/props/orbit.webp', BASE).href;
+  await v.run('fetch', evt({ request: { url: world, method: 'GET', mode: 'no-cors' } }));
+  await new Promise(res => setTimeout(res, 5));
+  T('a picture this version did not install (a world\'s) is kept when fetched', !!v.stores.get(cacheName).get(world));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -4900,5 +5342,6 @@ module.exports = {
   testDialogue, testWorldStage, testNewGames,
   testHud, testTravel, testInput, testPlayfield, testStation,
   testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign,
-  testLetterforms, testLetterCases, testSightWords, testTracing, testMoonWriter, testJupiter, testAssetLoading, testGrownupsSeven
+  testLetterforms, testLetterCases, testSightWords, testTracing, testMoonWriter, testJupiter, testAssetLoading, testGrownupsSeven,
+  testWorldKeeping, testUpdates, testWorker
 };

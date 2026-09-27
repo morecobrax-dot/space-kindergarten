@@ -141,6 +141,33 @@ AUDIT → UNDERSTAND → IMPLEMENT → ADVERSARIAL VERIFY → DIFF AUDIT → SHI
     cache.
 26. **`npm run verify` must be green before any commit or push.**
 
+### Standing release policy
+
+The user's standing authorization (2026-09-27), for every normal
+implementation request in this repository:
+
+```
+AUDIT → IMPLEMENT → VERIFY → BROWSER QA → DIFF AUDIT → COMMIT → PUSH → VERIFY PRODUCTION → REPORT
+```
+
+The user wants to use the released app after each completed request
+without separately asking for a commit, a push or a deploy.
+
+- **Every real release updates `APP_UPDATES`** and runs
+  `npm run config:sync` (rule 25).
+- **When the required checks pass** (`npm run verify`, and the browser QA
+  the change calls for) **and there is no explicit review-only or STOP
+  instruction, commit and push normally, without asking again.**
+- **Verify production:** confirm the deployed version (the live
+  `CACHE_NAME` and `APP_VERSION`) and compare every deployed file against
+  its committed git blob (rule 24). A deploy is **not** complete because the
+  push succeeded; it is complete when production matches.
+- **Never force-push, never overwrite unrelated work, never bypass a failed
+  check.** Fetch first; if `origin` has moved, integrate it before pushing.
+- **If a genuine blocker prevents a release**, report the exact blocker and
+  preserve the work (commit locally or leave it staged, and say which).
+- **Advice-only prompts and no-op changes do not create releases.**
+
 ## Scope
 
 27. **A product-specific need stays in the product.** See the
@@ -394,9 +421,14 @@ words, and so completed the seven learning areas.
     second finger is ignored, a cancel lifts, and `touch-action: none` is
     set there and nowhere else. Nothing half-traced is ever saved.
 81. **A sight word comes from a recorded list.** A `WORDS` entry with
-    `sight` names its `WORD_LISTS` source, says whether it is decodable,
-    and has no picture. The list is a source, never a claim: no copy says
-    "aligned" unless docs/CONTENT-SOURCES.md records a mapping.
+    `sight` names its `WORD_LISTS` source and has no picture. The list is
+    a source, never a claim: no copy says "aligned" unless
+    docs/CONTENT-SOURCES.md records a mapping. Whether a word can be sounded
+    out is derived, never written by hand: `soundsOutByLetter()` (the word
+    alone) and `decodableHere()` (with the sounds the missions actually
+    teach, `taughtSounds()`). A sound in `PHONEMES` is not a sound taught;
+    an audit found "and", "it" and "in" claimed decodable with sounds no
+    mission taught.
 82. **Seen, not heard, is `silentOk`.** A pair of cases, a matched word and
     a trace count as evidence with the voice off; anything asked by sound
     does not (rule 29). A new game decides which it is, in its
@@ -414,3 +446,27 @@ words, and so completed the seven learning areas.
     caption is fixed in pixels while the sky is in fractions, so a phone is
     where they meet. A new sky position is checked at the iPad sizes and at
     667×375 with Pip's longest line showing.
+
+## Releases that arrive by themselves
+
+These came from the v0.6.1 follow-up to an independent audit.
+
+86. **A new version moves in only at a quiet moment.** It installs in the
+    background and waits; the page asks it to take over when
+    `Domain.safeToReload()` says so — home on Earth, at rest, the child
+    still — and reloads once, only into a newer version. Never mid-mission,
+    mid-letter, mid-flight, in the space station or with a grown-ups page
+    open. A new state that must not be interrupted adds its rule there.
+87. **A failed install never replaces a working version.** The precache is
+    fetched fresh (`cache: 'reload'`) and all-or-nothing; runtime caching
+    stores only good answers, never a page, and never overwrites a file the
+    version installed. Offline is always one version.
+88. **Kept offline means the worker said so.** A world's pictures count as
+    kept only from the service worker's `keep` answer. A picture requested,
+    or even decoded, is not kept. A failed picture is tried again (network
+    back, app in front, a backing-off timer), never twice at once.
+89. **Test touch, updates and offline in a real browser.** The harness has
+    no hit-testing, no service worker and no HTTP cache: contract 50 passed
+    while a real finger fell through the slate. A change to input, the
+    worker or caching gets a headless-Edge flow with real input or a real
+    worker, in a fresh profile.

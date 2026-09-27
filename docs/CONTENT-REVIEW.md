@@ -640,15 +640,15 @@ counts with the sound off too; Pip says the word once it is found.
 | Word | Skill | Missions | Expected answer | Audio it depends on | Ambiguity checked | Status |
 |---|---|---|---|---|---|---|
 | the | sight word, irregular | jupiter-1 (guided, then again), jupiter-2 (guided), reviews | the satellite that says "the" | the device voice saying "the" (allowed: an ordinary word, not a sound) | Three different words, never two alike; near look-alikes (see, to) only at the harder level | Awaiting review |
-| and | sight word, decodable | jupiter-1 (twice), jupiter-2, reviews | "and" | "and" | near look-alike: can | Awaiting review |
+| and | sight word | jupiter-1 (twice), jupiter-2, reviews | "and" | "and" | near look-alike: can | Awaiting review |
 | see | sight word | jupiter-1, jupiter-2, reviews | "see" | "see" (must not sound like "sea" to the child — the same word to the ear, which is why the screen shows only one "see") | near: the | Awaiting review |
 | you | sight word, irregular | jupiter-1, jupiter-2, reviews | "you" | "you" | no near look-alike | Awaiting review |
 | to | sight word, irregular | jupiter-3, jupiter-2 | "to" | "to" — heard like "two" and "too"; only "to" is ever on the screen | near: the, go | Awaiting review |
 | go | sight word | jupiter-3, jupiter-2 | "go" | "go" | near: to | Awaiting review |
 | is | sight word | jupiter-3, jupiter-4 | "is" | "is" | near: it, in | Awaiting review |
-| it | sight word, decodable | jupiter-3, a review | "it" | "it" | near: is, in | Awaiting review |
-| in | sight word, decodable | jupiter-4 | "in" | "in" | near: is, it | Awaiting review |
-| can | sight word, decodable | jupiter-4 | "can" | "can" | near: and | Awaiting review |
+| it | sight word | jupiter-3, a review | "it" | "it" | near: is, in | Awaiting review |
+| in | sight word | jupiter-4 | "in" | "in" | near: is, it | Awaiting review |
+| can | sight word | jupiter-4 | "can" | "can" | near: and | Awaiting review |
 | we | sight word | jupiter-4 | "we" | "we" | no near look-alike | Awaiting review |
 | my | sight word | jupiter-4 | "my" | "my" | no near look-alike | Awaiting review |
 
@@ -674,6 +674,7 @@ the word has one (it beside is). Every word shown is from the same twelve, and n
 |---|---|---|
 | Missions meet the words in this order: the, and, see, you; to, go, is, it; in, can, we, my | A good order? | Awaiting review |
 | "a" and "I" wait: on their own they look exactly like the letters found on the Moon | Agree? | Awaiting review |
+| Which words sound out letter by letter, and which with the sounds this app teaches today (only "can": "and" needs /d/, "it" and "in" need short i) — the two columns in [CONTENT-SOURCES.md](CONTENT-SOURCES.md) | Is "letter by letter" the right line to draw? | Awaiting review |
 
 ## 24. Review across skills (Phase 4)
 

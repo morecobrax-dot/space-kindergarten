@@ -49,6 +49,20 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
 
+## Phase 4 follow-up: what changed (v0.6.1)
+
+A maintenance release after an independent audit of v0.6.0: two findings
+fixed, and releases now reach an installed app by themselves.
+
+| Area | Built |
+|---|---|
+| World pictures recover | A world's picture that failed to load was marked done for good (the audit saw eight failed Jupiter requests and no retry after the network came back). Each picture is now pending, loaded or failed; a failed one is tried again when the network returns, when the app comes back to the front, and on a timer that backs off (15 s, doubling, up to 10 minutes); never twice at once |
+| Kept means stored | A near world's pictures count as kept offline only when the service worker says it holds them (a `keep` request). A fresh install keeps its near world in its first session |
+| Decodability, corrected | "and", "it" and "in" were claimed decodable with the sounds the app teaches; no mission teaches /d/ or short i. Decodability is now derived, in two parts kept apart: letter by letter (the word alone) and with what the missions teach. Today only "can" is decodable with what is taught. No stored progress was touched |
+| Releases arrive by themselves | The app looks for a new version at launch and when it comes back to the front (at most every 10 minutes). A new version installs in the background and moves in at a quiet moment — home on Earth, at rest, the child still — with one reload. Never mid-mission, mid-letter or mid-flight. Progress, stars, the rocket, settings and a world's pictures are kept. Quiet to a child; the grown-ups area shows the version |
+| A failed update changes nothing | A new version is installed fresh and all or nothing: if any file cannot be fetched, the install fails and the working version stays, offline too. What the network brings never replaces what the version installed, so offline is always one version |
+| Standing release policy | Recorded in CLAUDE.md: every completed implementation request is released and verified in production without a separate request |
+
 ## Phase 4: what is built (v0.6.0)
 
 Phase 4 completed the learning product's shape: all seven learning areas
@@ -67,7 +81,7 @@ flow runs Moon (letters, writing) → Mercury (rhymes, beats) → Mars
 | Jupiter | A giant, friendly clay world of rolled cream, amber and orange bands with one big storm swirl, after Mars. Its markers are a sky sign (Star Words) and an orbit ring (Word Orbit). Restored by one of each |
 | Star Words | Hear a sight word; find it among three floating word satellites. The word is never on screen as the clue. The harder level puts a look-alike beside it (it, is) |
 | Word Orbit | A word at the centre; find the one just the same on the ring below. Seen, not heard, so it counts with the sound off |
-| Sight-word source | Twelve words of the Dolch pre-primer list (the, and, see, you, to, go, is, it, in, can, we, my), chosen from three candidate sources and recorded in [CONTENT-SOURCES.md](CONTENT-SOURCES.md) as a source, never claimed as alignment. Each says whether it can be sounded out |
+| Sight-word source | Twelve words of the Dolch pre-primer list (the, and, see, you, to, go, is, it, in, can, we, my), chosen from three candidate sources and recorded in [CONTENT-SOURCES.md](CONTENT-SOURCES.md) as a source, never claimed as alignment. Whether each sounds out letter by letter, and with the sounds this app teaches, is derived, never flagged (v0.6.1: only "can" is decodable with what is taught) |
 | More missions | 20 missions and 117 rounds (from 11 and 64): the Moon 8 (Letter Explorer ×5, Moon Writer ×3), Mercury 4, Mars 4, Jupiter 4 (Star Words ×2, Word Orbit ×2) |
 | Meeting new games | The visit that restores a place also offers the first mission of any game there not yet played, so a new child meets the writing slate straight after relighting the Moon. With every open place restored, Earth points to the first place with something new |
 | Review across skills | A little letter needing help comes back as a little letter and brings back its sound; a sound brings back a word starting with it; a hard sight word comes back in either sight game; a letter traced with help comes back with less help |
@@ -232,6 +246,47 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Phase 4 follow-up QA record (v0.6.1, 2026-09-27)
+
+**Tested in Chromium (headless Edge on Windows), each flow in a fresh,
+isolated profile against a local server that behaves like GitHub Pages
+(`max-age=600`), and in the test harness. Browser emulation does not prove
+physical iPad behavior: Safari's service worker, its update checks, and
+Home Screen apps resuming from the background were not tested on a device.**
+
+| Check | How | Result |
+|---|---|---|
+| Failure, then the network back | Jupiter near; the server answers its pictures with 503; then serves them; the network toggled off and on (an `online` event) | While failing: all 8 marked failed, none counted kept, no error stored in the cache, and no further requests in the next 3 s. Back online: all 8 loaded and kept within 10 s (cache 81 → 89). Then offline, a reload and a flight to Jupiter: every picture present |
+| Failure, then recovery by timer alone | The same, with no `online` event | All 8 kept 12 s after the server recovered (the first backed-off retry) |
+| A fresh install | A first visit with Jupiter near | Jupiter's 8 pictures kept in the first session, no reload; offline, all 8 load from the cache |
+| An installed app updates by itself | v0.6.1 installed with progress and Jupiter kept; a v0.6.2 deployed; the app brought to the front | Installed in the background, moved in at a quiet moment on Earth with exactly one reload; every saved record byte-identical; Jupiter's pictures carried into the v0.6.2 cache and the old cache gone; the grown-ups area shows 0.6.2 |
+| Repeated foregrounding | 20 trips to the front just after an update; then one check with nothing new | 0 extra checks and 0 reloads; the check with nothing new reloaded nothing |
+| An update mid-letter | Moon Writer mid-stroke when v0.6.2 is deployed and found | Installed and waited: no reload for 9 s with the finger down, none on the planet after the mission; home on Earth it moved in with one reload, the finished mission recorded |
+| Offline start, and a failed update | Offline reload of v0.6.2; then a broken v0.6.3 (its precache lists a missing file) deployed and the app opened online, then offline again | Offline start works and flies to Jupiter. The broken install failed and never took over; offline afterwards the app starts as v0.6.2, whole |
+| Contracts | `npm run verify` | 1405 passed, 0 failed; config verify ok |
+| Mutation check | 22 defects planted one at a time in a copy (preload recovery and keeping, the update lifecycle, the worker, derived decodability). First run: 21 caught. The one missed (a planet counted as a quiet moment) was hidden because the check ran while Pip was still speaking; it now waits until Pip is quiet, and checks the space station and a grown-ups page too. The rerun caught it: 22 of 22 | |
+
+**Found and fixed during this work** (beyond the two audit findings):
+
+1. **A failed precache still took over** (the install caught its own
+   failure and skipped waiting), so a half-downloaded update could replace a
+   working offline version. The install now fails instead.
+2. **A server error could be cached as a file** (the fetch handler stored
+   every answer), and would then be served offline or counted as kept.
+3. **A newer page seen online was written into the older version's cache**,
+   so after a failed update the app could start offline as a mix of two
+   versions. Runtime caching now never stores a page or overwrites an
+   installed file.
+4. **On a first visit a near world was fetched before the worker existed**,
+   so it was not kept offline until the next start. The worker now stores it
+   as soon as it is ready.
+
+**Not tested on a physical iPad** (deferred, as before): Safari's worker
+lifecycle and update checks, a Home Screen app resuming from the
+background, how often iPadOS lets a closed app check for updates (it does
+not while the app is closed), and the reload at a quiet moment as a child
+sees it.
 
 ## Phase 4 QA record (2026-09-27)
 

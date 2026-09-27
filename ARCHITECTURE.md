@@ -102,8 +102,50 @@ anything, keeps exactly one scene active, and marks the rest `aria-hidden`.
 ### The seam
 
 The foundation reaches the product only through `Domain.hydrate / render /
-wire`. A contract proves that the foundation's code names nothing from the
-product.
+wire / safeToReload`. A contract proves that the foundation's code names
+nothing from the product.
+
+### Updates and the service worker
+
+A new release reaches an installed app by itself (`UPDATES`, at the end of
+the script; `sw.js`):
+
+1. **Checking.** The worker is registered at load. The app asks for a new
+   version at launch (`checkForUpdate(true)`) and whenever it comes back to
+   the front, at most every `UPDATE_EVERY` (10 minutes). No network: the
+   check fails quietly and nothing changes.
+2. **Installing.** A new worker precaches every file fresh from the server
+   (`cache: 'reload'`), all or nothing: one missing file and the install
+   fails, and the version already working stays. It then **waits**; it
+   never takes over by itself (no `skipWaiting` on install).
+3. **Deciding.** The app asks a waiting worker its version (a `version`
+   message on a `MessageChannel`). The page's own version: it is told to
+   take over at once, and nothing reloads (the page came fresh from the
+   network). Newer: it waits for a quiet moment — `Domain.safeToReload()`
+   (the product: home on Earth, at rest, Pip quiet, no mission, flight,
+   station or grown-ups page) and no touch for `UPDATE_IDLE` — looked for
+   every `UPDATE_POLL` and whenever the app comes to the front.
+4. **Taking over.** The app sends `activate`; the worker takes over, carries
+   the non-precached pictures of older caches into its own
+   (`carryPictures()`), deletes only this app's older caches, and claims the
+   page. On `controllerchange` the page reloads **once**, and only if it
+   asked (`Updates.moving`): a first install or a same-version takeover
+   never reloads.
+
+Both a worker already waiting at launch and one that finishes installing
+later (`updatefound` → `installed`) are handled. Nothing is shown or said
+to a child; the grown-ups area shows the version. The browser runs none of
+this while the app is closed.
+
+**What the worker stores.** The precache, as installed; at runtime, only a
+good (`ok`) answer for a file the version did not install (a world's
+picture) — never a page, never a server error, never over an installed
+file — so offline is always one version, even after a newer version's
+install failed. The page itself is fetched with `cache: 'no-cache'`, so
+the browser's HTTP cache cannot bring an old page back after an update.
+**What the app may ask it** (`message`, answered on the port sent):
+`version`, `activate`, and `keep` (store these pictures, and say which
+it now holds).
 
 ---
 
@@ -140,9 +182,12 @@ Phoneme      { ipa, kind: 'continuous'|'stop'|'vowel',       the sounds; `spelli
                example, spelling? }                          are never asked for alone
 Word         { speak, picture?, rime, onset, beats[],        THE word knowledge base:
                phonemes[], level?, reviewed?,                every game reads it; CVC is
-               sight?{ list, decodable } }                   derived (isCvc()); a sight
+               sight?{ list } }                              derived (isCvc()); a sight
                                                              word has no picture and
-                                                             names its WORD_LISTS source
+                                                             names its WORD_LISTS source;
+                                                             decodability is derived
+                                                             (soundsOutByLetter(),
+                                                             decodableHere())
 Destination  { id, kind: 'home' | 'destination' | 'station'  the STORY layer
                    | 'planned', name, label, tagline?,
                asset, restoredAsset, horizon, sky{x,y,size},
@@ -261,12 +306,25 @@ Every picture declares when it is fetched (`renderedAsset(…, load)`):
 |---|---|---|
 | `core` | everything the first worlds and the shell need | precached by the service worker at install |
 | `install` | the home-screen icons | fetched by the device at install, not precached |
-| a world id (`jupiter`) | that world's horizon, planet, markers and game pictures | fetched when its route is open or next to open (`worldsToKeep()`, `stageAssets()`, `preloadStage()`), at boot and whenever a route opens, then kept by the service worker's cache |
+| a world id (`jupiter`) | that world's horizon, planet, markers and game pictures | fetched when its route is open or next to open (`worldsToKeep()`, `stageAssets()`, `preloadStage()`), and handed to the service worker to keep (`keepWorlds()`) |
 
 So the first download holds only what is needed, a new world is on the
 device before a child can fly there, and a new version's cache keeps every
 open world. Contracts hold the budgets: core under 1.2 MB, each world under
 300 KB.
+
+**Loading, and keeping.** `Preload.assets` gives each stage picture a state:
+`pending` (in flight: never asked for twice at once), `loaded`, or
+`failed` (including a load that gives up after `PRELOAD_GIVE_UP`). A failed
+picture is tried again when the network returns (`online`, forced), when
+the app comes back to the front, and on a timer that backs off from
+`PRELOAD_RETRY` to `PRELOAD_BACKOFF_MAX` while anything is missing — never
+more often, so a flaky connection is not a storm. A near world's pictures
+count as **kept** only when the service worker answers a `keep` request
+saying it holds them (`Preload.kept`): loaded or decoded is not kept.
+`keepWorlds()` waits for `navigator.serviceWorker.ready`, so a fresh
+install keeps its near world in its first session; one request at a time;
+asked afresh when a new worker takes over.
 
 ### The HUD
 
@@ -460,6 +518,16 @@ The contracts collapse these to zero to run the journey in milliseconds.
   both games; 49 tracing by geometry; 50 Moon Writer (watch, trace, less
   help, pointers, reload); 51 Jupiter and a v0.5.0 journey opening it; 52
   picture tiers and offline; 53 the grown-ups area's seven skills.
+- **Contracts 54–56** cover the v0.6.1 follow-up, played with fakes rather
+  than read: 54 a world's pictures failing, hanging and recovering, and
+  kept only on the worker's word; 55 updates (a same-version takeover, a
+  newer version at a quiet moment, one mid-letter, a touch just now,
+  repeated foregrounding, a failed check, a redundant worker, nothing
+  saved touched); 56 `sw.js` itself in a sandbox with fake caches and a
+  fake network (install whole or not at all, never by itself, carry
+  pictures, answer `version`/`activate`/`keep`, never store an error or
+  replace an installed file). Real-browser flows for all of it are in
+  docs/PRODUCT.md's v0.6.1 QA record.
 
 The journey contract (28) plays welcome → Earth → the Moon → the beacon →
 the mission → the world answering → home → Dock → reload through the same
@@ -476,7 +544,7 @@ See the QA notes in `docs/PRODUCT.md`.
 | A picture | A file in `assets/`, one `ASSET_REGISTRY` entry, then `npm run config:sync` |
 | A recording | A registry entry, then its path in `VOICE_RECORDINGS` under the cue's id ([docs/AUDIO-RECORDINGS.md](docs/AUDIO-RECORDINGS.md) lists every one) |
 | A word | One `WORDS` entry (picture, rime, beats, phonemes); every game can then use it |
-| A sight word | A `WORDS` entry with `sight: { list, decodable }` and no picture, from a list recorded in `WORD_LISTS` and docs/CONTENT-SOURCES.md |
+| A sight word | A `WORDS` entry with `sight: { list }`, its `phonemes`, and no picture, from a list recorded in `WORD_LISTS` and docs/CONTENT-SOURCES.md (whose decodability columns must match `soundsOutByLetter()` and `decodableHere()`) |
 | A letter to write | Nothing new: all 52 are in `LETTER_FORMS`. A `letter-trace` activity in a Moon Writer mission, and its strokes checked in docs/CONTENT-REVIEW.md |
 | A world's pictures | Registry entries with `load: '<world id>'`, so they are fetched when its route is near, not in the first download |
 | A sound a game asks for | A `PHONEMES` entry, a `LETTERS[].sound` if a letter spells it, and its synthesis in `SYNTH_SOUNDS` until it is recorded |
@@ -494,4 +562,5 @@ See the QA notes in `docs/PRODUCT.md`.
 | Persistent state | A key in `KEYS`, under `data.` or `ui.`, with a single owner |
 | A data shape change | Bump `DATA_SCHEMA_VERSION` and add a migration |
 | A colour | A token, in layer 1, 2 or 4 |
-| A release | An `APP_UPDATES` entry, then `npm run config:sync` |
+| A release | An `APP_UPDATES` entry, then `npm run config:sync`; installed apps pick it up by themselves at a quiet moment (see "Updates and the service worker") |
+| A state a child must not be interrupted in | A condition in `Domain.safeToReload`, so an update never reloads during it |

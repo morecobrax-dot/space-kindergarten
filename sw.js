@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.6.0';
+const CACHE_NAME = 'space-kindergarten-v0.6.1';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -110,14 +110,26 @@ const ASSETS = [
 ];
 /* APP-ASSETS-END */
 
+/* The version this worker serves, from its cache name ('…-v0.6.1' → '0.6.1'). */
+const VERSION = CACHE_NAME.slice(CACHE_NAME.lastIndexOf('-v') + 2);
+/* Every file this version installs, as full URLs. */
+const PRECACHED = new Set(ASSETS.map(p => new URL(p, self.location.href).href));
+
+/* Installing: everything the app needs, fresh from the server — never from
+ * the browser's own HTTP cache, which could hand a new version an old file.
+ * If any of it cannot be fetched, the install FAILS: a half-filled cache
+ * must never replace a version that works offline. The version already
+ * working stays, and the browser tries again at its next update check. With
+ * no version working yet, the app still works online meanwhile.
+ *
+ * A new version does not take over by itself. It waits until the app says
+ * the moment is quiet (index.html, "UPDATES": never mid-mission, mid-letter
+ * or mid-flight) and asks it to. With no version working yet — a first
+ * install — there is nothing to wait for, and it starts at once. */
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-      /* A failed precache must not block activation — the app still works
-         online, and the fetch handler will fill the cache as it goes. */
-      .catch(() => self.skipWaiting())
+      .then(cache => cache.addAll(ASSETS.map(url => new Request(url, { cache: 'reload' }))))
   );
 });
 
@@ -142,11 +154,10 @@ self.addEventListener('activate', event => {
  * refreshes them from the network whenever there is one. A failure here
  * never stops the update. */
 function carryPictures(older){
-  const precached = new Set(ASSETS.map(p => new URL(p, self.location.href).href));
   return caches.open(CACHE_NAME).then(fresh => Promise.all(older.map(name =>
     caches.open(name).then(old => old.keys().then(reqs => Promise.all(reqs
-      .filter(req => !precached.has(req.url) && new URL(req.url).pathname.indexOf('/assets/') !== -1)
-      .map(req => fresh.match(req).then(have => have || old.match(req).then(res => (res ? fresh.put(req, res) : null))))))))))
+      .filter(req => !PRECACHED.has(req.url) && new URL(req.url).pathname.indexOf('/assets/') !== -1)
+      .map(req => fresh.match(req).then(have => (have && have.ok) || old.match(req).then(res => (res && res.ok ? fresh.put(req, res) : null))))))))))
     .catch(() => {});
 }
 
@@ -155,18 +166,60 @@ function cachePrefix(){
   return cut === -1 ? CACHE_NAME : CACHE_NAME.slice(0, cut + 2);
 }
 
+/* What the app may ask of its worker, each answered on the port it sends:
+ *   version   which version this worker serves, so the app can tell a
+ *             newer version from its own
+ *   activate  take over now: the app has found a quiet moment
+ *   keep      store these pictures for offline play, and say which this
+ *             cache now holds — "asked for" is not "kept" */
+self.addEventListener('message', event => {
+  const msg = event.data || {};
+  const reply = data => { const port = event.ports && event.ports[0]; if(port) port.postMessage(data); };
+  if(msg.type === 'version') reply({ version: VERSION });
+  else if(msg.type === 'activate') event.waitUntil(self.skipWaiting().then(() => reply({ activating: true })));
+  else if(msg.type === 'keep') event.waitUntil(keepPictures(msg.paths).then(kept => reply({ kept: kept })));
+});
+
+/* Only this app's own pictures: a path under assets/ on this origin. Each
+ * is fetched fresh unless this cache already holds it, stored, and then
+ * looked up again: only a picture the cache really holds is reported kept.
+ * One that cannot be fetched now is simply not in the answer; the app asks
+ * again later. */
+function keepPictures(paths){
+  const wanted = (Array.isArray(paths) ? paths : []).map(p => {
+    try{ const url = new URL(String(p), self.location.href); return url.origin === location.origin && url.pathname.indexOf('/assets/') !== -1 ? { p: p, url: url.href } : null; }
+    catch(e){ return null; }
+  }).filter(Boolean);
+  return caches.open(CACHE_NAME).then(cache => Promise.all(wanted.map(w =>
+    cache.match(w.url)
+      .then(hit => (hit && hit.ok) || fetch(w.url, { cache: 'no-cache' }).then(res => (res && res.ok ? cache.put(w.url, res) : null)))
+      .then(() => cache.match(w.url))
+      .then(hit => (hit && hit.ok ? w.p : null), () => null))))
+    .then(list => list.filter(Boolean), () => []);
+}
+
 /* Network-first for the shell, so a freshly deployed update is picked up as
- * soon as there is a connection, with the cache as the offline fallback. */
+ * soon as there is a connection, with the cache as the offline fallback.
+ * The page itself is asked of the server every time (no-cache): a copy
+ * still in the browser's HTTP cache must not bring an old version back
+ * after an update. What the network brings is kept only when it is a good
+ * answer for a file this version did not install (a world's picture): the
+ * installed page and pictures stay exactly this version's, so offline
+ * never mixes a newer page with an older worker, even when a newer
+ * version's install failed. */
 self.addEventListener('fetch', event => {
   const req = event.request;
   if(req.method !== 'GET') return;
   if(new URL(req.url).origin !== location.origin) return;
 
   event.respondWith(
-    fetch(req)
+    (req.mode === 'navigate' ? fetch(req, { cache: 'no-cache' }) : fetch(req))
       .then(res => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, copy)).catch(() => {});
+        /* a server error must never stand in for a file when the network is
+           gone, and an installed file is never overwritten by another version */
+        if(res.ok && req.mode !== 'navigate' && !PRECACHED.has(req.url)){
+          const copy = res.clone(); caches.open(CACHE_NAME).then(c => c.put(req, copy)).catch(() => {});
+        }
         return res;
       })
       .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))

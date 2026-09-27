@@ -2299,6 +2299,22 @@ function validateAppId(id){
    ========================================================= */
 const APP_UPDATES = [
   {
+    id: 'v0-6-1',
+    version: '0.6.1',
+    title: 'Updates arrive by themselves',
+    date: '2026-09-27',
+    summary: 'A new version now installs by itself and moves in at a quiet moment on Earth, never in the middle of a mission or a letter. ' +
+             'A world\'s pictures are kept for offline play as soon as they can be fetched.',
+    improvements: [
+      'The app looks for a new version when it opens and when it comes back to the front, and moves to it at a quiet moment on Earth',
+      'An update that cannot be fully downloaded never replaces the version that works: the app keeps working, offline too'
+    ],
+    fixes: [
+      'A world\'s pictures that failed to load once were not tried again until the app was restarted; they are now tried again when the network returns',
+      'A world\'s pictures are kept for offline play from the first visit, not only from the next start'
+    ]
+  },
+  {
     id: 'v0-6-0',
     version: '0.6.0',
     title: 'Words, little letters and writing',
@@ -3025,7 +3041,10 @@ window.addEventListener('popstate', () => {
 const Domain = {
   hydrate(){},   // read your state out of Store
   render(){},    // paint your screens
-  wire(){}       // attach your own listeners, once, at boot
+  wire(){},      // attach your own listeners, once, at boot
+  /* Is this a quiet moment for a new version to take over, reloading the
+     page (UPDATES)? A product with nothing to interrupt can leave it. */
+  safeToReload(){ return true; }
 };
 
 /* Foundation-owned. Renders the product's screens. */
@@ -3627,23 +3646,53 @@ const WORDS = {
   /* sight words: a development set of twelve from the Dolch pre-primer
      list, awaiting review. Single-letter words (a, I) wait: they look like
      the letters a child is finding on the Moon. */
-  the:      { speak: 'the', rime: 'uh',  onset: 'dh', beats: ['the'], phonemes: ['dh', 'uh'],     sight: { list: 'dolch-pre-primer', decodable: false } },
-  and:      { speak: 'and', rime: 'and', onset: 'a',  beats: ['and'], phonemes: ['a', 'n', 'd'],  sight: { list: 'dolch-pre-primer', decodable: true } },
-  see:      { speak: 'see', rime: 'ee',  onset: 's',  beats: ['see'], phonemes: ['s', 'ee'],      sight: { list: 'dolch-pre-primer', decodable: false } },
-  you:      { speak: 'you', rime: 'oo',  onset: 'y',  beats: ['you'], phonemes: ['y', 'oo'],      sight: { list: 'dolch-pre-primer', decodable: false } },
-  to:       { speak: 'to',  rime: 'oo',  onset: 't',  beats: ['to'],  phonemes: ['t', 'oo'],      sight: { list: 'dolch-pre-primer', decodable: false } },
-  go:       { speak: 'go',  rime: 'oh',  onset: 'g',  beats: ['go'],  phonemes: ['g', 'oh'],      sight: { list: 'dolch-pre-primer', decodable: false } },
-  is:       { speak: 'is',  rime: 'iz',  onset: 'i',  beats: ['is'],  phonemes: ['i', 'z'],       sight: { list: 'dolch-pre-primer', decodable: false } },
-  it:       { speak: 'it',  rime: 'it',  onset: 'i',  beats: ['it'],  phonemes: ['i', 't'],       sight: { list: 'dolch-pre-primer', decodable: true } },
-  in:       { speak: 'in',  rime: 'in',  onset: 'i',  beats: ['in'],  phonemes: ['i', 'n'],       sight: { list: 'dolch-pre-primer', decodable: true } },
-  can:      { speak: 'can', rime: 'an',  onset: 'k',  beats: ['can'], phonemes: ['k', 'a', 'n'],  sight: { list: 'dolch-pre-primer', decodable: true } },
-  we:       { speak: 'we',  rime: 'ee',  onset: 'w',  beats: ['we'],  phonemes: ['w', 'ee'],      sight: { list: 'dolch-pre-primer', decodable: false } },
-  my:       { speak: 'my',  rime: 'ie',  onset: 'm',  beats: ['my'],  phonemes: ['m', 'ie'],      sight: { list: 'dolch-pre-primer', decodable: false } }
+  the:      { speak: 'the', rime: 'uh',  onset: 'dh', beats: ['the'], phonemes: ['dh', 'uh'],     sight: { list: 'dolch-pre-primer' } },
+  and:      { speak: 'and', rime: 'and', onset: 'a',  beats: ['and'], phonemes: ['a', 'n', 'd'],  sight: { list: 'dolch-pre-primer' } },
+  see:      { speak: 'see', rime: 'ee',  onset: 's',  beats: ['see'], phonemes: ['s', 'ee'],      sight: { list: 'dolch-pre-primer' } },
+  you:      { speak: 'you', rime: 'oo',  onset: 'y',  beats: ['you'], phonemes: ['y', 'oo'],      sight: { list: 'dolch-pre-primer' } },
+  to:       { speak: 'to',  rime: 'oo',  onset: 't',  beats: ['to'],  phonemes: ['t', 'oo'],      sight: { list: 'dolch-pre-primer' } },
+  go:       { speak: 'go',  rime: 'oh',  onset: 'g',  beats: ['go'],  phonemes: ['g', 'oh'],      sight: { list: 'dolch-pre-primer' } },
+  is:       { speak: 'is',  rime: 'iz',  onset: 'i',  beats: ['is'],  phonemes: ['i', 'z'],       sight: { list: 'dolch-pre-primer' } },
+  it:       { speak: 'it',  rime: 'it',  onset: 'i',  beats: ['it'],  phonemes: ['i', 't'],       sight: { list: 'dolch-pre-primer' } },
+  in:       { speak: 'in',  rime: 'in',  onset: 'i',  beats: ['in'],  phonemes: ['i', 'n'],       sight: { list: 'dolch-pre-primer' } },
+  can:      { speak: 'can', rime: 'an',  onset: 'k',  beats: ['can'], phonemes: ['k', 'a', 'n'],  sight: { list: 'dolch-pre-primer' } },
+  we:       { speak: 'we',  rime: 'ee',  onset: 'w',  beats: ['we'],  phonemes: ['w', 'ee'],      sight: { list: 'dolch-pre-primer' } },
+  my:       { speak: 'my',  rime: 'ie',  onset: 'm',  beats: ['my'],  phonemes: ['m', 'ie'],      sight: { list: 'dolch-pre-primer' } }
 };
 /* A word a picture game may show: it has a picture. Sight words have
    none, so no picture game can ever offer "the". */
 function hasPicture(w){ return !!(WORDS[w] && WORDS[w].picture); }
 function sightWords(){ return Object.keys(WORDS).filter(w => WORDS[w].sight); }
+/* Whether a word can be sounded out letter by letter: each of its letters
+   says the sound this app gives that letter (LETTERS[L].sound), one sound
+   per letter — "can", "and", "it" — not "see" (a vowel team), "is" (its s
+   says /z/) or "the". A property of the word alone: it says nothing about
+   whether those sounds have been taught. */
+function soundsOutByLetter(w){
+  const d = WORDS[w];
+  if(!d || !Array.isArray(d.phonemes) || d.phonemes.length !== w.length) return false;
+  return w.toUpperCase().split('').every((L, i) => LETTERS[L] && LETTERS[L].sound === d.phonemes[i]);
+}
+/* The sounds this app's missions teach: every sound Sound Scout asks
+   (and may ask in review), and every sound of every word Word Builder
+   builds. Derived from the missions, never listed: a sound in PHONEMES is
+   not a sound taught. */
+function taughtSounds(){
+  const out = new Set();
+  Object.keys(MISSIONS).forEach(id => MISSIONS[id].activities.forEach(a => {
+    if(a.type === 'sound-pick') [a.sound].concat(a.review || []).forEach(p => out.add(p));
+    if(a.type === 'word-build') [a.target].concat(a.review || []).forEach(w => ((WORDS[w] && WORDS[w].phonemes) || []).forEach(p => out.add(p)));
+  }));
+  return out;
+}
+/* Decodable with what this app teaches today: letter by letter, and every
+   one of its sounds taught here. Today that is "can" alone: "and" needs
+   /d/, "it" and "in" need short i, and no mission teaches those yet. */
+function decodableHere(w){
+  if(!soundsOutByLetter(w)) return false;
+  const taught = taughtSounds();
+  return WORDS[w].phonemes.every(p => taught.has(p));
+}
 /* Every letter of a word can be printed. */
 function printable(w){ return String(w).split('').every(ch => !!LETTER_FORMS[ch]); }
 /* Three letters, each spelling one sound: consonant, short vowel,
@@ -3653,7 +3702,7 @@ function isCvc(w){
   if(!d || !/^[a-z]{3}$/.test(w) || !Array.isArray(d.phonemes) || d.phonemes.length !== 3) return false;
   const kinds = d.phonemes.map(p => PHONEMES[p] && !PHONEMES[p].spelling ? PHONEMES[p].kind : null);
   if(!(kinds[0] && kinds[0] !== 'vowel' && kinds[1] === 'vowel' && kinds[2] && kinds[2] !== 'vowel')) return false;
-  return w.toUpperCase().split('').every((L, i) => LETTERS[L] && LETTERS[L].sound === d.phonemes[i]);
+  return soundsOutByLetter(w);
 }
 /* A word that starts with one consonant sound on its own (sun), not a
    cluster (star, spoon, snake), which is what a beginning sound asks. */
@@ -4775,7 +4824,7 @@ function validateContent(){
     if(w.sight){
       if(w.picture !== undefined) flag('sight word ' + k + ' has a picture: it is read, not named');
       if(!WORD_LISTS[w.sight.list]) flag('sight word ' + k + ' names no recorded list');
-      if(typeof w.sight.decodable !== 'boolean') flag('sight word ' + k + ' does not say whether it can be sounded out');
+      if(w.sight.decodable !== undefined) flag('sight word ' + k + ' says by hand whether it can be sounded out: that is derived (soundsOutByLetter, decodableHere)');
       if(!printable(k)) flag('sight word ' + k + ' has a letter with no letterform');
     } else if(!assetEntry(w.picture)) flag('word ' + k + ' has no picture');
     if(!w.rime || !w.onset) flag('word ' + k + ' needs a rime and an onset');
@@ -7106,12 +7155,32 @@ function renderStage(){
 }
 /* Pictures the stage will need are fetched and decoded while the child is
    still on Earth, so no flight ever shows a planet arriving as a blank.
-   The core comes with the app. A world added later is fetched — and so
-   kept by the offline cache, which keeps whatever the app fetches — once
-   its route is open or is the next to open: a route that opens with no
-   network still has its world, and nothing later is fetched before it is
-   near. Run at boot and whenever a route opens. */
-const _preloaded = {};
+   The core comes with the app: the service worker's precache. A world
+   added later (its pictures' `load` is the world) is fetched once its
+   route is open or is the next to open — nothing later is fetched before
+   it is near — and is then KEPT for offline play: its pictures are handed
+   to the service worker, which stores each one and says which it now holds
+   (keepWorlds). Only that answer counts as kept: a picture asked for, or
+   even decoded, is not yet kept offline.
+   Each picture's load (Preload.assets) is:
+     pending  in flight — never asked for twice at once
+     loaded   the browser has it
+     failed   it did not arrive, or took too long: tried again at once
+              when the network returns, and otherwise when the app comes
+              back to the front or on a backing-off timer, never more
+              often than PRELOAD_RETRY — so a flaky connection is not a
+              storm
+   Run at boot, whenever a route opens, when the network returns and when
+   the app comes back to the front. */
+const PRELOAD_RETRY = 15000;          // the soonest a picture is tried again
+const PRELOAD_GIVE_UP = 30000;        // a load still pending this long has failed
+const PRELOAD_BACKOFF_MAX = 600000;   // the longest wait between retries
+const Preload = {
+  assets: {},                         // asset id → { state, at, img, timer }
+  kept: {},                           // asset path → true once the worker holds it
+  keeping: false, keptAt: 0,          // one request to the worker at a time
+  retry: { timer: null, wait: PRELOAD_RETRY }
+};
 function worldsToKeep(completions){
   const open = JOURNEY_ORDER.filter(id => destinationUnlocked(id, completions));
   const next = JOURNEY_ORDER.filter(id => !destinationUnlocked(id, completions))[0];
@@ -7122,17 +7191,81 @@ function stageAssets(completions){
   return ASSET_REGISTRY.filter(a => a.load !== 'install' && (!assetWorld(a) || keep.indexOf(assetWorld(a)) !== -1) &&
     /^(horizon|planet|bg|prop|rocket|character|place)\./.test(a.id));
 }
-function preloadStage(){
+/* `force` (the network has just come back) retries what failed at once,
+   still never asking twice for anything in flight. */
+function preloadStage(o){
+  const force = !!(o && o.force);
+  if(force){ Preload.retry.wait = PRELOAD_RETRY; if(Preload.retry.timer){ clearTimeout(Preload.retry.timer); Preload.retry.timer = null; } }
   try{
-    if(typeof window === 'undefined' || typeof window.Image !== 'function') return;
-    stageAssets(journey.completions).forEach(a => {
-      if(_preloaded[a.id]) return;
-      const img = new window.Image();
-      img.src = a.path;
-      if(typeof img.decode === 'function') img.decode().catch(() => {});
-      _preloaded[a.id] = img;
-    });
+    if(typeof window !== 'undefined' && typeof window.Image === 'function'){
+      const now = Date.now();
+      stageAssets(journey.completions).forEach(a => {
+        const was = Preload.assets[a.id];
+        if(was && (was.state === 'pending' || was.state === 'loaded')) return;
+        if(was && !force && now - was.at < PRELOAD_RETRY) return;
+        const img = new window.Image();
+        const rec = { state: 'pending', at: now, img: img, timer: null };
+        Preload.assets[a.id] = rec;
+        const settle = ok => {
+          if(Preload.assets[a.id] !== rec || rec.state !== 'pending') return;
+          rec.state = ok ? 'loaded' : 'failed';
+          rec.at = Date.now();
+          if(rec.timer){ clearTimeout(rec.timer); rec.timer = null; }
+          if(ok && assetWorld(a)) keepWorlds();
+          if(!ok) scheduleRetry();
+        };
+        img.onload = () => settle(true);
+        img.onerror = () => settle(false);
+        rec.timer = setTimeout(() => settle(false), PRELOAD_GIVE_UP);
+        img.src = a.path;
+        if(typeof img.decode === 'function') img.decode().then(() => settle(true), () => {});
+      });
+    }
   }catch(e){}
+  keepWorlds({ force: force });
+  scheduleRetry();
+}
+/* What is still missing: a picture that failed, or a near world's picture
+   the worker does not yet hold (only when there is a worker to hold it,
+   and not while it is being asked: its answer looks again). */
+function preloadMissing(){
+  const sw = typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.ready;
+  return stageAssets(journey.completions).some(a => {
+    const rec = Preload.assets[a.id];
+    if(rec && rec.state === 'failed') return true;
+    return !!sw && !!assetWorld(a) && !Preload.kept[a.path] && !Preload.keeping;
+  });
+}
+/* While something is missing, try again after a wait that doubles each
+   time, up to PRELOAD_BACKOFF_MAX: patient with a long outage, and quiet. */
+function scheduleRetry(){
+  if(Preload.retry.timer) return;
+  if(!preloadMissing()){ Preload.retry.wait = PRELOAD_RETRY; return; }
+  const wait = Preload.retry.wait;
+  Preload.retry.wait = Math.min(wait * 2, PRELOAD_BACKOFF_MAX);
+  Preload.retry.timer = setTimeout(() => { Preload.retry.timer = null; preloadStage(); }, wait);
+}
+/* Hand the near worlds' pictures to the service worker to keep, and record
+   the ones it says it now holds. One request at a time, at most every
+   PRELOAD_RETRY unless forced; nothing to ask once every near world is
+   kept. With no worker (a first visit before it starts, or a browser
+   without one) it waits: `ready` resolves once there is one, so even a
+   fresh install keeps its near worlds in the same session. */
+function keepWorlds(o){
+  try{
+    const sw = typeof navigator !== 'undefined' && navigator.serviceWorker;
+    if(!sw || !sw.ready || Preload.keeping) return;
+    const want = stageAssets(journey.completions).filter(a => assetWorld(a) && !Preload.kept[a.path]).map(a => a.path);
+    if(!want.length) return;
+    if(!(o && o.force) && Date.now() - Preload.keptAt < PRELOAD_RETRY) return;
+    Preload.keeping = true;
+    Preload.keptAt = Date.now();
+    Promise.resolve(sw.ready)
+      .then(reg => askWorker(reg && reg.active, { type: 'keep', paths: want }, 60000))
+      .then(res => { ((res && res.kept) || []).forEach(p => { if(want.indexOf(p) !== -1) Preload.kept[p] = true; }); })
+      .catch(() => {})
+      .then(() => { Preload.keeping = false; scheduleRetry(); });
+  }catch(e){ Preload.keeping = false; }
 }
 
 /* ---- Flights, as a plan ----
@@ -9709,7 +9842,17 @@ function wireProduct(){
     }
     checkStage();
     if(currentScene === 'earth' || currentScene === 'planet') armAmbient();
+    preloadStage();
   });
+
+  /* The network is back: what failed is tried again at once. A new worker
+     took over: which pictures it holds is asked afresh. */
+  window.addEventListener('online', () => preloadStage({ force: true }));
+  try{
+    if(typeof navigator !== 'undefined' && navigator.serviceWorker && typeof navigator.serviceWorker.addEventListener === 'function'){
+      navigator.serviceWorker.addEventListener('controllerchange', () => { Preload.kept = {}; keepWorlds({ force: true }); });
+    }
+  }catch(e){}
 
   try{
     const mq = window.matchMedia && window.matchMedia('(orientation: portrait)');
@@ -9743,6 +9886,15 @@ Domain.hydrate = () => {
 };
 Domain.render = renderProduct;
 Domain.wire = wireProduct;
+/* A quiet moment for a new version to take over: home on Earth, at rest —
+   not flying, not in a mission (so never mid-letter or mid-answer), not in
+   the space station trying something on, no grown-ups page open, Pip not
+   speaking, nothing still lighting up. A reload comes back to Earth, so
+   nothing is lost there; anywhere else it would take the child somewhere
+   they did not go. */
+Domain.safeToReload = () => (currentScene === 'earth' || currentScene === 'welcome') &&
+  !session.busy && !session.travel && !session.run && !overlayOpen() && !Voice.speaking() &&
+  !session.relightHold && !session.revealHold && Date.now() >= session.celebrateReadyAt;
 
 /* =========================================================
    SETTINGS — data ownership
@@ -10024,12 +10176,104 @@ catch(err){
     '</span></div>');
 }
 
+/* =========================================================
+   UPDATES — a new release arrives by itself
+   ---------------------------------------------------------
+   The service worker is registered at load. The app asks for a new
+   version at launch and whenever it comes back to the front (at most every
+   UPDATE_EVERY). A new version installs in the background and WAITS: this
+   page keeps its own version and its own files until a quiet moment
+   (Domain.safeToReload: the product decides — never mid-mission,
+   mid-letter or mid-flight — and no touch for UPDATE_IDLE). Then the
+   waiting worker is asked to take over, and the page reloads once, into
+   the new version. Progress, settings and stars are in local storage and
+   are never touched; a world's pictures are carried into the new cache.
+     - a waiting worker of this page's own version (the page came fresh
+       from the network) takes over at once, with no reload
+     - one that was already waiting at launch, and one that finishes
+       installing later, are both handled
+     - one reload per page, and only into a newer version: no loops
+     - no network, or a failed install: this version stays, and works
+   Nothing is shown to a child. The grown-ups area shows the version. The
+   browser runs none of this while the app is closed.
+   ========================================================= */
+const UPDATE_EVERY = 10 * 60 * 1000;    // coming to the front asks again at most this often
+const UPDATE_IDLE = 2500;               // no touch for this long before a reload
+const UPDATE_POLL = 3000;               // how often a waiting update looks for a quiet moment
+const Updates = { reg: null, checkedAt: 0, waiting: null, moving: false, timer: null, touchedAt: 0 };
+
+/* A question to a worker, answered on a port of its own; null if it does
+   not answer in time. */
+function askWorker(worker, msg, ms){
+  return new Promise(resolve => {
+    if(!worker || typeof worker.postMessage !== 'function' || typeof MessageChannel !== 'function'){ resolve(null); return; }
+    const ch = new MessageChannel();
+    const t = setTimeout(() => resolve(null), ms || 4000);
+    ch.port1.onmessage = e => { clearTimeout(t); resolve((e && e.data) || null); };
+    try{ worker.postMessage(msg, [ch.port2]); }catch(e){ clearTimeout(t); resolve(null); }
+  });
+}
+function startUpdates(){
+  const sw = navigator.serviceWorker;
+  sw.addEventListener('controllerchange', () => {
+    /* a worker took over: reload only if this page asked to move to a
+       newer version, and only once */
+    if(Updates.moving === 'asked'){ Updates.moving = 'reloading'; location.reload(); }
+  });
+  document.addEventListener('pointerdown', () => { Updates.touchedAt = Date.now(); }, true);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'hidden') return;
+    checkForUpdate();
+    applyUpdate();
+  });
+  return sw.register('sw.js').then(reg => {
+    Updates.reg = reg;
+    if(reg.waiting) considerUpdate(reg.waiting);
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if(w) w.addEventListener('statechange', () => { if(w.state === 'installed' && reg.waiting === w) considerUpdate(w); });
+    });
+    checkForUpdate(true);
+  }).catch(() => {});
+}
+/* Ask the server for a newer worker. No network: the check fails quietly
+   and this version stays. */
+function checkForUpdate(force){
+  const reg = Updates.reg;
+  if(!reg || typeof reg.update !== 'function' || Updates.moving) return false;
+  if(!force && Date.now() - Updates.checkedAt < UPDATE_EVERY) return false;
+  Updates.checkedAt = Date.now();
+  Promise.resolve().then(() => reg.update()).catch(() => {});
+  return true;
+}
+/* A worker has installed and is waiting. Of this page's own version: take
+   over now, nothing changes for the child. Newer: at the next quiet moment. */
+function considerUpdate(worker){
+  return askWorker(worker, { type: 'version' }, 4000).then(res => {
+    if(Updates.moving || !worker || worker.state === 'redundant') return;
+    if(res && res.version === APP_VERSION){ worker.postMessage({ type: 'activate' }); return; }
+    Updates.waiting = worker;
+    applyUpdate();
+  });
+}
+function applyUpdate(){
+  const w = Updates.waiting;
+  if(!w || Updates.moving) return false;
+  if(w.state === 'redundant'){ Updates.waiting = null; return false; }
+  let quiet = false;
+  try{ quiet = !!Domain.safeToReload() && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){}
+  if(!quiet){
+    if(!Updates.timer) Updates.timer = setTimeout(() => { Updates.timer = null; applyUpdate(); }, UPDATE_POLL);
+    return false;
+  }
+  Updates.moving = 'asked';
+  w.postMessage({ type: 'activate' });
+  return true;
+}
 /* Offline support registers only over http(s) — a no-op when the file is
    opened directly from disk. */
 if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
+  window.addEventListener('load', () => { startUpdates(); });
 }
 </script>
 </body>

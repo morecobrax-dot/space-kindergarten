@@ -47,29 +47,49 @@ development set, in its own order, awaiting an educator's review. If any
 future copy ever names Dolch, confirm the claim with this file first.
 
 **The development set.** Twelve of the forty, in the order the missions meet
-them. "Decodable" means a child could sound it out with the letter sounds
-the app teaches (short vowels, one sound per letter); the rest are learned
-by sight for now. The single-letter words **a** and **I** wait: on their own
-they look exactly like the letters a child is finding on the Moon.
+them. Two different things are said about each word, and kept apart:
 
-| Word | List | Decodable with the sounds taught | Missions | Status |
-|---|---|---|---|---|
-| `the` | Dolch pre-primer | no (irregular) | jupiter-1, jupiter-2, reviews | Awaiting review |
-| `and` | Dolch pre-primer | yes | jupiter-1, jupiter-2, reviews | Awaiting review |
-| `see` | Dolch pre-primer | not yet (the "ee" team comes later) | jupiter-1, jupiter-2, reviews | Awaiting review |
-| `you` | Dolch pre-primer | no (irregular) | jupiter-1, jupiter-2, reviews | Awaiting review |
-| `to` | Dolch pre-primer | no (irregular) | jupiter-2, jupiter-3 | Awaiting review |
-| `go` | Dolch pre-primer | not yet (a long vowel at the end) | jupiter-2, jupiter-3 | Awaiting review |
-| `is` | Dolch pre-primer | not yet (its s says /z/) | jupiter-3, jupiter-4 | Awaiting review |
-| `it` | Dolch pre-primer | yes | jupiter-3, a review | Awaiting review |
-| `in` | Dolch pre-primer | yes | jupiter-4 | Awaiting review |
-| `can` | Dolch pre-primer | yes | jupiter-4 | Awaiting review |
-| `we` | Dolch pre-primer | not yet (a long vowel at the end) | jupiter-4 | Awaiting review |
-| `my` | Dolch pre-primer | not yet (y says "eye") | jupiter-4 | Awaiting review |
+- **Sounds out letter by letter:** each of its letters says the one sound
+  this app gives that letter (short vowels, one sound per letter), as in
+  "can" and "and". A word with a vowel team ("see"), a letter saying
+  another sound ("is": its s says /z/), a long vowel ("go") or an irregular
+  part ("the") does not. This is a property of the word alone: it says
+  nothing about what has been taught.
+- **With what this app teaches today:** letter by letter, *and* every one
+  of its sounds is taught by a mission here — the sounds Sound Scout asks
+  and the sounds of the words Word Builder builds: /a b f g h k m n p r s
+  t u/. A sound the app can make is not a sound it teaches. Today only
+  "can" qualifies: "and" needs /d/, and "it" and "in" need short i, and no
+  mission teaches those yet.
+
+Everything else is learned by sight for now. The single-letter words **a**
+and **I** wait: on their own they look exactly like the letters a child is
+finding on the Moon.
+
+| Word | List | Sounds out letter by letter | With what this app teaches today | Missions | Status |
+|---|---|---|---|---|---|
+| `the` | Dolch pre-primer | no (its e says /uh/) | no | jupiter-1, jupiter-2, reviews | Awaiting review |
+| `and` | Dolch pre-primer | yes | no — /d/ is not taught yet | jupiter-1, jupiter-2, reviews | Awaiting review |
+| `see` | Dolch pre-primer | no (the "ee" team) | no | jupiter-1, jupiter-2, reviews | Awaiting review |
+| `you` | Dolch pre-primer | no (irregular) | no | jupiter-1, jupiter-2, reviews | Awaiting review |
+| `to` | Dolch pre-primer | no (its o says /oo/) | no | jupiter-2, jupiter-3 | Awaiting review |
+| `go` | Dolch pre-primer | no (a long vowel at the end) | no | jupiter-2, jupiter-3 | Awaiting review |
+| `is` | Dolch pre-primer | no (its s says /z/) | no | jupiter-3, jupiter-4 | Awaiting review |
+| `it` | Dolch pre-primer | yes | no — short i is not taught yet | jupiter-3, a review | Awaiting review |
+| `in` | Dolch pre-primer | yes | no — short i is not taught yet | jupiter-4 | Awaiting review |
+| `can` | Dolch pre-primer | yes | yes | jupiter-4 | Awaiting review |
+| `we` | Dolch pre-primer | no (a long vowel at the end) | no | jupiter-4 | Awaiting review |
+| `my` | Dolch pre-primer | no (y says "eye") | no | jupiter-4 | Awaiting review |
 
 In the code, each word names its list (`WORDS.the.sight.list`, checked
-against `WORD_LISTS`) and says whether it is decodable; a contract checks
-every one against the forty words typed out independently.
+against `WORD_LISTS`), and a contract checks every one against the forty
+words typed out independently. Neither column above is written by hand in
+the code: both are derived — `soundsOutByLetter()` from each word's letters
+and sounds, and `decodableHere()` from the sounds the missions teach
+(`taughtSounds()`) — and contract 48 fails if this table ever disagrees
+with them. When a mission comes to teach /d/ or short i, this table changes
+with it. (Until v0.6.1 the table claimed "and", "it" and "in" were decodable
+with the sounds taught; they are not.)
 
 ## Phase 4: how letters are written — the model
 

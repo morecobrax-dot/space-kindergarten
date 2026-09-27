@@ -351,7 +351,9 @@ const BRIDGE = [
   /* product: engine, state and audio */
   'ACTIVITY_TYPES', 'GAME_VIEWS', 'TIER_STEP_UP', 'RECENT_LIMIT', 'TIMING', 'GLYPHS',
   'journey', 'session', 'soundPrefs', 'motionPref', 'storageState', 'Voice', 'Sfx', 'AudioOut', 'DevVoice', 'MediaVoice', 'SYNTH_GAP', 'SOUND_CLASS',
-  'ambient', 'ROCKET_FOOT', 'writeInput', 'WRITE_FRAME'
+  'ambient', 'ROCKET_FOOT', 'writeInput', 'WRITE_FRAME',
+  /* world pictures kept offline, and updates */
+  'Preload', 'PRELOAD_RETRY', 'Updates', 'UPDATE_EVERY', 'UPDATE_IDLE', 'UPDATE_POLL'
 ];
 
 function loadApp(opts){

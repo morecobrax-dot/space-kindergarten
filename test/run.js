@@ -77,7 +77,10 @@ const SUITES = [
   C.testMoonWriter,
   C.testJupiter,
   C.testAssetLoading,
-  C.testGrownupsSeven
+  C.testGrownupsSeven,
+  C.testWorldKeeping,
+  C.testUpdates,
+  C.testWorker
 ];
 
 async function main(){
