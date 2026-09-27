@@ -12,12 +12,13 @@ and anchors.
   `references/` or any other artwork. Record its source and licence in
   `ASSET_REGISTRY`.
 - **Same world.** Use the same light as every other picture:
-  - key light from the upper left and slightly in front, warm white
+  - a large, soft key light from the upper left and in front, warm white
+  - a cool, gentle front fill, so faces stay bright
   - cool blue ambient
-  - a cyan rim from behind, to the right
+  - a thin cyan rim from behind, to the right
   - warm light only from things that glow
-- **Same material:** matte, velvety clay with subtle tool marks and soft
-  imperfections. Gloss only on glass and on Pip's eyes.
+- **Same material:** smooth, matte, velvety plasticine with only a whisper of
+  hand-made texture. Gloss only on glass and on Pip's eyes.
 - **Same camera:** a long lens, with very little perspective distortion.
 - **Same file:** the same path, pixel size, transparency and anchors as the
   draft below. Then run `npm run config:sync`. Promote the registry entry to
@@ -31,149 +32,194 @@ and anchors.
   [ART-DIRECTION.md](ART-DIRECTION.md#the-asset-pipeline).
 
 Positions below are percentages of the frame, measured from the top-left
-corner.
+corner. **An anchor is a promise:** the app places something there (a
+light, the rocket, a letter plate), and a contract checks the CSS against
+the render.
 
-## Earth — `assets/planets/earth.webp` · 1400×1400 · transparent
+## The sky
 
-- **Framing:**
-  - The sphere is centred, its radius **42%** of the frame (84% across).
-  - Clouds may break the silhouette, but must stay inside the frame.
-  - Keep a soft cyan atmosphere just outside the disc, stronger on the right.
-- **Anchor:** the rocket stands at **(67%, 32%)**. That spot must be solid
-  green land, on the face of the sphere.
-- **Content:**
-  - a blue clay ocean
-  - raised green land slabs with rounded, thumb-pressed edges
-  - cream cloud puffs floating just above the surface, casting soft shadows
-    down and to the right
-  - friendly invented continents, not real coastlines
-  - **no face**
-- **Prompt, if an image generator is used:**
-  > A hand-sculpted modelling-clay Earth, a single matte clay sphere with
-  > raised lime-green land slabs and a blue clay ocean, soft cream clay
-  > cloud puffs floating just above the surface casting soft shadows,
-  > subtle fingerprints and tool marks, lit by a soft warm key light from
-  > the upper left, cool blue ambient, a cyan rim light from behind right,
-  > stop-motion miniature, centred, transparent background, no face, no
-  > text.
+### Space — `assets/backgrounds/space.webp` · 1600×1100 · opaque
 
-## Moon — `assets/planets/moon.webp` and `moon-lit.webp` · 800×800 each · transparent
+- Near-black navy at the top, deepening to blue low down; a faint cool haze
+  upper right. **No stars**: they are their own layers.
+- It is cropped to fit every iPad shape: nothing important in the corners.
 
-- **Framing:** the sphere is centred, its radius **42%** of the frame.
-- **Anchor:** a tiny beacon on the surface, its lamp at **(63%, 30%)**.
-- **Content:**
-  - soft lavender-grey clay, with craters pressed in by a fingertip, each
-    with a raised lip
-  - **no face**
-- **Waiting** (`moon.webp`): cool and quiet. The beacon lamp is dark, and
-  the halo is a cool lavender.
-- **Restored** (`moon-lit.webp`): the **same model and pose**, so the two
-  crossfade cleanly.
-  - The lamp glows warm.
-  - Warm light spills over the nearby craters, and there is a faint warmth
-    in the crater floors.
-  - The halo is warm.
-  - Keep it subtle: no neon.
+### Star layers — `assets/backgrounds/stars-far.webp`, `stars-near.webp` · 2400×2200 each · transparent
 
-## Rocket — `assets/rocket/rocket.webp` + `rocket-paint.webp` · 640×1088 each · transparent
+- **Far:** about 120 tiny, dim stars, a few warm or cool, spread thinly.
+- **Near:** about 16 brighter stars, a few with a soft four-point sparkle.
+- Mostly empty: negative space is deliberate. They are taller than the
+  screen because a flight slides them.
 
-- **Framing:** upright, centred.
-  - The nose tip is at **12%** from the top.
-  - The **nozzle's bottom centre is at (50%, 88%)**, and the nozzle spans
-    about 36%–64% of the width.
-- **Content:**
-  - a cream clay bullet hull with a porthole (a cream rim, and dark blue
-    glass with a catch-light)
-  - three thick rounded fins: two angled toward the viewer, one behind
-  - a nose cone and a band
-  - a small dark nozzle
-  - pressed seams where the painted pieces meet the hull
+## The worlds you stand on
+
+### Horizons — `assets/horizons/earth.webp`, `moon.webp`, `mercury.webp` · 2400×780 each · transparent sky
+
+Every world is the top of **the same clay sphere seen by the same camera**
+(`tools/art/scenes/horizon.js`): a long lens, the crest of the curve **18%**
+down the frame, the edges dropping to about half the frame height. A final
+version must keep that exact curve, because the app stands things on it.
+
+- **Glow:** a soft halo along the edge in the world's colour (Earth cyan,
+  the Moon lavender-blue, Mercury amber), fading out inside the frame.
+- **Earth:** a blue ocean, low rounded green continents (soft bevels, no
+  tall slab walls), a few cream cloud puffs floating just above the surface
+  with soft shadows. **The launch pad** is baked in: a round lavender clay
+  platform with six small warm lamps, its top face centred at
+  **(29.81%, 52.43%)**, about 14% of the width across. The rocket stands
+  exactly there.
+- **The Moon:** lavender-grey clay with fingertip craters, bigger nearer the
+  viewer. Nothing standing on it: the beacon is its own picture.
+- **Mercury:** warm stone with soft overlapping dimples.
+- **Keep clear:** the landing spots and marker feet listed below must be on
+  plain ground, not in a crater's wall or under a cloud.
+
+| Anchor | Where (fraction of the horizon picture) |
+|---|---|
+| Earth: the rocket stands on the pad | (29.81%, 52.43%) |
+| The Moon: the rocket's landing spot | (74.5%, 44%) |
+| The Moon: the beacon's foot | (44%, 47%) |
+| Mercury: the rocket's landing spot | (76.5%, 45%) |
+| Mercury: the radar dish's foot | (37%, 50%) |
+| Mercury: the meteor rocks' centre | (58%, 55%) |
+
+## The worlds seen from afar
+
+Every planet is centred and fills **84%** of a square frame, with a soft
+halo just outside the disc. **No faces.**
+
+### Earth — `assets/planets/earth.webp` · 600×600 · transparent
+
+Home, far away in every destination's sky, drawn at about 11% of the screen
+height: a blue ocean, green land, cream clouds. It must read at 80 px.
+
+### Moon — `assets/planets/moon.webp` and `moon-lit.webp` · 640×640 each · transparent
+
+- **Anchor:** a tiny beacon on the surface, its lamp at **(63.3%, 29.5%)**.
+  The app breathes a warm glow there once the Moon is restored.
+- **Waiting:** cool and quiet, the beacon dark, the halo cool lavender.
+- **Restored:** the **same model and pose**, so the two crossfade cleanly:
+  the lamp glows warm, warm light spills over the nearby craters, a faint
+  warmth in the crater floors, a warm halo. Subtle: no neon.
+- It is also the picture for the word "moon" in Rhyme Radar.
+
+### Mercury — `assets/planets/mercury.webp` and `mercury-lit.webp` · 560×560 each · transparent
+
+- Warm stone covered in soft dimples. Its sunward side glows a little warm.
+- **Restored:** the same model, warm light in the dimples, a warm halo.
+
+## What stands on the worlds
+
+### Beacon — `assets/props/beacon.webp` and `beacon-lit.webp` · 512×896 each · transparent
+
+- **Anchors:** the **lamp's centre at (50%, 23.9%)**; the **foot, where it
+  meets the ground, at (50%, 88.5%)**. Its contact shadow fades out inside
+  the frame.
+- A cream clay lighthouse with two coral stripes and an arched door, a
+  railing ring, a glass lamp and a coral dome, on a mound of Moon clay.
+- **Lit:** the same model and pose, with a warm glowing lamp that lights the
+  railing and the dome.
+
+### Radar dish — `assets/props/radar.webp` and `radar-on.webp` · 480×480 each · transparent
+
+- **Anchors:** the **foot at (45.28%, 83.82%)**; the antenna tip at
+  (61.54%, 37.05%).
+- A friendly cream clay dish on a stubby teal base, facing up and to the
+  right, a small antenna in its centre, and a baked contact shadow.
+- **On:** the tip glows warm, with a gentle bloom.
+
+### Meteor rocks — `assets/props/meteor-field.webp` and `meteor-field-on.webp` · 480×360 each · transparent
+
+- **Anchor:** the cluster's **ground centre at (52.31%, 53.63%)**.
+- Three round clay rocks of different sizes in a shallow pressed crater of
+  warm stone, with a baked contact shadow.
+- **On:** the rocks glow warm orange from within, with a gentle bloom.
+
+### Letter stone — `assets/props/letter-stone.webp` · 400×440 · transparent
+
+- **Anchor:** the **flat front face** is a rounded rectangle at left 13%,
+  top 11.6%, 74% wide and 70% tall (corners about 29 px). The app lays a
+  clean plate just inside it and draws the letter on the plate, so the face
+  must be flat, plain and square to the frame.
+- A chunky rounded stone of lavender-grey Moon clay, its top showing a
+  little, with a soft baked contact shadow.
+
+### Meteor stone — `assets/props/beat-stone.webp` · 512×400 · transparent
+
+- **Anchor:** the **top face's centre at (51.18%, 32.89%)**; the app draws
+  its "tap here" ring there.
+- A big, round, drum-like clay rock in warm grey-amber stone, a wide smooth
+  top seen from above, a few soft dimples around its side (none on top), and
+  a baked contact shadow.
+
+### Meteors — `assets/props/meteor.webp` and `meteor-lit.webp` · 192×192 each · transparent
+
+- A small round clay meteor rock, centred.
+- **Dim:** cool grey-lavender: a beat still to tap.
+- **Lit:** the same rock in warm orange-yellow clay with a softly glowing
+  core and a small, controlled bloom: a beat tapped.
+
+### Star — `assets/props/star.webp` · 256×256 · transparent
+
+A puffy five-point star of warm yellow clay, thicker in the middle, with
+rounded tips and orange edges, and a faint warm glow. It must read at 26 px,
+the size of the Dock's price tags. It is also the picture for "star".
+
+## Pictures for words — `assets/pictures/<word>.webp` · 384×384 each · transparent
+
+`apple`, `banana`, `bee`, `cake`, `car`, `rock`, `snake`, `sock`, `spoon`,
+`tomato`, `tree`.
+
+- **One set:** the same camera for every picture, a gentle three-quarter
+  view from slightly above; each object centred and filling about 80% of the
+  frame's larger dimension.
+- **Instantly recognisable at 120 px** by a five-year-old: exaggerate the
+  defining feature (a banana's curve, a car's wheels, a bee's stripes).
+- Only the snake and the bee have faces: two dark bead eyes each.
+- Friendly, saturated colours, never neon. No text.
+
+## The rocket and the guide
+
+### Rocket — `assets/rocket/rocket.webp` + `rocket-paint.webp` · 640×800 each · transparent
+
+- **Anchors:** the **nozzle's bottom centre at (50%, 81.8%)**: the rocket
+  stands on this point. The nozzle spans about 34%–66% of the width; the
+  nose tip is at about 11% from the top.
+- **Content:** a short cream clay body with a rounded cone nose, a big
+  porthole (a cream rim, dark blue glass with a catch-light), one band,
+  three thick rounded fins (two angled toward the viewer, one behind) and a
+  little dark nozzle, with pressed seams where the painted pieces meet the
+  hull.
 - **Paint rule:**
-  - In `rocket.webp`, the **painted parts (nose cone, band, fins) are white
+  - In `rocket.webp`, the **painted parts (nose, band, fins) are white
     clay**, fully shaded.
-  - `rocket-paint.webp` is the **mask**: white, with its alpha set to exactly
+  - `rocket-paint.webp` is the **mask**: white, its alpha set to exactly
     those painted parts, aligned pixel for pixel with `rocket.webp`.
   - The app multiplies each paint colour through the mask. Never deliver one
     rocket per colour.
 
-## Flame — `assets/rocket/flame.webp` · 256×384 · transparent
+### Flame — `assets/rocket/flame.webp` · 256×384 · transparent
 
 - **Framing:** the flame's root runs along the **top edge**, centred, about
-  90% of the width. The tip points down, at about 87% of the height.
-- **Content:** sculpted clay tongues of flame (orange outside, yellow core)
-  that glow, with a soft bloom. Only the top edge may touch the frame.
+  90% of the width. The app hangs it from the nozzle: its top edge at 80.5%
+  of the rocket's height, 35% of the rocket's width across.
+- Sculpted clay tongues of flame (orange outside, yellow core) that glow,
+  with a soft bloom. Only the top edge may touch the frame.
 
-## Pip — `assets/characters/pip.webp` · 720×660 · transparent
+### Pip — `assets/characters/pip.webp` · 720×660 · transparent
 
-- **Anchors:**
-  - The **antenna ball's centre is at (51.9%, 18.1%)**, with a diameter of
-    about 6% of the width. The app lights exactly that spot while Pip
-    speaks.
-  - The body is centred at (50%, 56%), and the feet are at about 85%.
-- **Design:**
-  - a warm-yellow capsule body with an orange band
-  - two teal solar-panel wings with pressed grooves, on short lavender arms
-  - dark bead eyes with tiny catch-lights, a pressed smile and pink cheeks
-  - two small orange feet
-  - slight hand-made asymmetry
+- **Anchor:** the **antenna ball's centre at (51.5%, 18.7%)**, its diameter
+  about 7.8% of the width. The app lights exactly that spot while Pip speaks.
+- **Design:** a chubby warm-yellow capsule with an orange band; two chunky
+  teal solar-panel wings, each with one pressed groove, on short lavender
+  arms; a short leaning antenna with a big glassy ball; big dark bead eyes
+  with catch-lights, a small pressed smile and pink cheeks; two small orange
+  feet; slight hand-made asymmetry.
 - **Silhouette rule:** a body, two wings and an antenna. Never a star with a
   face, a pink ball, a white egg with a visor, or an owl. The face must read
   from across an iPad.
 
-## Star — `assets/props/star.webp` · 256×256 · transparent
-
-- **Framing:** centred, filling about 84%.
-- **Content:** a puffy five-point star of warm yellow clay, thicker in the
-  middle, with rounded tips and orange edges, and a faint warm glow. It
-  must read at 26 px, the size of the Dock's price tags.
-
-## Beacon — `assets/props/beacon.webp` and `beacon-lit.webp` · 512×896 each · transparent
-
-- **Anchors:**
-  - The **lamp's centre is at (50%, 24%)**.
-  - The base mound's bottom is at about 94%.
-  - Its contact shadow must fade out inside the frame.
-- **Content:**
-  - a cream clay lighthouse with two coral stripes and an arched door
-  - a railing ring, a glass lamp and a coral dome
-  - a mound of Moon clay at its base
-- **The lit version** is the same model and pose, with a warm glowing lamp
-  that lights the railing and the dome.
-
-## Launch pad — `assets/props/pad.webp` · 1200×480 · transparent
-
-- **Anchor:** the top face's centre, where the rocket stands, is at
-  **(50%, 46%)**.
-- **Content:** a thick round slab of Moon clay, seen from a little above,
-  with a pressed ring and six small warm lamps around the rim.
-
-## Moon ground — `assets/backgrounds/moon-ground.webp` · 2400×800 · transparent sky
-
-- **Framing:**
-  - The horizon is a gentle curve in the **top 15%**.
-  - The layout crops from the top, so the upper three quarters must hold
-    the composition.
-  - The ground fills the frame to the bottom and sides.
-- **Content:**
-  - the curved top of a big lavender clay moon, seen from just above it
-  - fingertip craters, with bigger ones nearer the viewer
-  - soft lumps
-  - distance haze that melts the far ground into blue
-  - the horizon catching the cyan rim light
-  - mid-dark values, so the pale letter tiles stand out against it
-
-## Space — `assets/backgrounds/space.webp` · 2400×1600 · opaque
-
-- **Content:**
-  - near-black navy at the top, deepening to blue low down
-  - a faint cool haze
-  - sparse, small stars (only a few with a soft sparkle)
-  - one small, out-of-focus distant planet at the upper left
-  - mostly empty: negative space is deliberate
-- **Keep clear:** nothing important in the corners, because it is cropped
-  to fit every iPad shape.
-
 ## Home Screen icons — `icon-512.png` and `icon-192.png` · opaque PNG
 
-- **Content:** Pip, centred, over deep navy, brighter behind Pip. Keep Pip
-  inside the middle 80%, because iOS rounds the corners.
+Pip, centred, over deep navy, brighter behind Pip. Keep Pip inside the
+middle 80%, because iOS rounds the corners.

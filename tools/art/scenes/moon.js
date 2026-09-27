@@ -81,7 +81,7 @@ function surface(x, y, z){
 
 function build(variant){
   const lit = variant === 'lit';
-  const W = 800, H = 800, D = 6.2;
+  const W = 640, H = 640, D = 6.2;
   const tanHalf = (1 / Math.sqrt(D * D - 1)) / 0.84;
   const lampPos = [BEACON[0] * B_LAMP, BEACON[1] * B_LAMP, BEACON[2] * B_LAMP];
   return {

@@ -180,36 +180,45 @@ function smax(a, b, k){ return -smin(-a, -b, k); }
    THE LIGHT RIG — one world, one light
    Every asset imports this; none defines its own. A contract
    fails if a scene file declares a key or rim light.
-     key     soft area light, upper left and slightly in front
+     key     a large, soft studio light, upper left and in front
+     fill    a cool, gentle front fill, so faces stay bright and
+             friendly while the world around them can be dark
      ambient cool space blue from above, near-black from below
-     rim     cyan, from behind and to the right
+     rim     a controlled cyan edge, from behind and to the right
      bounce  faint lavender from below, as if off a surface
    Warm light comes only from things in the world that glow.
+   Phase 2 softened it: a bigger key (softer shadows), more fill,
+   and a thinner rim — premium studio light, not drama.
    ========================================================= */
 const RIG = {
-  key:    { dir: norm3([-0.6, 0.63, 0.46]), color: [1.0, 0.93, 0.84], intensity: 1.3, softness: 6 },
-  ambient:{ up: [0.12, 0.17, 0.36], down: [0.025, 0.03, 0.075], intensity: 1.15 },
-  rim:    { dir: norm3([0.8, 0.26, -0.54]), color: [0.26, 0.66, 1.0], intensity: 3.4, power: 2.2 },
-  bounce: { dir: norm3([0.2, -1, 0.3]), color: [0.16, 0.14, 0.26], intensity: 0.55 },
+  key:    { dir: norm3([-0.6, 0.63, 0.46]), color: [1.0, 0.94, 0.86], intensity: 1.2, softness: 3.2 },
+  fill:   { dir: norm3([0.55, 0.12, 0.83]), color: [0.58, 0.66, 0.9], intensity: 0.42 },
+  ambient:{ up: [0.13, 0.17, 0.34], down: [0.03, 0.035, 0.08], intensity: 1.4 },
+  rim:    { dir: norm3([0.8, 0.26, -0.54]), color: [0.3, 0.7, 1.0], intensity: 2.3, power: 3.0 },
+  bounce: { dir: norm3([0.2, -1, 0.3]), color: [0.16, 0.14, 0.26], intensity: 0.5 },
   exposure: 1.0
 };
 
 /* ---------- materials ---------- */
 /* A clay material. Only albedo is required; the rest default to the house
-   clay so every asset shares one surface. */
+   clay so every asset shares one surface.
+   Phase 2: smooth, sculpted plasticine — texture is barely there. Grain
+   and strokes are a whisper, fingerprints are off unless a scene asks for
+   them where they help the material read. Clean colour blocking and
+   clean silhouettes do the work, not surface noise. */
 function clay(opts){
   return Object.assign({
     albedo: [0.5, 0.5, 0.5],
-    wrap: 0.3,           // light reaching round the terminator: soft, waxy
-    sss: 0.7,            // saturated colour in the terminator band
-    spec: 0.035,         // a hint of waxy sheen, never gloss
-    specPow: 10,
-    sheen: 0.10,         // velvety brightening at grazing angles
+    wrap: 0.42,          // light reaching round the terminator: soft, waxy
+    sss: 0.45,           // saturated colour in the terminator band
+    spec: 0.05,          // the soft sheen of smoothed plasticine
+    specPow: 14,
+    sheen: 0.05,         // velvety brightening at grazing angles
     rim: 1,              // how much cyan rim a colour takes (warm clay takes less:
                          // cyan light on yellow clay reads olive)
-    grain: 0.0011,       // fine surface grain, in scene units
-    stroke: 0.0022,      // smoothing marks from a thumb or a tool
-    prints: 0.0009,      // faint ridge patches, sparingly
+    grain: 0.00018,      // fine surface grain, in scene units
+    stroke: 0.0006,      // smoothing marks from a thumb or a tool
+    prints: 0,           // faint ridge patches: off unless a scene asks
     lump: 1,             // multiplier on the scene's lumpiness
     emissive: null,      // linear RGB, for things that glow
     paint: false,        // part of the rocket that takes a paint colour
@@ -279,14 +288,14 @@ function makeRenderer(scene){
      clean, as a sculptor's would. */
   function clayHeight(x, y, z, m){
     const s = S;
-    let h = m.grain * (detailNoise(x * 95 / s, y * 95 / s, z * 95 / s) +
-                       0.55 * detailNoise(x * 210 / s + 13.1, y * 210 / s + 7.7, z * 210 / s));
-    // strokes: stretched noise, running in a slow swirl
+    // grain: one soft octave only — a plasticine surface, not sandpaper
+    let h = m.grain * detailNoise(x * 70 / s, y * 70 / s, z * 70 / s);
+    // strokes: long, soft smoothing marks in a slow swirl, only in patches
     const sw = detailNoise(x * 1.3 / s + 3.1, y * 1.3 / s, z * 1.3 / s) * 2.2;
     const ca = Math.cos(sw), sa = Math.sin(sw);
     const a1 = (x * ca + y * sa) / s, a2 = (y * ca - x * sa) / s;
-    const strokeMask = smoothstep(-0.15, 0.45, detailNoise(x * 2.1 / s + 9, y * 2.1 / s, z * 2.1 / s + 4));
-    h += m.stroke * strokeMask * detailNoise(a1 * 4.5, a2 * 30, z * 30 / s);
+    const strokeMask = smoothstep(0.05, 0.5, detailNoise(x * 1.8 / s + 9, y * 1.8 / s, z * 1.8 / s + 4));
+    h += m.stroke * strokeMask * detailNoise(a1 * 2.4, a2 * 12, z * 12 / s);
     // prints: fine parallel ridges, only in a few small patches
     if(m.prints > 0){
       const pm = smoothstep(0.32, 0.5, detailNoise(x * 3.3 / s - 5, y * 3.3 / s + 2, z * 3.3 / s));
@@ -342,7 +351,7 @@ function makeRenderer(scene){
     return res * res * (3 - 2 * res);
   }
 
-  const key = RIG.key, rim = RIG.rim, amb = RIG.ambient, bnc = RIG.bounce;
+  const key = RIG.key, rim = RIG.rim, amb = RIG.ambient, bnc = RIG.bounce, fil = RIG.fill;
   const keyI = key.intensity * (scene.keyScale || 1);
 
   /* One shaded sample. Writes linear RGB into out[0..2]. */
@@ -357,6 +366,8 @@ function makeRenderer(scene){
     const hemi = 0.5 + 0.5 * n[1];
     const ar = mix(amb.down[0], amb.up[0], hemi) * ao, ag = mix(amb.down[1], amb.up[1], hemi) * ao, ab = mix(amb.down[2], amb.up[2], hemi) * ao;
     const bd = Math.max(0, (dot3(n, bnc.dir) + 0.4) / 1.4) * bnc.intensity * ao;
+    // the soft front fill: no shadow, just keeping the side facing us friendly
+    const fd = Math.max(0, (dot3(n, fil.dir) + 0.35) / 1.35) * fil.intensity * (0.5 + 0.5 * ao);
     const fres = Math.pow(1 - nv, rim.power);
     const rimD = Math.max(0, (dot3(n, rim.dir) + 0.45) / 1.45) * fres * rim.intensity * (0.35 + 0.65 * ao) * m.rim;
     // waxy sheen, from the key only
@@ -367,7 +378,7 @@ function makeRenderer(scene){
 
     for(let c = 0; c < 3; c++){
       const alb = albedo[c];
-      let v = alb * (key.color[c] * wrapD * keyI + (c === 0 ? ar : c === 1 ? ag : ab) * amb.intensity + bnc.color[c] * bd);
+      let v = alb * (key.color[c] * wrapD * keyI + (c === 0 ? ar : c === 1 ? ag : ab) * amb.intensity + bnc.color[c] * bd + fil.color[c] * fd);
       v += alb * alb * key.color[c] * band * keyI * 0.9;
       v += rim.color[c] * rimD * mix(alb, 1, 0.3);
       v += key.color[c] * sp;

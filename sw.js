@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.2.0';
+const CACHE_NAME = 'space-kindergarten-v0.3.0';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -30,14 +30,38 @@ const ASSETS = [
   './index.html',
   './manifest.webmanifest',
   './assets/backgrounds/space.webp',
-  './assets/backgrounds/moon-ground.webp',
+  './assets/backgrounds/stars-far.webp',
+  './assets/backgrounds/stars-near.webp',
+  './assets/horizons/earth.webp',
+  './assets/horizons/moon.webp',
+  './assets/horizons/mercury.webp',
   './assets/planets/earth.webp',
   './assets/planets/moon.webp',
   './assets/planets/moon-lit.webp',
+  './assets/planets/mercury.webp',
+  './assets/planets/mercury-lit.webp',
   './assets/props/beacon.webp',
   './assets/props/beacon-lit.webp',
+  './assets/props/radar.webp',
+  './assets/props/radar-on.webp',
+  './assets/props/meteor-field.webp',
+  './assets/props/meteor-field-on.webp',
+  './assets/props/letter-stone.webp',
+  './assets/props/beat-stone.webp',
+  './assets/props/meteor.webp',
+  './assets/props/meteor-lit.webp',
   './assets/props/star.webp',
-  './assets/props/pad.webp',
+  './assets/pictures/apple.webp',
+  './assets/pictures/banana.webp',
+  './assets/pictures/bee.webp',
+  './assets/pictures/cake.webp',
+  './assets/pictures/car.webp',
+  './assets/pictures/rock.webp',
+  './assets/pictures/snake.webp',
+  './assets/pictures/sock.webp',
+  './assets/pictures/spoon.webp',
+  './assets/pictures/tomato.webp',
+  './assets/pictures/tree.webp',
   './assets/rocket/rocket.webp',
   './assets/rocket/rocket-paint.webp',
   './assets/rocket/flame.webp',

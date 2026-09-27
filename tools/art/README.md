@@ -21,8 +21,9 @@ npm run config:sync                # refresh the precache list and docs/ASSET-MA
 npm run verify
 ```
 
-- **Rendering:** a full render of every job takes about a minute on a
-  20-core machine, because rows are shared across worker threads.
+- **Rendering:** a full render of every job takes a few minutes on a
+  20-core machine, because rows are shared across worker threads. A single
+  horizon takes about 20 seconds; the eleven pictures together about 30.
 - **Encoding:** it uses the browser's own WebP encoder. Node has none, and a
   dependency would be the only alternative. The page writes each file to its
   job's target, lists the sizes, and sets its title to `DONE`. Safari cannot
@@ -35,7 +36,7 @@ npm run verify
 |---|---|
 | `clay.js` | The renderer: shapes, noise, the camera, the **light rig (`RIG`)**, the house clay material (`clay()`), soft shadows, ambient occlusion, bloom, halos, the tone curve and the PNG writer |
 | `scenes/*.js` | One file per picture or family: `build(variant)` returns the scene, and `post()` adds glow or atmosphere |
-| `jobs.js` | Every picture made: its scene, variant, target path in `assets/` and WebP quality |
+| `jobs.js` | Every picture made: its scene, variant, target path in `assets/` and WebP quality. It appends `jobs-phase2.js`, the game pictures and props |
 | `render.js` | Renders jobs into `out/`, and warns if a transparent picture touches its frame edge |
 | `encode.js` | The local encoder page and server |
 | `out/` | The masters, git-ignored |
@@ -53,9 +54,12 @@ npm run verify
    the framing, glow or shadow fade. A cut line in the app looks broken.
 4. **Keep the anchors.** The app positions things by fixed points in each
    picture: Pip's antenna ball, the rocket's nozzle, the beacon's lamp, the
-   Moon's beacon, and the rocket's landing spot on Earth.
-   [docs/ASSET-BRIEFS.md](../../docs/ASSET-BRIEFS.md) lists them. If a scene
-   moves one, update the CSS in the same change.
+   Moon's beacon, the launch pad and every landing spot and marker foot on a
+   horizon, the letter stone's face and the meteor stone's top.
+   [docs/ASSET-BRIEFS.md](../../docs/ASSET-BRIEFS.md) lists them, and
+   contract 31 projects the scene cameras to check the CSS against them. If a
+   scene moves one, update the CSS (or the destination's marker data) in the
+   same change.
 5. **Paints are masks, not pictures.** The rocket job also writes
    `rocket-paint.png`, the coverage of its `paint: true` materials. Never add
    one rocket per colour.
@@ -64,18 +68,27 @@ npm run verify
 
 ## Adding a destination
 
-Copy the Moon: a sphere at the standard framing (radius 42% of a square
-frame) with one signature surface feature, and two variants.
+A destination is drawn two ways, and both follow a template:
 
-- **Waiting** is cooler: use `keyScale` below 1.
-- **Restored** adds a warm point light at its landmark, faint warm emission
-  in its hollows (`emissiveAt`), and a warm halo.
+- **From afar:** copy `mercury.js` — a sphere at the standard framing
+  (radius 42% of a square frame) with one signature surface feature, and two
+  variants. **Waiting** is cooler (`keyScale` below 1); **restored** adds
+  faint warm emission in its hollows (`emissiveAt`) and a warm halo.
+- **Underfoot:** add a world to `WORLDS` in `horizon.js`: its clay, its
+  signature feature as a height, and the colour of its edge glow. The sphere
+  and camera are shared by every world; never change them for one.
 
-Then add two jobs, two registry entries (`asset` and `restoredAsset` on the
-destination), and see
-[docs/ART-DIRECTION.md](../../docs/ART-DIRECTION.md#the-destination-system-for-planets-to-come).
+Then add three jobs, the registry entries (`asset`, `restoredAsset` and
+`horizon` on the destination), a marker picture per mission, and see
+[docs/ART-DIRECTION.md](../../docs/ART-DIRECTION.md#the-planet-system).
 
 ## Previewing
+
+**A known renderer quirk:** a soft shadow can come out fully black where a
+surface faces the key light head on and the scene's distance grows as fast
+as the shadow ray. Scaling that scene's distances by 0.88–0.95 avoids it
+(`meteorfield.js` does). A solid shadow-catcher floor can also catch rays
+entering the bounds from below; a thin floor sheet avoids that.
 
 Scratch previews are easiest by rendering a scene at a small size with one
 sample per pixel. Build it with `mod.build(variant)`, lower

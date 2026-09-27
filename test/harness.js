@@ -345,9 +345,9 @@ const BRIDGE = [
   /* product: assets and content */
   'ASSET_STATES', 'ASSET_REGISTRY', 'SKILLS', 'LETTERS', 'LETTER_FAMILIES',
   'DESTINATIONS', 'JOURNEY_ORDER', 'MISSIONS', 'COSMETICS', 'VOICE_CUES', 'VOICE_RECORDINGS', 'LETTER_LINES',
-  'SPEECH_STYLE', 'VOICE_AVOID',
+  'SPEECH_STYLE', 'VOICE_AVOID', 'WORDS', 'MAX_BEATS', 'RHYME_LINES', 'BEAT_LINES', 'NUMBER_WORDS',
   /* product: engine, state and audio */
-  'ACTIVITY_TYPES', 'TIER_STEP_UP', 'RECENT_LIMIT', 'TIMING', 'GLYPHS',
+  'ACTIVITY_TYPES', 'GAME_VIEWS', 'TIER_STEP_UP', 'RECENT_LIMIT', 'TIMING', 'GLYPHS',
   'journey', 'session', 'soundPrefs', 'motionPref', 'storageState', 'Voice', 'Sfx'
 ];
 

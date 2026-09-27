@@ -9,8 +9,8 @@ what they found.
 
 ## How to review
 
-1. Play the Moon mission on an actual iPad, with the sound on, in the voice
-   the child will hear.
+1. Play the Moon and Mercury missions on an actual iPad, with the sound on,
+   in the voice the child will hear.
 2. Work down each table, and mark each row **OK**, **Change** (with the fix)
    or **Remove**.
 3. Put the reviewer's name and the date at the bottom. A change is made in
@@ -74,25 +74,137 @@ rules for when Pip speaks at all are in
 | Correct | "Yes! That's the letter em." / "Great job! You found the letter em." / "You got it! The letter em." / "Wonderful! That's the letter em." / "Super! You found the letter em." | Awaiting review |
 | First miss | "Almost! Listen again." / "Good try! Listen again." / "So close! Listen again.", then "Find the letter em." | Awaiting review |
 | Second miss | "Here it is! This is the letter em. Tap it!" | Awaiting review |
-| First arrival | "We made it to the Moon! Its beacon is dim. Let's find letters to light it up!" then "I'll say a letter. You tap it!" | Awaiting review |
-| Later arrivals | "Back on the Moon! Let's find letters." / "The Moon again! Ready to find some letters?" / "Here we are! Let's find more letters." | Awaiting review |
+| First arrival | "We made it to the Moon! Its beacon is dim. Let's find letters to light it up!" then "Tap the beacon to start!". The task, "I'll say a letter. You tap it!", is explained when the mission starts, until it has been done once | Awaiting review |
+| Later arrivals | "Back on the Moon!" / "The Moon again! Ready to find some letters?" / "Here we are on the Moon!", then the marker to tap | Awaiting review |
 | Mission end, the relight | "You did it! The Moon's beacon is shining again!" then "You found 3 stars!" | Awaiting review |
 | Mission end, later | "You did it! The Moon is shining bright!" / "Hooray! Another mission done!" / "Great work, explorer! The Moon is glowing!", then the stars | Awaiting review |
 | Launch | "Let's launch!" / "Blast off!" / "Here we go!" | Awaiting review |
-| Earth, first visit | "Tap the big Launch button to fly to the Moon!" | Awaiting review |
-| Earth, hint when stuck | "Ready to fly? Tap Launch!" / "Let's fly! Tap the yellow Launch button." / "Tap the big Launch button to fly to the Moon!" | Awaiting review |
+| Earth, first visit | "Tap the big Launch button to fly!" | Awaiting review |
+| Earth, hint when stuck | "Ready to fly? Tap Launch!" / "Let's fly! Tap the yellow Launch button." / "Tap the big Launch button to fly!" | Awaiting review |
 | Home | "Welcome home, explorer!" / "Home again! Nice flying." / "Welcome back to Earth!" | Awaiting review |
 | Home after the relight | "Welcome home! Look, the Moon is shining!" | Awaiting review |
 | Stars to spend | "You have stars! Tap the paint brush to give your rocket new paint." Said once unasked; after that, only when Pip is tapped | Awaiting review |
 | Rocket Dock, first visit each time the app is opened | "Welcome to the Rocket Dock! Tap a color." | Awaiting review |
 | Rocket Dock, hint when stuck | "Tap a color to try it on your rocket." / "Which color do you like? Tap one to try it!" | Awaiting review |
-| Hint timing | A pause of 12 seconds on Earth or in the Dock earns one hint per visit. Is 12 seconds right for this age? | Awaiting review |
+| Hint timing | A pause of 12 seconds on Earth, on a planet or in the Dock earns one hint per visit. Is 12 seconds right for this age? | Awaiting review |
 
-## 5. Grown-ups area wording
+## 6. Rhyme Radar (`mercury-1`) — development content
+
+**Development content, written for this project. Nothing here is
+curriculum-approved, and every row is Awaiting review.** A round: Pip says a
+word ("Cake."), asks what rhymes with it, and names each of three pictures
+as it lights up. The child taps the picture that rhymes.
+
+| Round | Word heard / the rhyme | Rhyming part | Status |
+|---|---|---|---|
+| 1 (guided: the answer is ringed after the question) | cake / snake | *-ake* | Awaiting review |
+| 2 | bee / tree | *-ee* | Awaiting review |
+| 3 | rock / sock | *-ock* | Awaiting review |
+| 4 | moon / spoon | *-oon* | Awaiting review |
+| 5 | star / car | *-ar* | Awaiting review |
+
+**The wrong pictures** are chosen by the engine from the word list, never
+by hand: a wrong picture never rhymes with the word heard. At the easier
+level they also start with a different sound; at the harder level one wrong
+picture starts with the **same** sound as the word heard (cake: car; rock:
+rocket; star: spoon), because "starts the same" is the usual mix-up with
+"rhymes". Questions for the reviewer:
+
+| Item | Question | Status |
+|---|---|---|
+| rock and rocket at the harder level | "Rocket" begins with the whole word "rock". A fair test of rhyme at this age, or too confusing? | Awaiting review |
+| The picture for "moon" | The Moon itself, as seen from space. Clear enough? | Awaiting review |
+| The picture for "star" | The reward star. Could a child call it something else? | Awaiting review |
+| The picture for "rock" | A grey stone. Pip names every picture aloud, so the name is always given; is that enough? | Awaiting review |
+| Three choices, five rounds | Right for a first rhyming mission? | Awaiting review |
+
+| Line | Script | Status |
+|---|---|---|
+| Explained once, until the mission is done | "Rhyming words sound the same at the end, like cat and hat. I'll say a word. You find the picture that rhymes!" | Awaiting review |
+| The word | "Cake." (each word is said as a name) | Awaiting review |
+| Question, first round | "What rhymes with cake?" (bubble: "What rhymes?") | Awaiting review |
+| Question, later rounds | "Which one rhymes with bee?" / "Find the one that rhymes with rock!" | Awaiting review |
+| The pictures | each named as it lights: "Snake." "Sock." "Moon." | Awaiting review |
+| Correct | "Yes! cake, snake. They rhyme!" / "Cake and snake. You found the rhyme!" / "Great listening! cake, snake!" / "You got it! cake rhymes with snake!" | Awaiting review |
+| First miss | the rotating "almost", then "What rhymes with cake?" and the pictures left, named again | Awaiting review |
+| Second miss | "Here it is! cake, snake. Tap the snake!" | Awaiting review |
+| Nudge, after 10 seconds | "Listen. What rhymes with cake?", then "Take your time. What rhymes with cake?" | Awaiting review |
+
+## 7. Syllable Meteors (`mercury-2`) — development content
+
+**Development content, not curriculum-approved; every row Awaiting review.**
+A round: Pip says a word, and the child taps the big stone once for each
+beat. Each tap lights a meteor, so the child sees the count they are
+making. A pause of 1.5 seconds ends the count. **Only the count is judged:
+never the rhythm, never the speed.** Taps closer together than 0.09 s are
+one finger bouncing, and count once.
+
+Pip says the beats one at a time only when showing the answer. Each beat is
+a separate short utterance, spelled for the device voice. These spellings
+are the riskiest scripts in the app: listen to each on the target iPad
+voice, and replace them with recordings before calling them final.
+
+| Word | Beats | Beats as Pip says them | Status |
+|---|---|---|---|
+| rocket (guided: Pip taps it first) | 2 | "rock!" "it!" | Awaiting review |
+| bee | 1 | "bee!" | Awaiting review |
+| apple | 2 | "ap!" "pull!" | Awaiting review |
+| banana | 3 | "ba!" "na!" "na!" | Awaiting review |
+| car | 1 | "car!" | Awaiting review |
+| tomato | 3 | "toe!" "may!" "toe!" | Awaiting review |
+
+Every word in the list has a beat count, whether or not a mission uses it
+yet. A contract checks these against a second, hand-typed list.
+
+| Word | Beats | Status |
+|---|---|---|
+| cake | 1 | Awaiting review |
+| snake | 1 | Awaiting review |
+| bee | 1 | Awaiting review |
+| tree | 1 | Awaiting review |
+| rock | 1 | Awaiting review |
+| sock | 1 | Awaiting review |
+| moon | 1 | Awaiting review |
+| spoon | 1 | Awaiting review |
+| star | 1 | Awaiting review |
+| car | 1 | Awaiting review |
+| apple | 2 | Awaiting review |
+| rocket | 2 | Awaiting review |
+| banana | 3 | Awaiting review |
+| tomato | 3 | Awaiting review |
+
+| Line | Script | Status |
+|---|---|---|
+| Explained once, until the mission is done | "Words have beats. Tap the big stone once for each beat!" | Awaiting review |
+| Question | "Banana." then "Tap the stone once for each beat!" / "How many beats? Tap them!" / "Tap the beats!" (bubble: "Tap the beats!", never the count) | Awaiting review |
+| Correct | "Yes! banana has three beats!" / "You got it! three beats!" / "Great tapping! banana, three beats!" | Awaiting review |
+| First miss | the rotating "almost", then the word again and the question | Awaiting review |
+| Second miss, and the guided first round | "Let's tap it together. Listen!", each beat as a meteor lights, then "Now you! three beats. Tap the stone!" — after this, only that many taps count | Awaiting review |
+| Nudge, after 10 seconds | "Listen. banana. Tap each beat!", then "Take your time. banana. Tap each beat!" | Awaiting review |
+| Pause length | 1.5 seconds ends a count. Long enough for a slow tapper, short enough not to feel stuck? | Awaiting review |
+
+## 8. Mercury and the world
+
+| Line | Script | Status |
+|---|---|---|
+| The route opens, seen from the Moon | "Look! A new planet is waiting for us. That is Mercury!" | Awaiting review |
+| Home, the first time | "Next stop, Mercury! Tap Launch when you are ready." | Awaiting review |
+| Choosing a planet in the sky | "The Moon! Tap Launch to fly there." / "Mercury! Tap Launch to fly there." | Awaiting review |
+| First arrival | "We made it to Mercury! Mercury's signal is fuzzy. Let's fix it!" | Awaiting review |
+| Later arrivals | "Back on Mercury!" / "Mercury again! Hello, warm rocks!" / "Here we are on Mercury!" | Awaiting review |
+| The markers | "Tap the beacon to start!" / "Tap the radar dish to start!" / "Now tap the meteor rocks!" | Awaiting review |
+| One mission done, one to go | "It works! One more thing to fix on Mercury." | Awaiting review |
+| Mercury restored | "You did it! Mercury's signal is clear!" | Awaiting review |
+| Home after restoring it | "Welcome home! Look, Mercury is glowing!" | Awaiting review |
+| Nothing left to play on a planet | "Tap the big yellow button to fly home!" (only if the child waits) | Awaiting review |
+
+## 9. Grown-ups area wording
 
 | Item | Status |
 |---|---|
 | "Heard N times · found on the first try N times": neutral, not a grade? | Awaiting review |
+| Practice is listed skill by skill: letters; rhymes ("rhyme found on the first try"); beats ("beats counted on the first try"). Neutral? | Awaiting review |
+| The journey, place by place: "Restored", "1 of 2 missions done", "Not reached yet" | Awaiting review |
 | The note that answers given with the voice off are not counted | Awaiting review |
 
 ---

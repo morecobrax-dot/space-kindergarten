@@ -242,3 +242,27 @@ Phase 1. Each one has a reason; keep it with the rule.
     beacon glow and the rocket's landing spot by fixed points in the
     renders (`docs/ASSET-BRIEFS.md`). A scene change that moves one updates
     the CSS in the same change.
+
+## The world is the navigation
+
+53. **One stage, drawn from data.** Every child scene sits over the one
+    `#stage`. A place — its horizon, its sky, its markers — is drawn by
+    `drawPlace()` from `DESTINATIONS`. A scene never adds a backdrop of its
+    own, and never names a place, a picture or a mission. Two backdrops
+    fight during a flight, and a hand-placed prop drifts off the ground.
+54. **Everything in the world stands at a fraction of its horizon.** Landing
+    spots, marker feet and the launch pad are fractions of the horizon
+    picture, projected from its camera, and contract 31 holds each one on
+    the ground. A vh or px offset floats a prop in the sky on another iPad.
+55. **A flight animates transforms and opacity only, and its resting state
+    is the destination.** Use `travelTo()`; never swap a picture
+    mid-flight. Layout animation stutters on an iPad, and a skipped or
+    interrupted flight must still land where it was going.
+56. **One mission at a time, one primary action.** On a planet only the
+    next marker pulses, and the yellow way home appears only when nothing
+    is left to play. Two pulsing things are two instructions to a
+    pre-reader.
+57. **A new activity is an engine entry, content, and a `GAME_VIEWS`
+    entry.** `choose()`, the help ladder, evidence, praise and reprompts
+    are shared. A second copy of the ladder is how a game quietly starts
+    costing stars or skipping help.

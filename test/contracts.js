@@ -74,9 +74,10 @@ function imageSize(file){
 function fast(c){
   Object.assign(c.TIMING, {
     travel: 0, travelFirst: 0, travelReduced: 0, travelSettle: 0,
-    praiseMin: 0, betweenRounds: 0, celebrateGuard: 0, starEvery: 0, starFirst: 0,
+    praiseMin: 0, betweenRounds: 0, celebrateGuard: 0, starEvery: 0, starFirst: 0, starFlight: 0,
     reprompt: 1e9, idleHint: 1e9, captionBase: 0, captionPerChar: 0,
-    speechStartGrace: 5, speechSafetyBase: 40, speechSafetyPerChar: 0
+    speechStartGrace: 5, speechSafetyBase: 40, speechSafetyPerChar: 0,
+    relight: 0, beatPause: 0, beatSettle: 0, beatBounce: 0
   });
   return c;
 }
@@ -99,15 +100,36 @@ function fakeSpeech(){
 }
 function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-/* Plays the current mission to the end: `wrongFirst` rounds are answered
-   wrongly until the answer is shown, every other round correctly. */
+/* Launch from Earth and start the mission the planet is waiting on, the
+   way a child does: (tap a planet in the sky,) Launch, then tap the marker
+   that pulses. Returns the mission started. */
+async function launchAndStart(c, dest){
+  if(dest) c.pickDestination(dest);
+  await c.launch();
+  const next = c.markerNext(c.session.place);
+  if(next) await c.tapMarker(next);
+  return next;
+}
+
+/* Plays the current mission to the end: `wrongRounds` rounds are answered
+   wrongly until the answer is shown, every other round correctly. A beats
+   round is answered by tapping the stone: the right count, or a wrong one. */
 async function playMission(c, opts){
   const o = opts || {};
   let guard = 0;
-  while(c.currentScene === 'mission' && c.session.run && guard++ < 80){
+  while(c.currentScene === 'mission' && c.session.run && guard++ < 120){
     const r = c.session.run.round;
     if(!r) break;
-    if((o.wrongRounds || []).indexOf(r.index) !== -1 && r.misses < 2){
+    /* Between rounds, or while Pip is showing the beats: wait, as a child would. */
+    if(c.session.locked || c.session.beat.hold){ await wait(2); continue; }
+    const wrongNow = (o.wrongRounds || []).indexOf(r.index) !== -1 && r.misses < 2;
+    if(r.activity.type === 'syllable-tap'){
+      const n = wrongNow ? (r.answer === 0 ? 2 : 1) : (r.guide || r.answer + 1);
+      for(let k = 0; k < n; k++){ c.session.beat.lastAt = 0; c.tapBeat(); }
+      await c.settleBeats(c.session.run);
+      continue;
+    }
+    if(wrongNow){
       const wrong = r.options.map((_, i) => i).find(i => i !== r.answer && r.out.indexOf(i) === -1);
       await c.choose(wrong);
       continue;
@@ -371,7 +393,7 @@ function testNavigation(){
   const c = app.ctx, d = app.dom.document;
 
   sub('every scene the product names exists');
-  const scenes = ['welcome', 'earth', 'travel', 'mission', 'celebrate', 'dock'];
+  const scenes = ['welcome', 'earth', 'travel', 'planet', 'mission', 'dock'];
   scenes.forEach(s => T('scene "' + s + '" exists', !!d.getElementById('scene-' + s)));
   const declared = [...H.readApp().matchAll(/<main class="scene[^"]*" id="scene-([a-z]+)"/g)].map(m => m[1]);
   T('the markup declares no scene the code never visits', declared.every(s => scenes.indexOf(s) !== -1),
@@ -912,7 +934,8 @@ function testRelease(){
                              (u.fixes || []).length > 0));
 
   sub('a minimal history, not an inherited one');
-  T('a small number of entries', c.APP_UPDATES.length <= 3, String(c.APP_UPDATES.length));
+  T('a short history: this product\'s own releases, not an inherited list', c.APP_UPDATES.length <= 6 &&
+    c.APP_UPDATES[c.APP_UPDATES.length - 1].id === 'v0-1-0', String(c.APP_UPDATES.length));
   T('the authoring rules travel with the data', /AUTHORING A NEW ENTRY/.test(js()));
   T('and it says new products replace it', /New products replace this array wholesale/.test(js()));
 
@@ -932,7 +955,7 @@ async function testStress(){
   const c = fast(app.ctx), d = app.dom.document;
 
   sub('100 scene changes');
-  const scenes = ['earth', 'dock', 'mission', 'celebrate', 'travel', 'welcome'];
+  const scenes = ['earth', 'dock', 'mission', 'planet', 'travel', 'welcome'];
   for(let i = 0; i < 100; i++) c.showScene(scenes[i % scenes.length]);
   const active = [...d.querySelectorAll('.scene')].filter(v => v.classList.contains('active'));
   T('still exactly one active scene', active.length === 1, String(active.length));
@@ -961,18 +984,25 @@ async function testStress(){
   sub('20 whole missions, with mistakes');
   c.showScene('welcome');
   await c.startAdventure();
+  const played = [];
   for(let i = 0; i < 20; i++){
-    await c.launch();
+    played.push(await launchAndStart(c));
     await playMission(c, { wrongRounds: [1, 3] });
     await c.flyHome();
   }
+  const pays = played.reduce((s, id) => s + (id ? c.MISSIONS[id].reward.stars : 0), 0);
   T('twenty missions were recorded', c.journey.completions.length === 20, String(c.journey.completions.length));
   T('exactly twenty earnings, one per run', c.journey.stars.filter(e => e.kind === 'earn').length === 20);
-  T('and the balance is exactly what twenty missions pay', c.starBalance(c.journey.stars) === 20 * c.MISSIONS['moon-1'].reward.stars);
+  T('and the balance is exactly what those twenty missions pay', c.starBalance(c.journey.stars) === pays, c.starBalance(c.journey.stars) + ' vs ' + pays);
+  T('every mission on the journey came round', new Set(played).size === Object.keys(c.MISSIONS).length, [...new Set(played)].join(','));
   T('no mission is left running', c.session.run === null);
-  T('evidence stays bounded: one record per letter practised',
-    c.journey.evidence.length === new Set(c.MISSIONS['moon-1'].activities.filter(a => !a.guided).map(a => a.target)).size,
-    String(c.journey.evidence.length));
+  const items = new Set();
+  played.forEach(id => c.MISSIONS[id].activities.filter(a => !a.guided).forEach(a => {
+    const type = c.ACTIVITY_TYPES[a.type], k = type.evidenceKey(a);
+    items.add(c.evidenceId(type.skillId, k.item, k.form));
+  }));
+  T('evidence stays bounded: one record per thing practised', c.journey.evidence.length === items.size,
+    c.journey.evidence.length + ' vs ' + items.size);
   T('and each record keeps only its recent answers',
     c.journey.evidence.every(e => e.recent.length <= c.RECENT_LIMIT));
   T('storage did not accumulate keys', c.Store.listKeys().length <= 8, c.Store.listKeys().join(','));
@@ -1020,13 +1050,18 @@ function testAccessibility(){
   T('an action that cannot happen yet says so, instead of being dead',
     /setAttribute\('aria-disabled', 'true'\)/.test(js()));
   T('mission progress is announced in words',
-    /' of ' \+ total \+ ' letters found'/.test(js()));
+    /done \+ ' of ' \+ total \+ ' ' \+ GAME_VIEWS\[type\]\.progressWord/.test(js()) &&
+    ['letters found', 'rhymes found', 'words tapped'].every(w => js().indexOf("progressWord: '" + w + "'") !== -1));
+  T('a picture choice is named for its word, since the picture cannot be read out',
+    /aria-label="' \+ escapeAttr\(capitalize\(WORDS\[w\]\.speak\)\) \+ '"/.test(js()));
+  T('the beat stone and every marker say what they are', /id="beatStone"[^>]*aria-label="[^"]+"/.test(src) &&
+    /aria-label="' \+ escapeAttr\(label\) \+ '">'/.test(fnBody(js(), 'markerHtml')));
 
   sub('what Pip says is available without sound');
   T('every caption is a live region',
     [...src.matchAll(/<div class="caption bubble"[^>]*>/g)].every(m => /aria-live="polite"/.test(m[0])));
   T('there is a caption for every scene Pip speaks in',
-    ['welcome', 'earth', 'mission', 'celebrate', 'dock'].every(s => src.indexOf('id="caption-' + s + '"') !== -1));
+    ['welcome', 'earth', 'planet', 'mission', 'dock'].every(s => src.indexOf('id="caption-' + s + '"') !== -1));
 
   sub('focus');
   T('focus is always visible', /\*:focus-visible\{ outline: 2px solid var\(--accent\)/.test(style));
@@ -1278,7 +1313,7 @@ function testContent(){
   m.activities.push({ type: 'trace-letter', target: 'M', form: 'upper' });
   T('an activity type nobody built is caught', c.validateContent().some(p => /unknown type/.test(p)));
   m.activities.pop();
-  const oldSkill = m.skillId; m.skillId = 'rhyming';
+  const oldSkill = m.skillId; m.skillId = 'cvc';
   T('a mission for a skill that is only planned is caught', c.validateContent().some(p => /not built/.test(p)));
   m.skillId = oldSkill;
   const oldChoices = m.choices; m.choices = 7;
@@ -1286,24 +1321,46 @@ function testContent(){
   m.choices = oldChoices;
   T('the mission is back to sound', JSON.stringify(m) === saved && c.validateContent().length === 0);
 
-  sub('Phase 1 is exactly one real mission');
-  T('one mission exists', Object.keys(c.MISSIONS).length === 1);
-  T('it holds 5 to 8 interactions', m.activities.length >= 5 && m.activities.length <= 8, String(m.activities.length));
-  T('it practises letter recognition', m.skillId === 'letter-recognition');
-  T('it teaches uppercase only', m.activities.every(a => a.form === 'upper'));
-  T('its first interaction teaches the tap itself', m.activities[0].guided === true);
-  T('only the first one is guided', m.activities.filter(a => a.guided).length === 1);
-  T('all seven learning areas are named, one built',
+  sub('the journey is small and real: the Moon, then Mercury');
+  const ids = Object.keys(c.MISSIONS);
+  T('three missions exist: letters on the Moon, rhymes and beats on Mercury',
+    ids.length === 3 && c.MISSIONS['moon-1'].skillId === 'letter-recognition' &&
+    c.MISSIONS['mercury-1'].skillId === 'rhyming' && c.MISSIONS['mercury-2'].skillId === 'syllables', ids.join(','));
+  T('each holds 5 to 8 interactions', ids.every(id => c.MISSIONS[id].activities.length >= 5 && c.MISSIONS[id].activities.length <= 8));
+  T('letters are taught uppercase only', m.activities.every(a => a.form === 'upper'));
+  T('each mission\'s first interaction teaches the tap itself, and only the first', ids.every(id =>
+    c.MISSIONS[id].activities[0].guided === true && c.MISSIONS[id].activities.filter(a => a.guided).length === 1));
+  T('all seven learning areas are named; three are built — and not CVC, beginning sounds, sight words or handwriting',
     Object.keys(c.SKILLS).length === 7 &&
-    Object.keys(c.SKILLS).filter(k => c.SKILLS[k].status === 'active').length === 1);
-  T('no destination exists that nobody can visit',
-    Object.keys(c.DESTINATIONS).every(id => id === 'earth' || c.JOURNEY_ORDER.indexOf(id) !== -1));
+    Object.keys(c.SKILLS).filter(k => c.SKILLS[k].status === 'active').sort().join() === 'letter-recognition,rhyming,syllables');
+  T('the journey is the Moon, then Mercury', c.JOURNEY_ORDER.join() === 'moon,mercury');
+  T('Mercury opens only when the Moon shines', c.DESTINATIONS.mercury.unlock && c.DESTINATIONS.mercury.unlock.after === 'moon' &&
+    !c.destinationUnlocked('mercury', []) && c.destinationUnlocked('mercury', [{ id: 'x', missionId: 'moon-1', completedAt: 't' }]));
+  const planned = Object.keys(c.DESTINATIONS).filter(id => c.DESTINATIONS[id].kind === 'planned');
+  T('the rest of the route is declared, and pretends to nothing: no pictures, no missions, never drawn',
+    planned.length >= 5 && planned.every(id => !c.DESTINATIONS[id].asset && !(c.DESTINATIONS[id].missions || []).length &&
+      c.JOURNEY_ORDER.indexOf(id) === -1 && !c.destinationUnlocked(id, [])), planned.join(','));
+  T('every destination is home, on the journey, or planned',
+    Object.keys(c.DESTINATIONS).every(id => id === 'earth' || c.JOURNEY_ORDER.indexOf(id) !== -1 || c.DESTINATIONS[id].kind === 'planned'));
+  const wordsSaved = JSON.stringify(c.WORDS.cake);
+  c.WORDS.cake.rime = 'ook';
+  T('a rhyme that does not rhyme is caught', c.validateContent().some(p => /does not rhyme/.test(p)));
+  c.WORDS.cake = JSON.parse(wordsSaved);
+  c.WORDS.apple.beats = [];
+  T('a word with no beats is caught', c.validateContent().some(p => /beats/.test(p)));
+  c.WORDS.apple.beats = ['ap', 'pull'];
+  const mk = c.DESTINATIONS.mercury.markers['mercury-2'];
+  delete c.DESTINATIONS.mercury.markers['mercury-2'];
+  T('a mission with no marker in its world is caught', c.validateContent().some(p => /has no marker/.test(p)));
+  c.DESTINATIONS.mercury.markers['mercury-2'] = mk;
+  T('and the content is sound again', c.validateContent().length === 0, c.validateContent().join(' | '));
 
   sub('story and learning are separate layers');
   T('a destination names its primary skill; a mission names its own',
     typeof c.DESTINATIONS.moon.primarySkill === 'string' && typeof m.skillId === 'string');
-  T('the scenes never name a letter, a mission id or a skill',
-    !/['"](moon-1|letter-recognition)['"]/.test(stripComments(js().slice(js().indexOf('SCENES\n'))).replace(/'moon'/g, '')));
+  T('the scenes never name a letter, a word, a mission id or a skill',
+    !/['"](moon-1|mercury-1|mercury-2|letter-recognition|rhyming|syllables|cake|snake|banana)['"]/.test(
+      stripComments(js().slice(js().indexOf('SCENES\n'))).replace(/'moon'/g, '')));
 
   sub('the letter data is complete and self-consistent');
   const letters = Object.keys(c.LETTERS);
@@ -1532,7 +1589,7 @@ function testCosmeticIsolation(){
      said" in the profile was nearly how the Dock gained a third key. */
   ['setStoryFlag', 'ensureProfile', 'KEYS.profile', 'journey.profile =']
     .forEach(w => T('the Dock never writes the profile, even through ' + w, dockCode.indexOf(w) === -1));
-  const missionCode = ['choose', 'finishMission', 'nextStep', 'askRound', 'enterMission']
+  const missionCode = ['choose', 'finishMission', 'nextStep', 'askRound', 'startMission', 'celebrate', 'tapBeat', 'settleBeats', 'tapMarker']
     .map(n => fnBody(src, n)).join('\n');
   T('and the mission never touches the rocket', missionCode.indexOf('saveRocket') === -1 && missionCode.indexOf('KEYS.rocket') === -1);
 
@@ -1640,7 +1697,26 @@ async function testAudio(){
     T('and its praise', !!c.voiceCue('found.' + a.target + '.0'));
     T('and its "here it is"', !!c.voiceCue('show.' + a.target));
   });
-  T('every destination story line exists', Object.values(c.DESTINATIONS.moon.story).every(id => c.lineExists(id)));
+  T('every destination story line exists', c.JOURNEY_ORDER.every(id => Object.values(c.DESTINATIONS[id].story).every(l => c.lineExists(l))));
+  T('every marker is pointed out in words', c.JOURNEY_ORDER.every(id => Object.values(c.DESTINATIONS[id].markers).every(mk => c.lineExists(mk.call))));
+  const rhymeRounds = [], beatRounds = [];
+  Object.keys(c.MISSIONS).forEach(id => c.MISSIONS[id].activities.forEach(a => {
+    if(a.type === 'rhyme-pick') rhymeRounds.push(a);
+    if(a.type === 'syllable-tap') beatRounds.push(a);
+  }));
+  T('every rhyme round can be asked, nudged, praised and shown', rhymeRounds.length >= 5 && rhymeRounds.every(a =>
+    c.voiceCue('word.' + a.target) && [0, 1, 2].every(k => c.voiceCue('rhyme.ask.' + a.target + '.' + k)) &&
+    [0, 1].every(n => c.voiceCue('rhyme.again.' + a.target + '.' + n)) && c.voiceCue('rhyme.found.' + a.target + '.' + a.answer + '.3') &&
+    c.voiceCue('rhyme.show.' + a.target + '.' + a.answer)));
+  T('every picture can be named', Object.keys(c.WORDS).every(w => !!c.voiceCue('word.' + w)));
+  T('every beats round can be asked, nudged, praised, shown and handed back', beatRounds.length >= 5 && beatRounds.every(a =>
+    [0, 1, 2].every(k => c.voiceCue('beats.ask.' + a.target + '.' + k)) && [0, 1].every(n => c.voiceCue('beats.again.' + a.target + '.' + n)) &&
+    c.voiceCue('beats.found.' + a.target + '.2') && c.voiceCue('beats.show.' + a.target) && c.voiceCue('beats.turn.' + a.target) &&
+    c.WORDS[a.target].beats.every((_, i) => c.voiceCue('beat.' + a.target + '.' + i))));
+  T('praise for a rhyme says both words, so the rhyme is the last thing heard', rhymeRounds.every(a =>
+    [0, 1, 2, 3].every(k => { const s = c.voiceCue('rhyme.found.' + a.target + '.' + a.answer + '.' + k).speak.toLowerCase();
+      return s.indexOf(a.target) !== -1 && s.indexOf(a.answer) !== -1; })));
+  T('praise for beats says the count in words', beatRounds.every(a => /\b(one beat|two beats|three beats|four beats)\b/.test(c.voiceCue('beats.found.' + a.target + '.0').speak)));
   const families = [...new Set(Object.keys(c.VOICE_CUES).map(id => (id.match(/^(.*)\.\d+$/) || [])[1]).filter(Boolean))];
   T('every line family is reachable, from .1 up with no gaps',
     families.length > 0 && families.every(f => c.familySize(f) >= 1 &&
@@ -1789,7 +1865,7 @@ function testAssets(){
   T('no single picture is over 260 KB', heavy.length === 0, heavy.map(a => a.id + ' ' + Math.round(sizes[a.id] / 1024) + 'KB').join(','));
   const total = Object.keys(sizes).reduce((s, k) => s + sizes[k], 0);
   T('the whole picture set is under 1.2 MB, so offline install stays quick', total < 1.2 * 1024 * 1024, Math.round(total / 1024) + 'KB');
-  const firstScreen = ['bg.space', 'planet.earth', 'planet.moon', 'planet.moonLit', 'rocket.body', 'rocket.paintMask', 'character.pip', 'prop.star'];
+  const firstScreen = ['bg.space', 'bg.starsFar', 'bg.starsNear', 'horizon.earth', 'planet.moon', 'planet.moonLit', 'rocket.body', 'rocket.paintMask', 'rocket.flame', 'character.pip', 'prop.star'];
   const first = firstScreen.reduce((s, id) => s + (sizes[id] || 0), 0);
   T('the first Earth screen needs under 700 KB of pictures', first < 700 * 1024, Math.round(first / 1024) + 'KB');
 
@@ -1864,15 +1940,18 @@ function testPrivacy(){
 
 /* =========================================================
    CONTRACT 28 — THE WHOLE CHILD JOURNEY
-   Not a unit: the Phase 1 loop, end to end, through the same
-   functions the buttons call — then reloaded.
+   Not a unit: the loop, end to end, through the same functions the
+   buttons call — then reloaded. The world is the navigation: launch
+   lands on a place, and a marker in that place starts its mission.
    ========================================================= */
 async function testChildJourney(){
-  section('CONTRACT 28 — welcome → Earth → Moon → stars → Rocket Dock → reload');
+  section('CONTRACT 28 — welcome → Earth → the Moon → stars → Rocket Dock → reload');
   const shared = new Map();
   const sp = fakeSpeech();
   const app = H.loadApp({ sharedStorage: shared, windowExtras: sp.extras });
-  const c = fast(app.ctx);
+  const c = fast(app.ctx), d = app.dom.document;
+  const sky = () => d.getElementById('place' + c.session.slot + 'Sky').innerHTML;
+  const props = () => d.getElementById('place' + c.session.slot + 'Props').innerHTML;
 
   sub('first launch');
   T('it opens on the welcome', c.currentScene === 'welcome');
@@ -1881,14 +1960,25 @@ async function testChildJourney(){
   T('Pip introduces itself out loud', sp.said.some(s => /I'm Pip/.test(s)));
   T('and the child arrives on Earth', c.currentScene === 'earth');
   T('where Pip names the one thing to do', sp.said.some(s => /Launch button/.test(s)));
+  T('Launch goes to the Moon, the only place open yet',
+    c.launchTarget() === 'moon' && c.JOURNEY_ORDER.filter(id => c.destinationUnlocked(id, c.journey.completions)).join() === 'moon');
+  T('the Moon waits in Earth\'s sky; nothing later on the route is shown', /id="sky-moon"/.test(sky()) && !/id="sky-mercury"/.test(sky()));
 
   sub('launch and the first arrival');
   await c.launch();
-  T('launching arrives at the Moon mission', c.currentScene === 'mission');
+  T('launching lands on the Moon itself, not straight in a lesson', c.currentScene === 'planet' && c.session.place === 'moon');
+  T('the stage stands on the Moon\'s horizon', d.getElementById('stage').getAttribute('data-place') === 'moon' &&
+    d.getElementById('place' + c.session.slot + 'Art').innerHTML.indexOf(c.assetSrc('horizon.moon')) !== -1);
   T('the first arrival tells the story', sp.said.some(s => /beacon is dim/.test(s)));
-  T('and explains the task once', sp.said.some(s => /I'll say a letter/.test(s)));
-  T('then asks the first question out loud', /Find the letter em\./.test(sp.said[sp.said.length - 1]));
+  T('and Pip points at the marker to tap', /Tap the beacon/.test(sp.said[sp.said.length - 1]));
+  T('the beacon is the one thing pulsing', (props().match(/is-next/g) || []).length === 1 && /class="marker is-next" id="marker-moon-1"/.test(props()));
   T('the arrival is remembered for next time', c.storyFlag('arrived.moon'));
+  await c.tapMarker('moon-1');
+  T('tapping the beacon starts its mission', c.currentScene === 'mission' && !!c.session.run && c.session.run.missionId === 'moon-1');
+  T('and explains the task once', sp.said.filter(s => /I'll say a letter/.test(s)).length === 1);
+  T('then asks the first question out loud', /Find the letter em\./.test(sp.said[sp.said.length - 1]));
+  T('the letters stand on Moon stones, each on a clean plate', /choice choice-stone/.test(d.getElementById('missionChoices').innerHTML) &&
+    /class="choice-face"/.test(d.getElementById('missionChoices').innerHTML));
 
   sub('the mission, with mistakes');
   const saidBefore = sp.said.length;
@@ -1901,9 +1991,12 @@ async function testChildJourney(){
     for(let k = 0; k < c.LETTER_LINES.found.length; k++) praiseSet.add(c.voiceCue('found.' + a.target + '.' + k).speak);
   });
   T('every correct answer is praised, by name', lines.filter(s => praiseSet.has(s)).length === c.MISSIONS['moon-1'].activities.length);
-  T('the mission ends in the celebration', c.currentScene === 'celebrate');
-  T('with the beacon relit', lines.some(s => /beacon is shining again/.test(s)));
+  T('the mission ends back in the world, not on a results screen', c.currentScene === 'planet');
+  T('where the beacon is relit', lines.some(s => /beacon is shining again/.test(s)) && /class="marker is-lit" id="marker-moon-1"/.test(props()));
   T('and the stars announced', lines.some(s => /You found 3 stars!/.test(s)));
+  T('the next route is shown from the Moon, and named', lines.some(s => /That is Mercury/.test(s)) && /id="sky-mercury"/.test(sky()));
+  T('nothing is left to play here, so the way forward is the yellow way home',
+    d.getElementById('scene-planet').classList.contains('is-done') && c.markerNext('moon') === null);
 
   sub('what was recorded');
   T('one completion', c.journey.completions.length === 1);
@@ -1920,17 +2013,20 @@ async function testChildJourney(){
   })());
 
   sub('home, and the progress it shows');
-  c.showScene('celebrate');
   await c.flyHome();
-  T('the child flies back to Earth', c.currentScene === 'earth');
+  T('the child flies back to Earth', c.currentScene === 'earth' && c.session.place === 'earth');
   T('the Moon is restored on the map', c.destinationProgress('moon', c.journey.completions).restored);
+  T('Mercury is in the sky now, and Launch goes there', /id="sky-mercury"/.test(sky()) && c.launchTarget() === 'mercury');
+  T('Pip says where to next, once', sp.said.filter(s => /Next stop, Mercury/.test(s)).length === 1);
   T('Pip points at the Dock once, because there are stars to spend', sp.said.some(s => /paint brush/.test(s)));
   T('and remembers having done so', c.storyFlag('heard.dockHint'));
 
   sub('the Rocket Dock');
   c.openDock();
   T('the Dock opens', c.currentScene === 'dock');
+  T('it is the same world, the camera lowered to the pad', d.getElementById('stage').getAttribute('data-view') === 'dock');
   c.pickPaint('paint-lime');
+  T('trying a paint shows it on the rocket at once', /--paint: var\(--paint-lime\)/.test(d.getElementById('stageRocket').getAttribute('style')));
   c.dockAction();
   T('a paint the child cannot afford is not bought', c.ownedCosmetics(c.journey.stars).indexOf('paint-lime') === -1);
   T('Pip says how many more stars it needs', /You need 3 more stars/.test(sp.said[sp.said.length - 1]));
@@ -1943,13 +2039,15 @@ async function testChildJourney(){
   T('the balance is what is left', c.starBalance(c.journey.stars) === 0);
   c.pickPaint('paint-sunny');
   c.leaveDock();
-  T('leaving with an unchosen preview keeps the real paint', c.currentPaint() === 'paint-sky');
+  T('leaving with an unchosen preview keeps the real paint', c.currentPaint() === 'paint-sky' &&
+    /--paint: var\(--paint-sky\)/.test(d.getElementById('stageRocket').getAttribute('style')));
+  T('and the camera rises back to home', d.getElementById('stage').getAttribute('data-view') === 'home');
 
   sub('reload');
   const again = H.loadApp({ sharedStorage: shared });
   const r = again.ctx;
   T('no errors on reload', again.errors.length === 0, again.errors.join(' | '));
-  T('it opens on Earth, not the welcome', r.currentScene === 'earth');
+  T('it opens on Earth, not the welcome', r.currentScene === 'earth' && r.session.place === 'earth');
   T('the mission is still finished', r.journey.completions.length === 1);
   T('the Moon is still restored', r.destinationProgress('moon', r.journey.completions).restored);
   T('the stars are still spent, and only once', r.starBalance(r.journey.stars) === 0 && r.journey.stars.length === 2);
@@ -1960,17 +2058,23 @@ async function testChildJourney(){
   const sp2 = fakeSpeech();
   const third = H.loadApp({ sharedStorage: shared, windowExtras: sp2.extras });
   const t = fast(third.ctx);
+  t.pickDestination('moon');
+  T('tapping the Moon in the sky chooses it for Launch', t.launchTarget() === 'moon' && /The Moon! Tap Launch/.test(sp2.said[sp2.said.length - 1]));
   await t.launch();
   const arrivals = [1, 2, 3].map(n => t.voiceCue('story.moon.arrive.' + n).speak);
   T('a returning explorer hears a short arrival, not the whole story again',
     sp2.said.some(s => arrivals.indexOf(s) !== -1) && !sp2.said.some(s => /beacon is dim/.test(s)));
+  T('the choice was for one flight: Launch goes to the next stop again', t.launchTarget() === 'mercury');
+  await t.tapMarker('moon-1');
+  T('the task is not explained again once it has been done', !sp2.said.some(s => /I'll say a letter/.test(s)));
   await playMission(t);
   T('a replay earns stars too — practice is taking part', t.starBalance(t.journey.stars) === 3);
   T('and is recorded as its own run', t.journey.completions.length === 2);
 
   sub('leaving a mission early');
   await t.flyHome();
-  await t.launch();
+  await launchAndStart(t);
+  T('the next launch goes on to Mercury', t.session.place === 'mercury' && t.currentScene === 'mission');
   const found = t.session.run.round ? await t.choose(t.session.run.round.answer) : null;
   t.askGoHome();
   t.__flush();
@@ -1982,7 +2086,7 @@ async function testChildJourney(){
   t.__flush();
   const starsBefore = t.starBalance(t.journey.stars);
   await t.goHomeFromMission();
-  T('"go home" flies back to Earth', t.currentScene === 'earth' && t.session.run === null);
+  T('"go home" flies back to Earth', t.currentScene === 'earth' && t.session.run === null && t.session.place === 'earth');
   T('no stars are given for an unfinished mission — and none taken', t.starBalance(t.journey.stars) === starsBefore);
   T('no completion is recorded for it', t.journey.completions.length === 2);
   void found;
@@ -1992,24 +2096,63 @@ async function testChildJourney(){
    CONTRACT 29 — MOTION, AND WHAT TIMING PROMISES
    ========================================================= */
 async function testMotion(){
-  section('CONTRACT 29 — transitions are fast, skippable, and optional');
+  section('CONTRACT 29 — flights are fast, skippable, optional, and end where they were going');
   const app = H.loadApp();
-  const c = app.ctx;
+  const c = app.ctx, d = app.dom.document;
+  const stage = d.getElementById('stage');
 
   sub('the promised timings');
-  T('an ordinary flight is about a second', c.TIMING.travel >= 500 && c.TIMING.travel <= 1500, String(c.TIMING.travel));
-  T('only the first flight to a place is longer', c.TIMING.travelFirst > c.TIMING.travel && c.TIMING.travelFirst <= 3000);
+  T('an ordinary flight takes about a second', c.TIMING.travel >= 1000 && c.TIMING.travel <= 1500, String(c.TIMING.travel));
+  T('the first flight to a new place is longer, and still under three seconds',
+    c.TIMING.travelFirst >= 1500 && c.TIMING.travelFirst <= 2500, String(c.TIMING.travelFirst));
   T('with Reduce Motion a flight is a short crossfade', c.TIMING.travelReduced <= 400);
   T('a flight can be skipped with a tap', /onclick="skipTravel\(\)"/.test(H.readApp()));
   T('the grown-ups hold takes three seconds', c.TIMING.gateHold === 3000);
+  T('reward stars are quick: all three have landed within two seconds',
+    c.TIMING.starFirst + 2 * c.TIMING.starEvery + c.TIMING.starFlight <= 2000);
+
+  sub('a flight ends where it was going, whatever interrupts it');
+  c.TIMING.travel = 0; c.TIMING.travelFirst = 0; c.TIMING.travelSettle = 0;
+  await c.travelTo('moon', { first: true });
+  const shown = ['A', 'B'].filter(s => d.getElementById('place' + s).classList.contains('is-shown'));
+  T('the stage is at the destination', stage.getAttribute('data-place') === 'moon' && c.session.place === 'moon');
+  T('exactly one place is drawn, and it is the destination',
+    shown.length === 1 && d.getElementById('place' + shown[0]).getAttribute('data-place') === 'moon');
+  T('it stands on the destination\'s own horizon',
+    d.getElementById('place' + shown[0] + 'Art').innerHTML.indexOf(c.assetSrc('horizon.moon')) !== -1);
+  T('the place left behind is emptied, so no picture in it answers to a name the new place uses',
+    d.getElementById('place' + (shown[0] === 'A' ? 'B' : 'A') + 'Sky').innerHTML === '');
+  T('the rocket is not left flying', !d.getElementById('stageRocket').classList.contains('is-flying'));
+  c.TIMING.travel = 5000;
+  const t1 = Date.now();
+  const flight = c.travelTo('earth', {});
+  const during = ['A', 'B'].filter(s => d.getElementById('place' + s).classList.contains('is-shown'));
+  T('where nothing can animate, the destination shows at once: never both places at the same time',
+    during.length === 1 && d.getElementById('place' + during[0]).getAttribute('data-place') === 'earth');
+  c.skipTravel();
+  await flight;
+  T('a skipped flight lands at once, at its destination',
+    Date.now() - t1 < 200 && c.session.place === 'earth' && stage.getAttribute('data-place') === 'earth');
+
+  sub('how a flight moves');
+  const moves = stripComments(fnBody(js(), 'flightMoves'));
+  T('a flight animates only transforms and opacity, so an iPad never repaints for it',
+    moves.length > 500 && !/\b(left|top|right|bottom|width|height|margin|filter|clip)\s*:/.test(moves));
+  T('with Reduce Motion it crossfades and stops, before anything slides or streams',
+    /if\(f\.reduced\)\{[\s\S]*?return list;\s*\}/.test(moves) && moves.indexOf('starsNear') > moves.indexOf('if(f.reduced)'));
+  const streams = moves.match(/\[\['starsFar', (\d+)\], \['starsNear', (\d+)\]\]/);
+  T('the stars stream at two speeds, the near ones further than the far ones', !!streams && Number(streams[2]) > Number(streams[1]));
+  T('the rocket flies from where it stood to where it lands: both measured, not guessed',
+    /const from = boxOf\(rocket\);[\s\S]{0,80}setAttribute\('data-place', to\);[\s\S]{0,20}const land = boxOf\(rocket\);/.test(js()));
+  T('a place not shown is not drawn', /\.place\{[^}]*visibility: hidden;/.test(css()) && /\.place\.is-shown\{ visibility: visible; \}/.test(css()));
 
   sub('Reduce Motion, from the grown-ups setting');
   c.setMotionPref('reduce');
-  T('the setting applies at once', app.dom.document.documentElement.getAttribute('data-motion') === 'reduce' && c.motionReduced());
+  T('the setting applies at once', d.documentElement.getAttribute('data-motion') === 'reduce' && c.motionReduced());
   T('and is saved for this device', c.Store.get(c.KEYS.motion) === 'reduce');
   const t0 = Date.now();
-  c.TIMING.travelReduced = 30; c.TIMING.travelSettle = 0;
-  await c.travel('out', { first: true });
+  c.TIMING.travelReduced = 30; c.TIMING.travelSettle = 0; c.TIMING.travelFirst = 5000;
+  await c.travelTo('moon', { first: true });
   T('a reduced flight takes the crossfade time, even the first one', Date.now() - t0 < 500, (Date.now() - t0) + 'ms');
   c.setMotionPref('system');
   T('"match this device" removes the override', c.Store.get(c.KEYS.motion) === null && !c.motionReduced());
@@ -2019,8 +2162,9 @@ async function testMotion(){
   sub('Reduce Motion, from the device');
   const r = H.loadApp({ windowExtras: { matchMedia: q => ({ matches: /reduce/.test(q), addEventListener(){}, removeEventListener(){} }) } });
   T('the device preference is honoured without any setting', r.ctx.motionReduced());
-  T('and the flight resting state is its destination, so nothing is lost without animation',
-    /\.travel-out \.t-earth\{ opacity: 0;/.test(css()) && /\.travel-home \.t-moon\{ opacity: 0;/.test(css()));
+  T('reward stars simply count up, without flying', /if\(reduced \|\| !arcStar\(missionId, land\)\) land\(\);/.test(js()));
+  T('and what lights up lights at once, without the held beat',
+    /\}, reduced \? 0 : TIMING\.relight\);/.test(fnBody(js(), 'celebrate')) && /motionReduced\(\) \? 0 : TIMING\.relight/.test(fnBody(js(), 'showRelight')));
 }
 
 /* =========================================================
@@ -2068,7 +2212,7 @@ async function testDialogue(){
   const missions = [], trips = [];
   for(let i = 0; i < 4; i++){
     const at = sp.said.length;
-    await c.launch();
+    await launchAndStart(c, 'moon');
     await playMission(c, { wrongRounds: i === 1 ? [1, 3] : [] });
     const home = sp.said.length;
     await c.flyHome();
@@ -2080,8 +2224,12 @@ async function testDialogue(){
     missions[0].indexOf(line('story.moon.restored')) !== -1 && missions.slice(1).every(m => m.indexOf(line('story.moon.restored')) === -1));
   T('"look, the Moon is shining" is said on the flight home from that mission, and only then',
     trips[0].indexOf(line('guide.moonShining')) !== -1 && trips.slice(1).every(t => t.indexOf(line('guide.moonShining')) === -1));
+  T('the new route is pointed out on that trip home too, and only then',
+    trips[0].indexOf(line('story.mercury.next')) !== -1 && trips.slice(1).every(t => t.indexOf(line('story.mercury.next')) === -1));
   T('the paint-brush hint is volunteered once, not on every return', sp.said.filter(s => s === line('guide.dockHint')).length === 1);
-  T('the task is explained on the first arrival only', sp.said.filter(s => s === line('mission.howTo')).length === 1);
+  T('the task is explained on the first mission only', sp.said.filter(s => s === line('mission.howTo')).length === 1);
+  T('the beacon is pointed out on the first arrival; a returning child is told only where they are',
+    missions[0].indexOf(line('marker.beacon')) !== -1);
 
   sub('a moment that recurs is never said the same way twice in a row');
   const launches = pick(missions, inFamily('travel.launch'));
@@ -2166,6 +2314,23 @@ async function testDialogue(){
   T('a later pause is met in other words', visit3.length === 1 && visit3[0] !== visit1.filter(isDockIdle)[0], visit3.join(' / '));
   c.leaveDock();
 
+  sub('on a planet, Pip points at what to tap — once a visit');
+  await wait(20);
+  c.TIMING.idleHint = 1e9;
+  c.pickDestination('moon');
+  await c.launch();
+  c.TIMING.idleHint = 60;
+  c.armIdleHint();
+  mark = sp.said.length;
+  await wait(150);
+  const nudge = sp.said.slice(mark);
+  T('a child who waits on a planet is shown the marker', nudge.length === 1 && nudge[0] === line('marker.beacon'), nudge.join(' / '));
+  await wait(120);
+  T('once', sp.said.length === mark + 1);
+  c.TIMING.idleHint = 1e9;
+  await c.flyHome();
+  c.TIMING.idleHint = 60;
+
   sub('grown-ups and missions are not interrupted by Earth hints');
   mark = sp.said.length;
   c.openGrownups();
@@ -2174,7 +2339,7 @@ async function testDialogue(){
   c.closeGrownups();
   await wait(10);                     // back on Earth, and the wait for a hint has begun
   mark = sp.said.length;
-  await c.launch();
+  await launchAndStart(c, 'moon');
   await wait(150);
   const inMission = sp.said.slice(mark);
   T('the Earth hint never follows the child into a mission', !inMission.some(isHint), inMission.join(' / '));
@@ -2197,9 +2362,9 @@ async function testDialogue(){
 
 /* =========================================================
    CONTRACT 31 — THE CLAY WORLD STAYS READABLE, AND LINED UP
-   Phase 1.2 made the world clay. Art must never make the learning
-   harder to read, and the app's lights must sit where the renders
-   put the things they light.
+   Art must never make the learning harder to read, and the app's
+   lights, the rocket and every marker must sit where the renders put
+   the things they belong to.
    ========================================================= */
 function luminance(hexColour){
   const n = parseInt(hexColour.slice(1), 16);
@@ -2214,11 +2379,16 @@ function cssPercent(rule, prop){
   const m = rule.match(new RegExp('(?:^|[\\s;{])' + prop + ':\\s*([\\d.]+)%'));
   return m ? Number(m[1]) : NaN;
 }
+function cssNumber(rule, prop){
+  const m = rule.match(new RegExp('(?:^|[\\s;{])' + prop + ':\\s*(-?[\\d.]+)\\s*;'));
+  return m ? Number(m[1]) : NaN;
+}
+function scene(name){ return require(path.join(H.ROOT, 'tools', 'art', 'scenes', name + '.js')); }
 /* Where a point in a scene lands in its picture, through the scene's own
    camera: the numbers the CSS anchors must agree with. */
 function projectInScene(sceneName, variant, p){
   const Cl = require(path.join(H.ROOT, 'tools', 'art', 'clay.js'));
-  const s = require(path.join(H.ROOT, 'tools', 'art', 'scenes', sceneName + '.js')).build(variant);
+  const s = scene(sceneName).build(variant);
   const cam = s.camera;
   const f = Cl.norm3([cam.target[0] - cam.pos[0], cam.target[1] - cam.pos[1], cam.target[2] - cam.pos[2]]);
   const r = Cl.norm3(Cl.cross3(f, [0, 1, 0]));
@@ -2230,7 +2400,7 @@ function projectInScene(sceneName, variant, p){
 }
 
 async function testClayWorld(){
-  section('CONTRACT 31 — the clay world stays readable, and its lights stay on their lamps');
+  section('CONTRACT 31 — the clay world stays readable, and everything stands where the renders put it');
   const app = H.loadApp();
   const c = app.ctx;
   const sheet = css();
@@ -2239,51 +2409,66 @@ async function testClayWorld(){
   const tile = cssRule(sheet, '.choice');
   T('a letter tile has no picture or texture behind its letter', tile.length > 0 && !/url\(|background-image/.test(tile));
   T('its surface and ink come from tokens', /background: var\(--tile-surface\)/.test(tile) && /color: var\(--tile-ink\)/.test(tile));
+  const face = cssRule(sheet, '.choice-face');
+  T('on a letter stone the letter sits on a clean plate of the same tile surface, never on the clay',
+    /background: var\(--tile-surface\)/.test(face) && /color: var\(--tile-ink\)/.test(face) && !/url\(|background-image/.test(face) &&
+    /'<span class="choice-face" aria-hidden="true"><span class="choice-glyph">' \+ L \+/.test(js()));
   const surf = (sheet.match(/--brand-lavender:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
   const ink = (sheet.match(/--brand-ink:\s*(#[0-9A-Fa-f]{6})/) || [])[1];
   const ratio = surf && ink ? (luminance(surf) + 0.05) / (luminance(ink) + 0.05) : 0;
-  T('the letters keep a contrast of at least 7:1 against their tile', ratio >= 7, ratio.toFixed(1) + ':1');
+  T('the letters keep a contrast of at least 7:1 against their plate', ratio >= 7, ratio.toFixed(1) + ':1');
+  T('a picture choice is a clean card too: the picture on the card surface, no texture behind it',
+    /background: var\(--bubble\)/.test(cssRule(sheet, '.choice-picture')) && !/url\(/.test(cssRule(sheet, '.choice-picture')));
 
-  sub('restoring the Moon is a change a child can see from home');
+  sub('restoring a world is a change a child can see from home');
   const moon = c.DESTINATIONS.moon;
   T('the Moon has a restored picture as well as a waiting one', !!c.assetEntry(moon.restoredAsset) && moon.restoredAsset !== moon.asset);
   c.renderEarth();
-  const moonHtml = app.dom.document.getElementById('earthMoon').innerHTML;
-  T('home draws both, so relighting can crossfade', moonHtml.indexOf(c.assetSrc(moon.asset)) !== -1 && moonHtml.indexOf(c.assetSrc(moon.restoredAsset)) !== -1);
-  T('and the restored one shows once the Moon is restored', /\.earth-moon\.is-restored \.moon-lit\{\s*opacity: 1;/.test(sheet));
-  T('the beacon lights up the same way in the celebration',
-    /artImg\('prop\.beaconLit'/.test(js()) && /\.celebrate-beacon\.is-lit \.beacon-on\{\s*opacity: 1;/.test(sheet));
+  const skyHtml = app.dom.document.getElementById('place' + c.session.slot + 'Sky').innerHTML;
+  T('home draws both, so relighting can crossfade', skyHtml.indexOf(c.assetSrc(moon.asset)) !== -1 && skyHtml.indexOf(c.assetSrc(moon.restoredAsset)) !== -1);
+  T('and the restored one shows once the world is restored', /\.sky-body\.is-restored \.body-lit\{\s*opacity: 1;/.test(sheet));
+  T('a marker lights up the same way when its mission is done',
+    /artImg\(mk\.litAsset, 'marker-art marker-on'\)/.test(js()) && /\.marker\.is-lit \.marker-on\{\s*opacity: 1;/.test(sheet));
+  T('and a restored world brightens, with warm light from what was fixed', /\.place\.is-restored \.horizon-glow\{\s*opacity: 1;/.test(sheet));
 
-  /* The payoff happens where the child can see it: home from the relighting
-     mission, the Moon is dark for a beat and then lights up. */
+  /* The payoff happens where the child can see it: what was fixed is dark
+     for a beat, then lights up. */
   const shared = new Map();
   const sp = fakeSpeech();
   const j = H.loadApp({ sharedStorage: shared, windowExtras: sp.extras });
   const jc = fast(j.ctx);
-  jc.TIMING.relight = 30;
-  const moonHost = () => j.dom.document.getElementById('earthMoon');
+  jc.TIMING.relight = 60;
+  const host = kind => j.dom.document.getElementById('place' + jc.session.slot + kind);
   await (async () => {
     await jc.startAdventure();
-    await jc.launch();
+    await launchAndStart(jc);
+    await playMission(jc);
+    T('on the Moon, the beacon just fixed is held dark at first',
+      host('Props').classList.contains('is-holding') && /id="marker-moon-1" data-held="true"/.test(host('Props').innerHTML));
+    await wait(120);
+    T('then it lights up in front of the child', !host('Props').classList.contains('is-holding'));
+    await jc.flyHome();
+    T('home from the relighting mission, the Moon is held dark at first',
+      jc.currentScene === 'earth' && host('Sky').classList.contains('is-holding') && /id="sky-moon" data-held="true"/.test(host('Sky').innerHTML));
+    await wait(120);
+    T('then it lights up while the child watches', !host('Sky').classList.contains('is-holding'));
+    await launchAndStart(jc, 'moon');
     await playMission(jc);
     await jc.flyHome();
-    T('home from the relighting mission, the Moon is dark at first', jc.currentScene === 'earth' && !moonHost().classList.contains('is-restored'));
-    await wait(80);
-    T('then it lights up while the child watches', moonHost().classList.contains('is-restored'));
-    await jc.launch();
-    await playMission(jc);
-    await jc.flyHome();
-    T('on later trips home it is simply lit', moonHost().classList.contains('is-restored'));
+    T('on later trips home it is simply lit',
+      !host('Sky').classList.contains('is-holding') && /class="sky-body is-restored[^"]*" id="sky-moon"/.test(host('Sky').innerHTML));
   })();
 
   sub('characters move like stop-motion; navigation never does');
   T('Pip holds each pose for a frame', /steps\(\d+\)/.test(cssRule(sheet, '.pip')));
-  T('so does the rocket waiting on Earth', /rocket-idle [\d.]+s steps\(\d+\)/.test(sheet));
+  T('and cheers the same way', /steps\(\d+\)/.test(cssRule(sheet, '.pip.is-cheering')));
+  T('so does the rocket waiting on its pad', /rocket-idle [\d.]+s steps\(\d+\)/.test(sheet));
   T('a scene change stays smooth', !/steps\(/.test(cssRule(sheet, '.scene.active')));
+  T('and so does every flight', !/steps\(/.test(fnBody(js(), 'flightMoves')));
 
   sub('the app\'s lights sit on the renders\' lamps');
   const pipRule = cssRule(sheet, '.pip-light');
-  const ball = projectInScene('pip', undefined, [0.045, 0.83, 0]);
+  const ball = projectInScene('pip', undefined, scene('pip').BALL);
   T('Pip\'s speaking light is on the antenna ball', Math.abs(cssPercent(pipRule, 'left') - ball[0]) < 0.6 && Math.abs(cssPercent(pipRule, 'top') - ball[1]) < 0.6,
     'css ' + cssPercent(pipRule, 'left') + '%,' + cssPercent(pipRule, 'top') + '% vs render ' + ball.map(v => v.toFixed(1)).join('%,') + '%');
   const moonRule = cssRule(sheet, '.moon-light');
@@ -2294,9 +2479,320 @@ async function testClayWorld(){
   const blamp = projectInScene('beacon', 'on', [0, 1.4, 0]);
   T('the lighthouse glow is on its lamp', Math.abs(cssPercent(beaconRule, 'top') - blamp[1]) < 0.8, 'css ' + cssPercent(beaconRule, 'top') + '% vs render ' + blamp[1].toFixed(1) + '%');
   const flameRule = cssRule(sheet, '.rocket-flame');
-  const nozzle = projectInScene('rocket', undefined, [0, -1.065, 0]);
+  const nozzle = projectInScene('rocket', undefined, [0, scene('rocket').NOZZLE_BOTTOM, 0]);
   T('the flame hangs from the nozzle, centred', Math.abs(cssPercent(flameRule, 'left') + cssPercent(flameRule, 'width') / 2 - 50) < 0.6 &&
     Math.abs(cssPercent(flameRule, 'top') - nozzle[1]) < 3, 'flame top ' + cssPercent(flameRule, 'top') + '% vs nozzle ' + nozzle[1].toFixed(1) + '%');
+  const standAt = Number((cssRule(sheet, '.stage-rocket').match(/margin-top: calc\(var\(--rocket-h\) \* -([\d.]+)\)/) || [])[1]) * 100;
+  T('the rocket stands on the bottom of its nozzle', Math.abs(standAt - nozzle[1]) < 0.6, 'css ' + standAt.toFixed(1) + '% vs nozzle ' + nozzle[1].toFixed(1) + '%');
+
+  sub('everything stands on its world, not in its sky');
+  const HZ = scene('horizon');
+  const pad = HZ.anchorAt(HZ.PAD.map(v => v * HZ.PAD_TOP));
+  const onEarth = cssRule(sheet, '.stage[data-place="earth"]');
+  T('on Earth the rocket stands on the centre of its launch pad',
+    Math.abs(cssNumber(onEarth, '--rx') * 100 - pad[0]) < 0.6 && Math.abs(cssNumber(onEarth, '--ry') * 100 - pad[1]) < 0.6,
+    'css ' + cssNumber(onEarth, '--rx') + ',' + cssNumber(onEarth, '--ry') + ' vs pad ' + pad.map(v => (v / 100).toFixed(4)).join(','));
+  const camera = cssRule(sheet, '.stage-camera');
+  T('the Dock\'s camera lowers onto that same pad',
+    camera.indexOf('(' + cssNumber(onEarth, '--rx') + ' - 0.5)') !== -1 && camera.indexOf(cssNumber(onEarth, '--ry') + ' * var(--world-h)') !== -1);
+  const landings = c.JOURNEY_ORDER.map(id => [id, cssRule(sheet, '.stage[data-place="' + id + '"]')]);
+  T('on every destination the rocket lands on the ground',
+    landings.every(l => l[1] && HZ.groundAt(cssNumber(l[1], '--rx'), cssNumber(l[1], '--ry'))), landings.map(l => l[0]).join(','));
+  const markers = [];
+  c.JOURNEY_ORDER.forEach(id => Object.keys(c.DESTINATIONS[id].markers).forEach(mid => markers.push([mid, c.DESTINATIONS[id].markers[mid]])));
+  T('every marker stands on the ground', markers.length >= 3 && markers.every(m => HZ.groundAt(m[1].at[0], m[1].at[1])),
+    markers.filter(m => !HZ.groundAt(m[1].at[0], m[1].at[1])).map(m => m[0]).join(','));
+  T('the horizon\'s crest is where the CSS puts it', /--world-top: calc\(var\(--crest-y\) - var\(--world-h\) \* ([\d.]+)\)/.test(sheet) &&
+    Number(sheet.match(/--world-top: calc\(var\(--crest-y\) - var\(--world-h\) \* ([\d.]+)\)/)[1]) === HZ.CREST);
+  const crest = Number((sheet.match(/--crest-y: ([\d.]+)vh;/) || [])[1]);
+  const wide = Number((sheet.match(/--world-w: max\(100vw, ([\d.]+)vh\);/) || [])[1]);
+  const planetShare = 100 - crest;
+  T('the planet fills the bottom 35–45% of the screen at its crest', planetShare >= 35 && planetShare <= 45, planetShare + '%');
+  T('and the picture reaches past the bottom edge, so the ground never ends in a line',
+    crest + (1 - HZ.CREST) * 0.325 * wide >= 100, (crest + (1 - HZ.CREST) * 0.325 * wide).toFixed(1) + 'vh');
+}
+
+/* =========================================================
+   CONTRACT 32 — THE WORLD IS THE NAVIGATION
+   One continuous stage behind every child scene. Places are drawn
+   from data, the world's objects are what a child taps, and each
+   screen still has exactly one primary action.
+   ========================================================= */
+async function testWorldStage(){
+  section('CONTRACT 32 — one world, drawn from data, with one thing to do at a time');
+  const src = H.readApp(), sheet = css();
+  const markup = H.bodyBlock(src).replace(/<script>[\s\S]*<\/script>/, '');
+
+  sub('one stage, behind every scene');
+  T('there is exactly one stage', (markup.match(/class="stage"/g) || []).length === 1);
+  T('it sits behind the scenes', Number((cssRule(sheet, '.stage').match(/z-index: (\d+)/) || [])[1]) <
+                                 Number((cssRule(sheet, '.scene').match(/z-index: (\d+)/) || [])[1]));
+  T('no scene draws a world of its own', !/class="world"/.test(markup) && !/class="backdrop"/.test(markup));
+  T('the stage itself never takes a tap; only the world\'s own objects do, and only where they mean something',
+    /\.stage\{[^}]*pointer-events: none/.test(sheet) &&
+    /html\[data-scene="earth"\] \.stage-rocket\{ pointer-events: auto; \}/.test(sheet) &&
+    /html\[data-scene="earth"\] button\.sky-body\{ pointer-events: auto; \}/.test(sheet) &&
+    /html\[data-scene="planet"\] \.marker\{ pointer-events: auto; \}/.test(sheet));
+  T('two place slots: where the rocket is, and where a flight is going', ['placeA', 'placeB'].every(id => markup.indexOf('id="' + id + '"') !== -1));
+
+  sub('one primary action per screen');
+  const sceneMarkup = name => { const at = markup.indexOf('id="scene-' + name + '"'); return markup.slice(at, markup.indexOf('</main>', at)); };
+  const primaries = name => (sceneMarkup(name).match(/class="[^"]*\b(launch-btn|play-btn)\b/g) || []).length;
+  T('welcome: Play', primaries('welcome') === 1);
+  T('Earth: Launch', primaries('earth') === 1 && /id="launchBtn"/.test(sceneMarkup('earth')));
+  T('the Dock stays secondary on Earth', /class="kid-icon-btn earth-dock"/.test(sceneMarkup('earth')));
+  T('a planet: the marker pulses; the yellow way home appears only when nothing is left to play',
+    primaries('planet') === 1 && /\.scene-planet:not\(\.is-done\) \.planet-go-home\{ display: none; \}/.test(sheet));
+  T('Dock: the paint action', primaries('dock') === 1);
+  T('a mission has no yellow button: the choices are the task', primaries('mission') === 0);
+  T('the grown-ups lock and the star count keep their corners on Earth',
+    /\.gate-btn\{[^}]*top: 0; left: 0;/.test(sheet) && /\.star-count\{[^}]*top: 0; right: 0;/.test(sheet));
+
+  sub('places are drawn from data');
+  const app = H.loadApp();
+  const c = fast(app.ctx), d = app.dom.document;
+  T('every place on the journey has a horizon, a place in the sky and a marker for each mission',
+    c.JOURNEY_ORDER.every(id => { const p = c.DESTINATIONS[id]; return c.assetEntry(p.horizon) && p.sky && p.missions.every(m => p.markers[m]); }));
+  T('a planet in the sky is big enough for a small finger', c.JOURNEY_ORDER.every(id => c.DESTINATIONS[id].sky.size >= 10));
+  T('the scenes never write a horizon, a planet or a marker picture by name',
+    !/'(horizon|planet|prop)\.[a-z]+[A-Z]?[a-zA-Z]*'/.test(stripComments(fnBody(js(), 'drawPlace') + fnBody(js(), 'skyHtml') + fnBody(js(), 'markerHtml'))));
+  T('every stage picture is fetched and decoded ahead of a flight', /\^\(horizon\|planet\|bg\|prop\|rocket\|character\)\\\./.test(fnBody(js(), 'preloadStage')) &&
+    /img\.decode\(\)/.test(fnBody(js(), 'preloadStage')));
+
+  sub('one mission at a time');
+  c.showScene('welcome');
+  await c.startAdventure();
+  await launchAndStart(c);
+  await playMission(c);
+  await c.flyHome();
+  c.pickDestination('mercury');
+  await c.launch();
+  const props = () => d.getElementById('place' + c.session.slot + 'Props').innerHTML;
+  T('on Mercury, one marker pulses and the next one waits', (props().match(/is-next/g) || []).length === 1 &&
+    /class="marker is-next" id="marker-mercury-1"/.test(props()) && /class="marker is-waiting" id="marker-mercury-2"/.test(props()));
+  await c.tapMarker('mercury-2');
+  T('tapping the one that waits does not start it', c.currentScene === 'planet' && c.session.run === null);
+  await c.tapMarker('mercury-1');
+  await playMission(c);
+  T('when the first is done, the next one pulses', /class="marker is-lit" id="marker-mercury-1"/.test(props()) && /class="marker is-next" id="marker-mercury-2"/.test(props()) &&
+    !d.getElementById('scene-planet').classList.contains('is-done'));
+  await c.tapMarker('mercury-2');
+  await playMission(c);
+  T('and when both are done, none pulses: the way forward is home', !/is-next/.test(props()) && d.getElementById('scene-planet').classList.contains('is-done'));
+  T('Mercury is restored and brighter', c.destinationProgress('mercury', c.journey.completions).restored &&
+    d.getElementById('place' + c.session.slot).classList.contains('is-restored'));
+  await c.flyHome();
+  c.pickDestination('mercury');
+  await c.launch();
+  T('a restored place still has a mission to replay on the next visit', /is-next/.test(props()) && !d.getElementById('scene-planet').classList.contains('is-done'));
+  T('no console errors along the way', app.errors.length === 0, app.errors.join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 33 — RHYME RADAR AND SYLLABLE METEORS
+   Two new games on the same engine: the same help ladder, the same
+   evidence, the same praise, and content that says what it teaches.
+   ========================================================= */
+async function testNewGames(){
+  section('CONTRACT 33 — rhyming and beats are fair, forgiving, and truthful');
+  const app = H.loadApp();
+  const c = app.ctx;
+
+  sub('rhyme rounds are fair');
+  let bad = 0, total = 0, sameStartMissing = 0, sameStartEarly = 0;
+  const rhymes = [];
+  Object.keys(c.MISSIONS).forEach(id => c.MISSIONS[id].activities.filter(a => a.type === 'rhyme-pick').forEach(a => rhymes.push(a)));
+  rhymes.forEach(a => {
+    const pools = c.rhymeDistractorPools(a);
+    [1, 2].forEach(tier => {
+      for(let s = 0; s < 8; s++){
+        total++;
+        const b = c.ACTIVITY_TYPES['rhyme-pick'].buildRound(a, { tier, choices: 3, rand: c.seededRandom(a.target + tier + s) });
+        const t = c.WORDS[a.target];
+        const unique = new Set(b.options).size === 3;
+        const answerOnce = b.options.filter(w => w === a.answer).length === 1 && b.options[b.answer] === a.answer;
+        const noneRhyme = b.options.every(w => w === a.answer || c.WORDS[w].rime !== t.rime);
+        if(!(unique && answerOnce && noneRhyme && b.options.indexOf(a.target) === -1)) bad++;
+        const sameStart = b.options.some(w => w !== a.answer && c.WORDS[w].onset === t.onset);
+        if(tier === 2 && pools.sameStart.length && !sameStart) sameStartMissing++;
+        if(tier === 1 && pools.other.length >= 2 && sameStart) sameStartEarly++;
+      }
+    });
+  });
+  T('three different pictures, the rhyme exactly once, and nothing else rhymes', rhymes.length >= 5 && bad === 0, bad + ' of ' + total);
+  T('the word asked about is never one of its own choices', bad === 0);
+  c.WORDS.lake = { speak: 'lake', picture: 'picture.cake', rime: 'ake', onset: 'l', beats: ['lake'] };
+  let leaked = 0;
+  for(let s2 = 0; s2 < 40; s2++){
+    const b = c.ACTIVITY_TYPES['rhyme-pick'].buildRound({ type: 'rhyme-pick', target: 'cake', answer: 'snake' },
+      { tier: 1 + (s2 % 2), choices: 3, rand: c.seededRandom('lake' + s2) });
+    if(b.options.indexOf('lake') !== -1) leaked++;
+  }
+  delete c.WORDS.lake;
+  T('a second word that rhymes is never offered as a wrong choice', leaked === 0, leaked + ' of 40');
+  T('the harder level includes a word that starts like the target, when there is one', sameStartMissing === 0, String(sameStartMissing));
+  T('the easier level does not', sameStartEarly === 0, String(sameStartEarly));
+
+  sub('a beats round counts taps, and forgives');
+  const beats = c.startRun('mercury-2', new Date(), 'run_beats');
+  beats.index = 3;                                    // banana: three beats
+  c.beginRound(beats, []);
+  T('the answer is the number of beats', beats.round.options[beats.round.answer] === c.WORDS[beats.round.activity.target].beats.length);
+  const one = c.answerRound(beats, 0);
+  T('a wrong count: "almost"', one.correct === false && one.hint === 'almost');
+  T('the same wrong count can be tapped again: a count is not a tile that steps aside', c.answerRound(beats, 0).ignored !== true);
+  T('the second miss shows the beats', beats.round.misses === 2);
+  const right = c.answerRound(beats, beats.round.answer);
+  T('and the right count then finishes the round, as helped', right.correct && right.outcome === 0);
+  const clean = c.startRun('mercury-2', new Date(), 'run_clean'); clean.index = 1;
+  c.beginRound(clean, []);
+  T('first time right: 1', c.answerRound(clean, clean.round.answer).outcome === 1);
+  const g = c.startRun('mercury-2', new Date(), 'run_g2');
+  c.beginRound(g, []);
+  T('the guided first round is not evidence of anything', c.answerRound(g, g.round.answer).outcome === null);
+  const far = c.startRun('mercury-2', new Date(), 'run_far'); far.index = 2;
+  c.beginRound(far, []);
+  T('a count beyond what can be tapped is ignored, not crashed on', c.answerRound(far, 99).ignored === true && far.round.misses === 0);
+
+  sub('the content says what it teaches — and a second list checks it');
+  /* An independent count, typed here by hand from the spoken words: if the
+     data and this list ever disagree, one of them is wrong. */
+  const BEATS = { cake: 1, snake: 1, bee: 1, tree: 1, rock: 1, sock: 1, moon: 1, spoon: 1, star: 1, car: 1, apple: 2, rocket: 2, banana: 3, tomato: 3 };
+  T('every word has a checked beat count', Object.keys(c.WORDS).every(w => BEATS[w] === c.WORDS[w].beats.length),
+    Object.keys(c.WORDS).filter(w => BEATS[w] !== c.WORDS[w].beats.length).join(','));
+  const PAIRS = [['cake', 'snake'], ['bee', 'tree'], ['rock', 'sock'], ['moon', 'spoon'], ['star', 'car']];
+  T('every rhyme asked for is one of the checked pairs', rhymes.every(a => PAIRS.some(p => p[0] === a.target && p[1] === a.answer)));
+  T('and every checked pair rhymes in the data', PAIRS.every(p => c.WORDS[p[0]].rime === c.WORDS[p[1]].rime));
+  const review = fs.readFileSync(path.join(H.ROOT, 'docs', 'CONTENT-REVIEW.md'), 'utf8');
+  T('CONTENT-REVIEW.md lists every rhyme pair', PAIRS.every(p => new RegExp(p[0] + '\\s*/\\s*' + p[1], 'i').test(review)),
+    PAIRS.filter(p => !new RegExp(p[0] + '\\s*/\\s*' + p[1], 'i').test(review)).map(p => p.join('/')).join(','));
+  T('and every word\'s beat count', Object.keys(BEATS).every(w => new RegExp('\\b' + w + '\\b[^\\n]*\\b' + BEATS[w] + '\\b', 'i').test(review)),
+    Object.keys(BEATS).filter(w => !new RegExp('\\b' + w + '\\b[^\\n]*\\b' + BEATS[w] + '\\b', 'i').test(review)).join(','));
+  const learning = fs.readFileSync(path.join(H.ROOT, 'docs', 'LEARNING-DESIGN.md'), 'utf8');
+  T('nothing claims approval: the new content is development content, awaiting review',
+    /development content/i.test(review) && /Awaiting review/.test(review) && /Nothing here claims to be\s+research-backed/.test(learning) &&
+    !/\b(is|are) (curriculum-approved|research-backed|approved by)/i.test(review + learning));
+
+  sub('what the screen shows never gives the answer away');
+  T('a rhyme question shows the task, never the rhyme', rhymes.every(a => c.voiceCue('rhyme.ask.' + a.target).text === 'What rhymes?'));
+  T('a beats question shows the task, never the count', Object.keys(c.WORDS).every(w => c.voiceCue('beats.ask.' + w).text === 'Tap the beats!'));
+  T('waiting meteors appear only once Pip has shown the count: nothing else sets it',
+    (stripComments(js()).match(/\.guide = /g) || []).length === 1 && /r\.guide = n;/.test(fnBody(js(), 'modelBeats')) &&
+    /meteorsReset\(shown\)/.test(fnBody(js(), 'resetBeats')) && /const shown = r && r\.guide \? r\.guide : 0;/.test(fnBody(js(), 'resetBeats')));
+  T('every word can be heard, named and praised', Object.keys(c.WORDS).every(w => c.voiceCue('word.' + w) && c.voiceCue('beats.found.' + w + '.0') &&
+    c.WORDS[w].beats.every((_, i) => c.voiceCue('beat.' + w + '.' + i))));
+
+  sub('playing them, through the same functions the buttons call');
+  const sp = fakeSpeech();
+  const a = H.loadApp({ windowExtras: sp.extras });
+  const p = fast(a.ctx), d = a.dom.document;
+  await p.startAdventure();
+  p.pickDestination('mercury');
+  T('Mercury cannot be chosen before the Moon shines', p.launchTarget() === 'moon' && p.session.pick === null);
+  await launchAndStart(p);
+  await playMission(p);
+  await p.flyHome();
+  await p.launch();
+  T('Mercury\'s first arrival tells its story', sp.said.some(s => /signal is fuzzy/.test(s)));
+  let mark = sp.said.length;
+  await p.tapMarker('mercury-1');
+  const intro = sp.said.slice(mark);
+  const r0 = p.session.run.round;
+  T('Rhyme Radar explains itself, says the word, asks, and names every picture',
+    intro.some(s => /sound the same at the end/.test(s)) && intro.indexOf('Cake.') !== -1 && intro.some(s => /rhymes with cake/.test(s)) &&
+    r0.options.every(w => intro.indexOf(p.voiceCue('word.' + w).speak) !== -1));
+  T('the word heard is shown as a picture in the radar\'s window', d.getElementById('gameSignal').innerHTML.indexOf(p.assetSrc('picture.cake')) !== -1);
+  await p.choose(r0.answer);
+  const r1 = p.session.run.round;
+  mark = sp.said.length;
+  await p.choose(r1.options.map((_, i) => i).find(i => i !== r1.answer));
+  const retry = sp.said.slice(mark);
+  const left = r1.options.filter((_, i) => r1.out.indexOf(i) === -1);
+  T('a wrong picture: "almost", the question again, and only the pictures left are named',
+    retry.some(s => /Listen again/.test(s)) && left.every(w => retry.indexOf(p.voiceCue('word.' + w).speak) !== -1) && retry.length === 2 + left.length, retry.join(' / '));
+  await playMission(p);
+  T('the radar is fixed, and Pip points at what is next', sp.said.some(s => /It works! One more thing/.test(s)) && /Now tap the meteor rocks/.test(sp.said[sp.said.length - 1]));
+  mark = sp.said.length;
+  await p.tapMarker('mercury-2');
+  const model = sp.said.slice(mark);
+  T('Syllable Meteors explains itself, then Pip taps the first word\'s beats', model.some(s => /Tap the big stone once for each beat/.test(s)) &&
+    model.indexOf('rock!') !== -1 && model.indexOf('it!') !== -1 && /Now you! two beats/.test(model[model.length - 1]), model.join(' / '));
+  const g0 = p.session.run.round;
+  for(let k = 0; k < 4; k++){ p.session.beat.lastAt = 0; p.tapBeat(); }
+  T('while showing, only that many taps count', p.session.beat.taps === g0.guide);
+  await p.settleBeats(p.session.run);
+  T('and they finish the round', g0.resolved === true);
+  const b1 = p.session.run.round;
+  mark = sp.said.length;
+  p.session.beat.lastAt = 0; p.tapBeat(); p.session.beat.lastAt = 0; p.tapBeat();
+  await p.settleBeats(p.session.run);
+  T('a wrong count: "almost", and the word again', sp.said.slice(mark).some(s => /Listen again/.test(s)) && sp.said.slice(mark).indexOf('Bee.') !== -1);
+  T('the meteors are cleared for the next try', p.session.beat.taps === 0);
+  p.session.beat.lastAt = 0; p.tapBeat(); p.session.beat.lastAt = 0; p.tapBeat();
+  await p.settleBeats(p.session.run);
+  T('a second wrong count: Pip shows the beats, and waits for that many', b1.guide === 1 && !b1.resolved);
+  p.session.beat.lastAt = 0; p.tapBeat();
+  await p.settleBeats(p.session.run);
+  T('and the round finishes, as helped', b1.resolved === true && p.session.run.results[p.session.run.results.length - 1].outcome === 0);
+  const free = p.session.run.round;
+  p.TIMING.beatBounce = 1000;
+  p.session.beat.lastAt = 0; p.tapBeat(); p.tapBeat();
+  T('a finger bouncing on the stone is one beat, not two', p.session.beat.taps === 1 && !free.guide);
+  p.TIMING.beatBounce = 0;
+  p.session.beat.lastAt = 0;
+  for(let k = 1; k < free.answer + 1; k++){ p.session.beat.lastAt = 0; p.tapBeat(); }
+  await p.settleBeats(p.session.run);
+  T('and the count goes on from there', free.resolved === true);
+  p.TIMING.beatPause = 30;
+  const b2 = p.session.run.round;
+  await wait(20);
+  for(let k = 0; k < b2.answer + 1; k++){ p.session.beat.lastAt = 0; p.tapBeat(); }
+  await wait(15);
+  T('a count is not judged while the child is still tapping', !b2.resolved);
+  await wait(80);
+  T('a pause ends the count, and only the count is judged', b2.resolved === true);
+  p.TIMING.beatPause = 0;
+  await wait(20);
+  await playMission(p);
+  T('Mercury\'s signal is clear', sp.said.some(s => /signal is clear/.test(s)) && p.destinationProgress('mercury', p.journey.completions).restored);
+  T('rhymes and beats are recorded under their own skills',
+    p.journey.evidence.some(e => e.skillId === 'rhyming' && e.form === 'rhyme') && p.journey.evidence.some(e => e.skillId === 'syllables' && e.form === 'beats'));
+  p.renderGrownups();
+  const practice = d.getElementById('gLetters').innerHTML;
+  T('the grown-ups area shows practice skill by skill, in plain counts', /Letter recognition/.test(practice) && /Rhyming/.test(practice) &&
+    /Counting syllables/.test(practice) && /beats counted on the first try/.test(practice));
+  T('and the journey place by place', /Mercury/.test(d.getElementById('gProgress').innerHTML) && /Restored/.test(d.getElementById('gProgress').innerHTML));
+  await p.flyHome();
+  T('home, Pip says Mercury is glowing', sp.said.some(s => /Mercury is glowing/.test(s)));
+  T('no console errors', a.errors.length === 0, a.errors.join(' | '));
+
+  /* Found in browser QA: after Pip showed the count, tapping part of it and
+     pausing was judged as a miss, which cleared what Pip had shown — and the
+     stone then ignored every tap. A child could not finish the round. */
+  sub('a count Pip has shown can always be finished');
+  const sp3 = fakeSpeech();
+  const g3 = H.loadApp({ windowExtras: sp3.extras });
+  const q = fast(g3.ctx), qd = g3.dom.document;
+  await q.startAdventure();
+  await launchAndStart(q);
+  await playMission(q);
+  await q.flyHome();
+  q.journey.completions.push({ id: 'run_rhymes', missionId: 'mercury-1', destinationId: 'mercury', skillId: 'rhyming', completedAt: 't', updatedAt: 't' });
+  await q.launch();
+  await q.tapMarker('mercury-2');
+  const gr = q.session.run.round;
+  T('the first round is shown before it is tried', gr.guided === true && gr.guide === 2 && !q.session.beat.hold);
+  q.TIMING.beatPause = 30;
+  q.session.beat.lastAt = 0; q.tapBeat();
+  await wait(90);
+  T('once shown, a pause part way through is only a pause', !gr.resolved && gr.misses === 0 && q.session.beat.taps === 1);
+  qd.visibilityState = 'hidden'; qd.dispatch('visibilitychange'); qd.visibilityState = 'visible';
+  T('leaving the app mid-count clears the taps, and keeps the count shown', q.session.beat.taps === 0 && gr.guide === 2);
+  q.session.beat.lastAt = 0; q.tapBeat(); q.session.beat.lastAt = 0; q.tapBeat();
+  await q.settleBeats(q.session.run);
+  T('and that count still finishes the round', gr.resolved === true);
+  q.TIMING.beatPause = 0;
+  T('no console errors here either', g3.errors.length === 0, g3.errors.join(' | '));
 }
 
 module.exports = {
@@ -2307,5 +2803,5 @@ module.exports = {
   testAccessibility, testContamination, testSourcesOfTruth,
   testContent, testLearningEngine, testStarLedger, testCosmeticIsolation,
   testPersistence, testAudio, testAssets, testPrivacy, testChildJourney, testMotion,
-  testDialogue
+  testDialogue, testWorldStage, testNewGames
 };

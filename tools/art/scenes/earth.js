@@ -4,9 +4,9 @@
    the surface, casting their own soft shadows. A child's Earth, not an
    atlas: the continents are friendly shapes, not real coastlines.
 
-   Framing: the sphere is centred and fills 84% of the square, so the
-   layout maths from the placeholder still holds, and the rocket's landing
-   spot (upper right of the face) is solid land. */
+   Framing: the sphere is centred and fills 84% of the square, like every
+   planet seen from afar. Since Phase 2 this is home far away, in the sky of
+   every destination; the Earth you stand on is horizon.js. */
 const C = require('../clay.js');
 const { len3, norm3, smoothstep, clamp, hex, mix3, smin } = C;
 
@@ -14,7 +14,7 @@ const noise = C.makeNoise(11);
 
 /* Directions of the continents, as seen from the camera (+z is toward it). */
 const LANDS = [
-  { d: norm3([0.40, 0.45, 0.80]), r: 0.34 },   // the launch site, under the rocket
+  { d: norm3([0.40, 0.45, 0.80]), r: 0.34 },
   { d: norm3([-0.56, 0.12, 0.82]), r: 0.40 },
   { d: norm3([0.12, -0.58, 0.80]), r: 0.30 },
   { d: norm3([0.93, -0.22, 0.28]), r: 0.30 },
@@ -93,7 +93,7 @@ function clouds(x, y, z){
 const OCEAN = hex('#2C86DC'), SHALLOW = hex('#4DB4F2'), LAND = hex('#76C957'), LAND_TOP = hex('#95DA6C');
 
 function build(){
-  const W = 1400, H = 1400;
+  const W = 600, H = 600;
   const D = 6.2;
   const tanHalf = (1 / Math.sqrt(D * D - 1)) / 0.84;
   return {

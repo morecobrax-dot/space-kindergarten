@@ -115,7 +115,6 @@
   --glow-action: rgba(255,210,74,0.65);
   --glow-success: rgba(139,224,122,0.6);
   --path-line: rgba(239,233,255,0.6);
-  --streak: rgba(207,233,255,0.85);
 
   /* ---- 3 · SCALE ------------------------------------------------ */
   /* Type: one token per role, so two labels of the same kind cannot
@@ -136,6 +135,7 @@
   --fs-kid-count: 34px; /* the star count */
   --fs-kid-title: 52px; /* "You did it!" */
   --fs-glyph: clamp(84px, 16vh, 150px); /* the letter on a choice tile */
+  --fs-glyph-stone: clamp(58px, 10.5vh, 100px); /* the letter on a letter stone's plate */
 
   --lh-tight: 1.2;
   --lh-body: 1.55;
@@ -209,6 +209,10 @@
      The pictures carry their own light (tools/art); these tokens only
      add what must move or change at run time. */
   --beacon-glow: rgba(255,226,150,0.55);
+  /* A restored world's pooled warm light, and the Sun's spill over
+     Mercury's sky: warmth only from something meaningful. */
+  --world-warmth: rgba(255,214,140,0.34);
+  --sun-glow: rgba(255,196,120,0.28);
   --pip-light-on: #F2FCFF;
   /* Contact shadows fall down and to the right, away from the world's key
      light in the upper left, as they do in every render. */
@@ -219,6 +223,18 @@
   --paint-sky: #45AEF2;
   --paint-sunny: #FFC93E;
   --paint-lime: #7DD65A;
+
+  /* The world stage's geometry. A horizon picture is 2400×780 with its
+     crest 18% down; it is drawn 150vh wide, and never narrower than the
+     screen, so on every iPad the planet fills the bottom ~40% and its
+     curve runs off both sides. Props, the rocket and every hit area in
+     the world are placed in fractions of this box, so they stay on the
+     ground at any size. */
+  --world-w: max(100vw, 150vh);
+  --world-h: calc(var(--world-w) * 0.325);
+  --crest-y: 62vh;
+  --world-top: calc(var(--crest-y) - var(--world-h) * 0.18);
+  --rocket-h: calc(var(--world-w) * 0.2);
 }
 
 /* =========================================================
@@ -491,6 +507,13 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select{
 }
 .letter-row-text{ flex: 1; font-size: var(--fs-support); color: var(--text); }
 .letter-row-date{ font-size: var(--fs-meta); color: var(--text-faint); white-space: nowrap; }
+.letter-row-glyph.is-word{ width: auto; min-width: 44px; padding: 0 var(--space-md); font-size: var(--fs-title); }
+.practice-skill{
+  margin: var(--space-lg) 0 var(--space-xs);
+  font-family: var(--font-mono); font-size: var(--fs-micro); font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint);
+}
+.practice-skill:first-child{ margin-top: 0; }
 
 /* ---- Empty state ---- */
 .empty-state{
@@ -512,20 +535,232 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select{
 .notice strong{ color: var(--text); display: block; margin-bottom: 2px; }
 
 /* =========================================================
-   CHILD WORLD — scenes
+   CHILD WORLD — one stage, many places
    ---------------------------------------------------------
-   A child moves through places, not screens: Earth, space, the
-   Moon, the Rocket Dock. Each is one full-screen scene; exactly
-   one is shown. The world layer holds the pictures, the UI layer
-   holds what can be pressed, and everything pressable sits
-   inside the safe area.
-   ========================================================= */
-.backdrop{ position: fixed; inset: 0; z-index: 0; pointer-events: none; }
-.backdrop-art{ width: 100%; height: 100%; object-fit: cover; display: block; }
+   The world is the navigation. One continuous STAGE sits behind
+   every child scene: deep space, two star layers that move at
+   different speeds, and PLACES — a world's sky and the planet
+   horizon you stand on. A flight moves the camera through that
+   stage instead of swapping one picture for another.
 
+   Each scene is only the layer of things to press, drawn over the
+   stage, and exactly one scene is shown. Every place is composed
+   the same way: open space at the top; Pip, the destination and
+   the story in the middle; the planet's horizon filling the
+   bottom ~40%, its crest at --crest-y.
+   ========================================================= */
+.stage{
+  position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  background: var(--bg);
+}
+.stage img{ display: block; pointer-events: none; }
+.stage-sky{ position: absolute; inset: 0; }
+.stage-sky img{ width: 100%; height: 100%; object-fit: cover; }
+/* Taller and wider than the screen, so a flight can slide them without
+   ever showing an edge. The near layer moves further than the far one:
+   that difference is what reads as travelling through space. */
+.stage-stars{ position: absolute; left: -10vw; right: -10vw; top: -40vh; bottom: -40vh; }
+.stage-stars img{ width: 100%; height: 100%; object-fit: cover; }
+
+/* The camera: everything that belongs to a place. The Dock is the same
+   camera lowered to the launch pad, so it is a move, not a new screen. */
+.stage-camera{
+  position: absolute; inset: 0;
+  --pad-x: calc(50vw + (0.2983 - 0.5) * var(--world-w));
+  --pad-y: calc(var(--world-top) + 0.5243 * var(--world-h));
+  transform-origin: var(--pad-x) var(--pad-y);
+  transition: transform 0.7s var(--ease);
+}
+.stage[data-view="dock"] .stage-camera{
+  transform: translate(calc(34vw - var(--pad-x)), calc(86vh - var(--pad-y))) scale(1.6);
+}
+.stage[data-view="dock"] .stage-stars{ transform: translateY(-5vh); }
+.stage-stars{ transition: transform 0.7s var(--ease); }
+
+/* Two place slots: the one you are in, and the one a flight is bringing
+   in. Only a shown slot is drawn. */
+.place{ position: absolute; inset: 0; visibility: hidden; }
+.place.is-shown{ visibility: visible; }
+.place-sky{ position: absolute; inset: 0; transition: opacity var(--dur-slow) var(--ease); }
+.stage[data-view="dock"] .place-sky, .stage[data-view="mission"] .place-sky{ opacity: 0; }
+.place-ground{
+  position: absolute; left: calc(50% - var(--world-w) / 2); top: var(--world-top);
+  width: var(--world-w); height: var(--world-h);
+}
+.place-art, .place-props{ position: absolute; inset: 0; }
+.horizon-art{ position: absolute; inset: 0; width: 100%; height: 100%; }
+/* A restored world is a brighter one: warm light pooled around what the
+   child fixed. The warmth comes from the thing that was restored, never
+   from nowhere (docs/ART-DIRECTION.md). */
+.horizon-glow{
+  position: absolute; left: var(--gx, 50%); top: 8%; width: 56%; height: 70%;
+  transform: translateX(-50%); border-radius: 50%;
+  background: radial-gradient(closest-side, var(--world-warmth), transparent);
+  opacity: 0; transition: opacity 1.2s var(--ease);
+}
+.place.is-restored .horizon-glow{ opacity: 1; }
+
+/* ---- Planets in the sky ----
+   On Earth they are destinations: tap one to choose where Launch goes. */
+.sky-body{
+  position: absolute; left: var(--sx); top: var(--sy);
+  width: var(--ss); height: var(--ss);
+  margin: calc(var(--ss) / -2) 0 0 calc(var(--ss) / -2);
+  padding: 0; border: none; background: none; border-radius: 50%;
+}
+button.sky-body{ cursor: pointer; }
+html[data-scene="earth"] button.sky-body{ pointer-events: auto; }
+.sky-body .planet-art{ position: absolute; inset: 0; width: 100%; height: 100%; }
+/* Both states are drawn; restoring a world crossfades from one to the
+   other, so relighting it is a change a child sees happen. */
+.sky-body .body-lit{ opacity: 0; transition: opacity 1.2s var(--ease); }
+.sky-body.is-restored .body-lit{ opacity: 1; }
+.sky-body.is-new{ animation: body-arrive 1.4s var(--ease) both; }
+@keyframes body-arrive{ from{ opacity: 0; transform: scale(0.6); } to{ opacity: 1; transform: none; } }
+/* Home, far behind: small, a little soft, as a lens would see it. */
+.sky-body.is-far{ opacity: 0.9; filter: saturate(0.85); }
+/* Where Launch goes wears a slow ring, so the eye runs from the rocket,
+   along the path, to the destination. */
+html[data-scene="earth"] .sky-body.is-picked::before{
+  content: ''; position: absolute; inset: -14%; border-radius: 50%;
+  border: 4px dashed var(--path-line); animation: spin-slow 24s linear infinite;
+}
+/* The beacon's own light is in the relit render; this is only its slow
+   breath, so a restored Moon looks alive from home. */
+.moon-light{
+  /* on the lamp of the beacon in the render (projected by tools/art) */
+  position: absolute; left: 63.3%; top: 29.5%; width: 34%; aspect-ratio: 1; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  /* one soft gradient, no box-shadow: a shadow glows only outside the
+     element and left a dim ring between the two */
+  background: radial-gradient(circle, var(--beacon-glow) 0%, transparent 68%);
+  opacity: 0; transition: opacity 1.2s var(--ease);
+}
+.sky-body.is-restored .moon-light{ opacity: 0.75; animation: beacon-pulse 2.8s ease-in-out infinite; }
+/* Mercury sits closest to the Sun: warm light spills over its sky. */
+.sun-glow{
+  position: absolute; left: -24vh; top: -30vh; width: 90vh; height: 90vh; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--sun-glow), transparent);
+}
+@keyframes spin-slow{ to{ transform: rotate(360deg); } }
+@keyframes beacon-pulse{ 0%, 100%{ transform: translate(-50%, -50%) scale(1); } 50%{ transform: translate(-50%, -50%) scale(1.12); } }
+
+/* It fades in at home, and is gone the instant the rocket lifts off. */
+.flight-path{ position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; opacity: 0; }
+html[data-scene="earth"] .flight-path{ opacity: 1; transition: opacity var(--dur-slow) var(--ease); }
+.flight-path path{
+  fill: none; stroke: var(--path-line); stroke-width: 5; stroke-linecap: round;
+  stroke-dasharray: 2 18; animation: march 1.4s linear infinite;
+}
+@keyframes march{ to{ stroke-dashoffset: -40; } }
+
+/* ---- Markers: the places on a world where a mission happens ----
+   A marker stands on the ground at a point of the horizon picture. The
+   one to play next pulses with the warm yellow: on a planet it is the
+   screen's one primary action. */
+.marker{
+  position: absolute; left: var(--mx); top: var(--my); height: var(--mh); aspect-ratio: var(--ma);
+  transform: translate(calc(var(--mfx) * -1), calc(var(--mb) * -1));
+  padding: 0; border: none; background: none; cursor: pointer;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+html[data-scene="planet"] .marker{ pointer-events: auto; }
+html[data-scene="mission"] .marker{ opacity: 0; }
+.marker-art{ position: absolute; inset: 0; width: 100%; height: 100%; }
+.marker .marker-on{ opacity: 0; transition: opacity 0.8s var(--ease); }
+.marker.is-lit .marker-on{ opacity: 1; }
+/* A mission not yet reachable waits quietly. */
+.marker.is-waiting{ filter: saturate(0.4) brightness(0.72); }
+/* Its ring lies on the ground around its foot and breathes, but never
+   fades out: a child glancing up at any moment sees what to tap. */
+.marker::after{
+  content: ''; position: absolute; left: var(--mfx); top: var(--mb); width: 150%; aspect-ratio: 3.2;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 6px solid var(--glow-action); opacity: 0; pointer-events: none;
+}
+.marker.is-next::after{ opacity: 1; animation: ground-ring var(--dur-pulse) ease-in-out infinite alternate; }
+@keyframes ground-ring{
+  from{ transform: translate(-50%, -50%) scale(0.86); opacity: 1; }
+  to{ transform: translate(-50%, -50%) scale(1.08); opacity: 0.45; }
+}
+/* The lamp's glow is in the lit render; this is its breath. */
+.beacon-lamp{
+  position: absolute; left: 50%; top: 23.9%; width: 80%; aspect-ratio: 1; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, var(--beacon-glow) 0%, transparent 66%);
+  opacity: 0; transition: opacity 0.8s var(--ease);
+}
+.marker.is-lit .beacon-lamp{ opacity: 0.7; animation: beacon-pulse 2.6s ease-in-out infinite; }
+/* Held dark for a beat, so the child sees it light up (showRelight(),
+   celebrate()): the change happens where they are looking. */
+.is-holding [data-held] .body-lit, .is-holding [data-held] .marker-on{ opacity: 0; }
+.is-holding [data-held] .moon-light, .is-holding [data-held] .beacon-lamp{ opacity: 0; animation: none; }
+
+/* ---- The rocket: one actor that travels between places ----
+   It stands at its place's landing spot with the nozzle on the ground.
+   The spot is a point of the horizon picture, so it stays on the ground
+   at any screen size. */
+.stage[data-place="earth"]{ --rx: 0.2983; --ry: 0.5243; }
+.stage[data-place="moon"]{ --rx: 0.745; --ry: 0.44; }
+.stage[data-place="mercury"]{ --rx: 0.765; --ry: 0.45; }
+.stage-rocket{
+  position: absolute;
+  left: calc(50vw + (var(--rx) - 0.5) * var(--world-w));
+  top: calc(var(--world-top) + var(--ry) * var(--world-h));
+  width: calc(var(--rocket-h) * 0.8); height: var(--rocket-h);
+  margin-left: calc(var(--rocket-h) * -0.4); margin-top: calc(var(--rocket-h) * -0.818);
+  padding: 0; border: none; background: none; cursor: pointer;
+  transition: opacity var(--dur-slow) var(--ease);
+}
+html[data-scene="earth"] .stage-rocket{ pointer-events: auto; }
+html[data-scene="mission"] .stage-rocket{ opacity: 0; }
+.stage-rocket:active .rocket{ transform: scale(0.96); }
+/* Where it stands: its contact shadow, down and to the right of the key light. */
+.stage-rocket::before{
+  content: ''; position: absolute; left: 12%; right: -4%; top: 77%; height: 10%; border-radius: 50%;
+  background: radial-gradient(closest-side, var(--contact-shadow), transparent);
+  transition: opacity var(--dur) var(--ease);
+}
+.stage-rocket.is-flying::before{ opacity: 0; }
+.stage-rocket:not(.is-flying) .rocket{ animation: rocket-idle 4.8s steps(40) infinite; transform-origin: 50% 82%; }
+
+/* ---- Rocket: one render, a paint layer, and a flame only while flying ----
+   The paint layer is the paint's colour cut to the paint mask and
+   multiplied over the white-clay parts of the render. `isolation` keeps
+   the multiply inside the rocket, whatever it is flying over. */
+.rocket{ position: relative; display: block; height: 100%; aspect-ratio: 640 / 800; isolation: isolate; }
+.rocket .rocket-art{ position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
+.rocket-paint{
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  background: var(--paint); mix-blend-mode: multiply;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+/* Hung from the nozzle, centred on it (anchors: docs/ASSET-BRIEFS.md). */
+.rocket-flame{
+  position: absolute; left: 32.5%; top: 80.5%; width: 35%; height: auto; z-index: 0;
+  transform-origin: 50% 0; opacity: 0;
+}
+.is-flying .rocket-flame{ opacity: 1; animation: flame 0.16s ease-in-out infinite alternate; }
+@keyframes flame{ from{ transform: scaleY(0.86); opacity: 0.92; } to{ transform: scaleY(1.06); opacity: 1; } }
+/* A hand-animated rocket never sits perfectly still: a tiny sway, held on
+   each frame the way stop-motion is, at about ten frames a second. */
+@keyframes rocket-idle{
+  0%, 100%{ transform: rotate(0deg); }
+  30%{ transform: rotate(-1.4deg); }
+  62%{ transform: rotate(1deg); }
+}
+
+/* Reward stars: three clay stars arc from what the child fixed to the
+   star count. Drawn in their own layer, above everything in the world. */
+.stage-fx{ position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+.fx-star{ position: absolute; left: 0; top: 0; width: 76px; height: 76px; margin: -38px 0 0 -38px; }
+
+/* ---- Scenes: the layer of things to press ---- */
 .scene{
   position: fixed; inset: 0; z-index: 1;
-  display: none; overflow: hidden;
+  display: none; overflow: hidden; pointer-events: none;
   /* A long press on a letter must not select it or raise a callout menu —
      both are things a five-year-old will do on the first day. */
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
@@ -533,7 +768,6 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select{
 .scene.active{ display: block; animation: scene-in var(--dur-scene) var(--ease) both; }
 @keyframes scene-in{ from{ opacity: 0; } to{ opacity: 1; } }
 
-.world{ position: absolute; inset: 0; }
 .scene-ui{
   position: absolute;
   top: calc(var(--space-lg) + var(--inset-top));
@@ -546,9 +780,7 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select{
 }
 .scene-ui button, .scene-ui .bubble{ pointer-events: auto; }
 
-.planet-art, .ground-art, .pip-art, .rocket-art, .beacon-art{
-  display: block; width: 100%; height: 100%; pointer-events: none;
-}
+.planet-art, .pip-art{ display: block; width: 100%; height: 100%; pointer-events: none; }
 
 /* ---- Child buttons ---- */
 .kid-btn{
@@ -638,12 +870,14 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select{
   animation: pip-bob 3.2s steps(32) infinite;
 }
 button.pip{ cursor: pointer; }
+/* A celebration is a hop, posed frame by frame like the bob. */
+.pip.is-cheering{ animation: pip-cheer 0.9s steps(9) 2; }
 .pip-figure{ position: absolute; inset: 0; display: block; }
 /* The antenna light glows while Pip is speaking — the visual half of
    every spoken line, so a child can tell sound is coming from Pip. It
    sits exactly on the glass ball of the render. */
 .pip-light{
-  position: absolute; left: 51.9%; top: 18.1%; width: 6.4%; aspect-ratio: 1;
+  position: absolute; left: 51.5%; top: 18.7%; width: 7.8%; aspect-ratio: 1;
   border-radius: 50%; transform: translate(-50%, -50%);
   background: transparent;
   transition: background var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
@@ -658,6 +892,12 @@ html[data-speaking="true"] .pip-light{
   25%{ transform: translateY(-4px) rotate(-1.6deg); }
   50%{ transform: translateY(-8px) rotate(0deg); }
   75%{ transform: translateY(-4px) rotate(1.6deg); }
+}
+@keyframes pip-cheer{
+  0%, 100%{ transform: translateY(0) rotate(0deg); }
+  30%{ transform: translateY(-26px) rotate(-6deg); }
+  55%{ transform: translateY(-30px) rotate(5deg); }
+  80%{ transform: translateY(-6px) rotate(0deg); }
 }
 @keyframes pip-talk{ from{ opacity: 0.7; } to{ opacity: 1; } }
 
@@ -674,43 +914,20 @@ html[data-speaking="true"] .pip-light{
 
 .guide{ position: absolute; display: flex; align-items: center; gap: var(--space-md); }
 
-/* ---- Rocket: one render, a paint layer, and a flame only while flying ----
-   The paint layer is the paint's colour cut to the paint mask and
-   multiplied over the white-clay parts of the render. `isolation` keeps
-   the multiply inside the rocket, whatever it is flying over. */
-.rocket{ position: relative; display: block; height: 100%; aspect-ratio: 640 / 1088; isolation: isolate; }
-.rocket .rocket-art{ position: relative; z-index: 1; }
-.rocket-paint{
-  position: absolute; inset: 0; z-index: 2; pointer-events: none;
-  background: var(--paint); mix-blend-mode: multiply;
-  -webkit-mask-size: 100% 100%; mask-size: 100% 100%;
-  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-}
-.rocket-flame{
-  position: absolute; left: 34.5%; top: 86%; width: 31%; height: auto; z-index: 0;
-  transform-origin: 50% 0; animation: flame 0.16s ease-in-out infinite alternate;
-}
-@keyframes flame{ from{ transform: scaleY(0.86); opacity: 0.92; } to{ transform: scaleY(1.06); opacity: 1; } }
-/* A hand-animated rocket never sits perfectly still: a tiny sway, held on
-   each frame the way stop-motion is, at about ten frames a second. */
-@keyframes rocket-idle{
-  0%, 100%{ transform: rotate(0deg); }
-  30%{ transform: rotate(-1.4deg); }
-  62%{ transform: rotate(1deg); }
-}
-
-/* ---- Welcome ---- */
-.scene-welcome .scene-ui{
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: var(--space-2xl);
-}
+/* ---- Welcome ----
+   The title is for assistive tech and the Home Screen, not a heading on
+   a child's screen: the world says where you are. */
 .app-title{
-  font-size: var(--fs-section); font-weight: 800; letter-spacing: 0.04em;
-  color: var(--text-dim); text-transform: uppercase;
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.welcome-stage{ display: flex; align-items: center; gap: var(--space-2xl); --pip-size: 38vh; }
+.scene-welcome .scene-ui{
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  padding-top: 6vh; gap: var(--space-2xl);
+}
+.welcome-stage{ display: flex; align-items: center; gap: var(--space-2xl); --pip-size: 34vh; }
 .play-btn{
-  position: relative; width: calc(var(--touch-hero) * 1.45); height: calc(var(--touch-hero) * 1.45);
+  position: relative; width: calc(var(--touch-hero) * 1.4); height: calc(var(--touch-hero) * 1.4);
   border: none; border-radius: 50%; cursor: pointer;
   background: var(--gradient-action); color: var(--action-contrast);
   box-shadow: var(--shadow-action);
@@ -725,67 +942,10 @@ html[data-speaking="true"] .pip-light{
 }
 .play-btn[aria-disabled="true"]::after{ display: none; }
 
-/* ---- Earth ---- */
-/* The Earth render carries its own atmosphere and light; nothing is
-   filtered here, which also keeps the biggest picture cheap to draw. */
-.earth-planet{
-  position: absolute; left: -5vh; bottom: -16vh;
-  width: min(84vh, 62vw); aspect-ratio: 1;
-}
-.earth-rocket{
-  position: absolute; left: 55%; top: -10%; height: 42%;
-  padding: 0; border: none; background: none; cursor: pointer;
-  transform: rotate(16deg); transform-origin: 50% 88%;
-  transition: transform var(--dur-fast) var(--ease-bounce);
-}
-.earth-rocket:active{ transform: rotate(16deg) scale(0.95); }
-/* Where the rocket stands on the land: its contact shadow. */
-.earth-rocket::before{
-  content: ''; position: absolute; left: 14%; right: -6%; top: 83%; height: 11%; border-radius: 50%;
-  background: radial-gradient(closest-side, var(--contact-shadow), transparent);
-}
-.earth-rocket .rocket{ animation: rocket-idle 4.8s steps(40) infinite; transform-origin: 50% 88%; }
-.earth-moon{
-  /* Low and in enough that its destination ring clears the star count in
-     the corner — two things a child might tap must never overlap. */
-  position: absolute; right: calc(12vw + var(--inset-right)); top: calc(17vh + var(--inset-top));
-  width: 19vh; aspect-ratio: 1;
-}
-.earth-moon .planet-art{ position: absolute; inset: 0; }
-/* Relit: the warm render fades in over the cool one. */
-.earth-moon .moon-lit{ opacity: 0; transition: opacity 1.2s var(--ease); }
-.earth-moon.is-restored .moon-lit{ opacity: 1; }
-/* The current destination wears a slow ring, so the eye goes from the
-   rocket, along the path, to where the adventure is going. */
-.earth-moon::before{
-  content: ''; position: absolute; inset: -14%; border-radius: 50%;
-  border: 4px dashed var(--path-line); animation: spin-slow 24s linear infinite;
-}
-/* The beacon's own light is in the relit render; this is only its slow
-   breath, so a restored Moon looks alive from home. */
-.moon-light{
-  /* on the lamp of the beacon in the render (projected by tools/art) */
-  position: absolute; left: 63.3%; top: 29.5%; width: 34%; aspect-ratio: 1; border-radius: 50%;
-  transform: translate(-50%, -50%);
-  /* one soft gradient, no box-shadow: a shadow glows only outside the
-     element and left a dim ring between the two */
-  background: radial-gradient(circle, var(--beacon-glow) 0%, transparent 68%);
-  opacity: 0; transition: opacity 1.2s var(--ease);
-}
-.earth-moon.is-restored .moon-light{
-  opacity: 0.75;
-  animation: beacon-pulse 2.8s ease-in-out infinite;
-}
-@keyframes spin-slow{ to{ transform: rotate(360deg); } }
-@keyframes beacon-pulse{ 0%, 100%{ transform: translate(-50%, -50%) scale(1); } 50%{ transform: translate(-50%, -50%) scale(1.12); } }
-
-.flight-path{ position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.flight-path path{
-  fill: none; stroke: var(--path-line); stroke-width: 5; stroke-linecap: round;
-  stroke-dasharray: 2 18; animation: march 1.4s linear infinite;
-}
-@keyframes march{ to{ stroke-dashoffset: -40; } }
-
+/* ---- Earth: home base ----
+   The planet fills the bottom, the rocket stands on its pad, Pip floats
+   above it, and the destination waits in the open sky. One obvious
+   action: Launch. */
 .gate-btn{
   position: absolute; top: 0; left: 0;
   width: 56px; height: 56px; border: none; border-radius: 50%;
@@ -806,39 +966,21 @@ html[data-speaking="true"] .pip-light{
   position: absolute; top: 6px; right: 6px; width: 14px; height: 14px; border-radius: 50%;
   background: var(--warning); box-shadow: 0 0 0 3px var(--bg);
 }
+.earth-guide{ left: 4vw; top: 7vh; --pip-size: 23vh; }
+.earth-dock{ position: absolute; left: 0; bottom: 0; }
+.earth-launch{ position: absolute; right: 0; bottom: 0; }
 
-.earth-guide{ right: 0; bottom: calc(var(--touch-hero) + var(--space-2xl)); --pip-size: 21vh; }
-.earth-actions{
-  position: absolute; right: 0; bottom: 0;
-  display: flex; align-items: flex-end; gap: var(--space-xl);
-}
+/* ---- Travel: the whole screen skips the flight ---- */
+.scene-travel{ pointer-events: auto; cursor: pointer; }
 
-/* ---- Travel ---- */
-.scene-travel{ cursor: pointer; }
-.t-stars{ position: absolute; top: -10%; left: -20%; width: 140%; height: 120%; object-fit: cover; }
-.t-streak{
-  position: absolute; left: 100%; top: var(--y); width: 24vw; height: 4px; border-radius: 4px;
-  background: linear-gradient(90deg, transparent, var(--streak)); opacity: 0;
-}
-.t-earth{ position: absolute; left: -5vh; bottom: -16vh; width: min(84vh, 62vw); aspect-ratio: 1; }
-.t-moon{ position: absolute; right: 10vw; top: 14vh; width: 44vh; aspect-ratio: 1; }
-.t-rocket{ position: absolute; left: 34vw; top: 30vh; height: 32vh; transform: rotate(60deg); }
-/* The resting state of each flight is its END, so with Reduce Motion on
-   (no animation at all) the scene still shows where the rocket is going. */
-.travel-out .t-earth{ opacity: 0; transform: translate(-30vw, 40vh) scale(0.4); }
-.travel-home .t-moon{ opacity: 0; transform: translate(34vw, -24vh) scale(0.2); }
-.travel-home .t-rocket{ transform: rotate(-120deg); }
+/* ---- A planet: arrive, find the marker, play, see the world change ---- */
+.planet-home{ position: absolute; top: 0; left: 0; }
+.planet-guide{ left: calc(var(--touch-kid) + var(--space-2xl)); top: 3vh; --pip-size: 22vh; }
+.planet-go-home{ position: absolute; right: 0; bottom: 0; }
+.scene-planet:not(.is-done) .planet-go-home{ display: none; }
+.scene-planet.is-done .planet-home{ display: none; }
 
-/* ---- Mission ---- */
-/* The letters stand on the Moon: the ground is tall enough that the tiles'
-   feet are on its surface, not floating over a strip. */
-.mission-ground{ position: absolute; left: 0; right: 0; bottom: 0; height: 48vh; }
-.mission-ground .ground-art{ object-fit: cover; object-position: top center; }
-/* Home, far behind: small, and a little soft, as a lens would see it. */
-.mission-earth{
-  position: absolute; right: 6vw; top: calc(14vh + var(--inset-top)); width: 10vh; aspect-ratio: 1;
-  filter: blur(0.6px) saturate(0.85); opacity: 0.92;
-}
+/* ---- Mission: one task at a time, standing on the world ---- */
 .mission-top{
   position: absolute; top: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-lg);
@@ -851,12 +993,11 @@ html[data-speaking="true"] .pip-light{
 }
 .progress-star{ display: flex; color: var(--text-faint); opacity: 0.55; }
 .progress-star.is-done{ color: var(--star); opacity: 1; animation: pop 0.45s var(--ease-bounce) both; }
-.mission-body{
-  position: absolute; top: calc(var(--touch-kid) + var(--space-xl)); left: 0; right: 0; bottom: 0;
-  display: grid; grid-template-columns: minmax(200px, 26vw) 1fr; gap: var(--space-xl); align-items: center;
+.mission-guide{
+  position: absolute; left: 0; top: calc(var(--touch-kid) + var(--space-xl)); width: 24vw;
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); --pip-size: 21vh;
 }
-.mission-guide{ display: flex; flex-direction: column; align-items: center; gap: var(--space-lg); --pip-size: 23vh; }
-.mission-guide .bubble{ max-width: 26vw; }
+.mission-guide .bubble{ max-width: 24vw; }
 .repeat-btn{
   width: 104px; height: 104px; border: none; border-radius: 50%; cursor: pointer;
   background: var(--gradient-accent); color: var(--accent-contrast);
@@ -866,7 +1007,21 @@ html[data-speaking="true"] .pip-light{
 }
 .repeat-btn:active{ transform: translateY(3px) scale(0.95); }
 
-.choices{ display: flex; align-items: center; justify-content: center; gap: clamp(20px, 3.2vw, 48px); }
+/* The game stands on the ground: its bottom edge is just below the
+   horizon's crest, so what a child taps sits on the world, not over a
+   strip. Only the part of the game in play is shown. */
+.game{
+  position: absolute; left: calc(24vw + var(--space-xl)); right: 0;
+  top: calc(var(--touch-kid) + var(--space-lg));
+  bottom: calc(100vh - var(--crest-y) - 9vh - var(--space-lg) - var(--inset-bottom));
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--space-xl);
+}
+.game-signal, .beats{ display: none; }
+.game[data-game="rhyme-pick"] .game-signal, .game[data-game="syllable-tap"] .game-signal{ display: flex; }
+.game[data-game="syllable-tap"] .choices{ display: none; }
+.game[data-game="syllable-tap"] .beats{ display: flex; }
+
+.choices{ display: flex; align-items: flex-end; justify-content: center; gap: clamp(20px, 3.2vw, 48px); }
 .choice{
   position: relative;
   width: var(--tile-size); height: var(--tile-size);
@@ -879,6 +1034,29 @@ html[data-speaking="true"] .pip-light{
 }
 .choice:active{ transform: translateY(4px) scale(0.97); }
 .choice-glyph{ display: block; transform: translateY(-3%); }
+/* A letter stone: a clay stone standing on the world, with the letter on
+   a clean face plate — never on the clay. The stone is the world; the
+   plate is the learning, and it stays as plain as a tile. */
+.choice-stone{
+  width: var(--tile-size); height: calc(var(--tile-size) * 1.1);
+  background: none; box-shadow: none; border-radius: 0;
+}
+.choice-stone .stone-art{ position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* The plate sits just inside the stone's flat front face (tools/art
+   letterstone.js: left 13%, top 11.6%, 74% × 70% of the picture). */
+.choice-face{
+  position: absolute; left: 16%; top: 14.5%; width: 68%; height: 64%;
+  border-radius: calc(var(--tile-size) * 0.06);
+  background: var(--tile-surface); color: var(--tile-ink);
+  box-shadow: inset -2px -6px 0 var(--brand-lavender-edge), inset 2px 3px 0 rgba(255,255,255,0.9);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-glyph-stone); line-height: 1;
+}
+/* A picture card: the picture on a clean cream card. */
+/* Padding in the card's own size: a percentage would be of the row. */
+.choice-picture{ background: var(--bubble); padding: calc(var(--tile-size) * 0.1); }
+.choice-picture .picture-art{ width: 100%; height: 100%; display: block; pointer-events: none; }
+.choice-picture.is-naming{ box-shadow: var(--shadow-tile), 0 0 0 6px var(--accent), 0 0 30px var(--glow-accent); }
 /* `backwards`, not `both`: an entrance that kept its last frame would hold
    opacity and transform forever and silently override every feedback state
    below — a wrong tile that never wiggles or steps aside. */
@@ -892,6 +1070,8 @@ html[data-speaking="true"] .pip-light{
   animation: pop 0.5s var(--ease-bounce) both;
   box-shadow: var(--shadow-tile), 0 0 0 8px var(--success), 0 0 44px 14px var(--glow-success);
 }
+.choices .choice-stone.is-correct{ box-shadow: none; }
+.choice-stone.is-correct .choice-face{ box-shadow: 0 0 0 8px var(--success), 0 0 44px 14px var(--glow-success); }
 .choice-badge{
   position: absolute; top: -14px; right: -14px; width: 52px; height: 52px; border-radius: 50%;
   display: none; align-items: center; justify-content: center;
@@ -914,56 +1094,48 @@ html[data-speaking="true"] .pip-light{
 @keyframes pop{ 0%{ transform: scale(1); } 45%{ transform: scale(1.12); } 100%{ transform: scale(1.04); } }
 @keyframes wiggle{ 0%, 100%{ transform: translateX(0); } 20%{ transform: translateX(-12px) rotate(-3deg); } 40%{ transform: translateX(10px) rotate(2deg); } 60%{ transform: translateX(-6px); } 80%{ transform: translateX(4px); } }
 @keyframes ripple{ from{ transform: scale(0.97); opacity: 1; } to{ transform: scale(1.07); opacity: 0.5; } }
+@keyframes stone-ripple{ from{ transform: translate(-50%, -50%) scale(0.97); opacity: 1; } to{ transform: translate(-50%, -50%) scale(1.07); opacity: 0.5; } }
 
-/* ---- Celebration ---- */
-.celebrate-ground{ position: absolute; left: 0; right: 0; bottom: 0; height: 34vh; }
-.celebrate-ground .ground-art{ object-fit: cover; object-position: top center; }
-.celebrate-beacon{
-  position: absolute; left: 50%; bottom: 5vh; height: 64vh; aspect-ratio: 512 / 896;
-  transform: translateX(-50%);
+/* The signal: the word being worked on, as a picture in a round window —
+   what the radar is hearing, or the word to tap the beats of. */
+.game-signal{
+  --signal: clamp(120px, 19vh, 180px);
+  position: relative; width: var(--signal); height: var(--signal); border-radius: 50%;
+  background: var(--bubble); box-shadow: var(--shadow-tile), 0 0 0 6px var(--accent-soft), 0 0 40px var(--glow-accent);
+  align-items: center; justify-content: center; padding: calc(var(--signal) * 0.14);
 }
-.celebrate-beacon .beacon-art{ position: absolute; inset: 0; }
-/* The lit render fades in over the dark one: the moment the mission pays off. */
-.celebrate-beacon .beacon-on{ opacity: 0; transition: opacity 0.7s var(--ease); }
-.celebrate-beacon.is-lit .beacon-on{ opacity: 1; }
-/* The lamp's glow is in the render; this is its breath. */
-.beacon-lamp{
-  position: absolute; left: 50%; top: 24%; width: 80%; aspect-ratio: 1; border-radius: 50%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, var(--beacon-glow) 0%, transparent 66%);
-  opacity: 0; transition: opacity 0.7s var(--ease);
-}
-.celebrate-beacon.is-lit .beacon-lamp{
-  opacity: 0.7;
-  animation: beacon-pulse 2.6s ease-in-out infinite;
-}
-.celebrate-center{
-  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: var(--space-md);
-}
-.kid-title{
-  font-size: var(--fs-kid-title); font-weight: 900; color: var(--text); text-align: center;
-  text-shadow: 0 4px 0 var(--text-shadow); white-space: nowrap;
-}
-.reward-stars{ display: flex; gap: var(--space-md); min-height: 76px; }
-.reward-star{ width: 76px; height: 76px; opacity: 0.2; transform: scale(0.7); transition: opacity var(--dur) var(--ease); }
-.reward-star.is-earned{ opacity: 1; transform: none; animation: star-in 0.55s var(--ease-bounce) both; }
-.reward-star-art{ width: 100%; height: 100%; display: block; }
-@keyframes star-in{ from{ transform: scale(0.2) rotate(-40deg); opacity: 0; } to{ transform: none; opacity: 1; } }
-.celebrate-guide{ left: 0; bottom: 0; --pip-size: 24vh; }
-.celebrate-home{ position: absolute; right: 0; bottom: 0; }
-.celebrate-home[aria-disabled="true"]{ filter: none; }
+.game-signal .picture-art{ width: 100%; height: 100%; display: block; }
+.game-signal.is-new{ animation: tile-in 0.42s var(--ease-bounce) backwards; }
 
-/* ---- Rocket Dock ---- */
-.dock-pad{ position: absolute; left: 16vw; bottom: 5vh; width: 38vw; aspect-ratio: 1200 / 480; }
-.pad-art{ display: block; width: 100%; height: 100%; }
-.dock-rocket{ position: absolute; left: 35vw; bottom: 12vh; height: 64vh; transform: translateX(-50%); }
-/* The rocket's contact shadow on the pad. */
-.dock-rocket::before{
-  content: ''; position: absolute; left: 18%; right: 4%; top: 84%; height: 9%; border-radius: 50%;
-  background: radial-gradient(closest-side, var(--contact-shadow), transparent);
+/* ---- Syllable meteors: tap the stone once for each beat ---- */
+.beats{ flex-direction: column; align-items: center; gap: var(--space-lg); }
+.meteor-row{ display: flex; align-items: center; justify-content: center; gap: var(--space-md); min-height: 84px; }
+.meteor-slot{ position: relative; width: clamp(64px, 11vh, 96px); aspect-ratio: 1; }
+.meteor-art{ position: absolute; inset: 0; width: 100%; height: 100%; }
+.meteor-lit{ opacity: 0; }
+.meteor-slot.is-lit .meteor-dim{ opacity: 0; }
+/* A tapped beat streaks in and lands: quick, and not a wait. */
+.meteor-slot.is-lit .meteor-lit{ opacity: 1; animation: meteor-in 0.3s var(--ease) both; }
+.meteor-row.is-correct .meteor-slot.is-lit{ filter: drop-shadow(0 0 14px var(--glow-success)); }
+@keyframes meteor-in{ from{ transform: translate(-70%, -90%) scale(0.35) rotate(-25deg); opacity: 0; } to{ transform: none; opacity: 1; } }
+.beat-stone{
+  position: relative; width: clamp(170px, 30vh, 260px); aspect-ratio: 1.3;
+  padding: 0; border: none; background: none; cursor: pointer;
+  transition: transform 0.08s var(--ease);
 }
-.dock-rocket.is-new .rocket{ animation: pop 0.6s var(--ease-bounce) both; }
+.beat-stone .stone-art{ position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.beat-stone:active, .beat-stone.is-struck{ transform: translateY(5px) scale(0.95, 0.9); }
+.beat-stone[aria-disabled="true"]{ cursor: default; }
+/* "Tap here" lies on the stone's top face (tools/art beatstone.js: its
+   centre is at 51%, 33% of the picture). */
+.beat-stone.is-hint::after{
+  content: ''; position: absolute; left: 51%; top: 33%; width: 78%; aspect-ratio: 2.1;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 6px solid var(--accent); box-shadow: 0 0 26px var(--glow-accent);
+  animation: stone-ripple 0.9s var(--ease) infinite alternate; pointer-events: none;
+}
+
+/* ---- Rocket Dock: the camera lowers to the pad, the rocket is the hero ---- */
 .dock-back{ position: absolute; top: 0; left: 0; }
 .dock-panel{
   position: absolute; right: 0; top: calc(var(--touch-kid) + var(--space-xl)); bottom: 0;
@@ -990,8 +1162,9 @@ html[data-speaking="true"] .pip-light{
   font-size: var(--fs-kid-label); font-weight: 900; line-height: 1;
 }
 .swatch-tag-star{ width: 26px; height: 26px; display: block; }
-.dock-guide{ left: 0; bottom: 0; --pip-size: 19vh; }
+.dock-guide{ left: calc(var(--touch-kid) + var(--space-2xl)); top: 0; --pip-size: 16vh; }
 .star-inline{ width: 40px; height: 40px; display: block; }
+.stage-rocket.is-new .rocket{ animation: pop 0.6s var(--ease-bounce) both; }
 
 /* ---- Child sheet: "Go back to Earth?" ---- */
 .sheet .kid-sheet-title{
@@ -1187,7 +1360,33 @@ body.scroll-locked{
 
 <div id="app" style="display:none">
 
-  <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+  <!-- THE WORLD STAGE — one continuous world behind every child scene.
+       Space, two star layers, and two place slots (where you are, and
+       where a flight is taking you). A flight moves this stage; the
+       scenes below are only the things to press. -->
+  <div class="stage" id="stage" data-place="earth" data-view="home">
+    <div class="stage-sky" id="stageSky" aria-hidden="true"></div>
+    <div class="stage-stars" id="starsFar" aria-hidden="true"></div>
+    <div class="stage-stars" id="starsNear" aria-hidden="true"></div>
+    <div class="stage-camera" id="stageCamera">
+      <div class="place is-shown" id="placeA" data-slot="A">
+        <div class="place-sky" id="placeASky"></div>
+        <div class="place-ground" id="placeAGround">
+          <div class="place-art" id="placeAArt"></div>
+          <div class="place-props" id="placeAProps"></div>
+        </div>
+      </div>
+      <div class="place" id="placeB" data-slot="B">
+        <div class="place-sky" id="placeBSky"></div>
+        <div class="place-ground" id="placeBGround">
+          <div class="place-art" id="placeBArt"></div>
+          <div class="place-props" id="placeBProps"></div>
+        </div>
+      </div>
+      <svg class="flight-path" id="flightPath" aria-hidden="true" focusable="false"></svg>
+      <button class="stage-rocket" id="stageRocket" onclick="launch()" aria-label="Your rocket. Tap to fly."></button>
+    </div>
+  </div>
 
   <!-- WELCOME — first launch only. Its one button is also the tap that
        lets the iPad play sound at all. -->
@@ -1204,92 +1403,76 @@ body.scroll-locked{
 
   <!-- EARTH — home base. One overwhelmingly obvious action: Launch. -->
   <main class="scene scene-earth" id="scene-earth" aria-label="Earth, your home base">
-    <div class="world">
-      <svg class="flight-path" id="earthPath" aria-hidden="true" focusable="false"></svg>
-      <div class="earth-planet" id="earthPlanet"></div>
-      <div class="earth-moon" id="earthMoon" aria-hidden="true"></div>
-    </div>
     <div class="scene-ui">
       <button class="gate-btn" id="gateBtn" aria-label="Grown-ups: press and hold"></button>
       <button class="star-count" id="earthStars" onclick="sayStarCount()" aria-label="Your stars"></button>
       <div class="guide earth-guide">
-        <div class="caption bubble" id="caption-earth" aria-live="polite"></div>
         <button class="pip" id="earthPip" onclick="tapPip()" aria-label="Pip, your guide"></button>
+        <div class="caption bubble" id="caption-earth" aria-live="polite"></div>
       </div>
-      <div class="earth-actions">
-        <button class="kid-icon-btn" id="dockBtn" onclick="openDock()" aria-label="Rocket Dock"></button>
-        <button class="kid-btn launch-btn" id="launchBtn" onclick="launch()" aria-label="Launch to the Moon"></button>
-      </div>
+      <button class="kid-icon-btn earth-dock" id="dockBtn" onclick="openDock()" aria-label="Rocket Dock"></button>
+      <button class="kid-btn launch-btn earth-launch" id="launchBtn" onclick="launch()" aria-label="Launch"></button>
     </div>
   </main>
 
-  <!-- TRAVEL — fast by default, and a tap skips it. -->
-  <main class="scene scene-travel" id="scene-travel" aria-label="Flying through space" onclick="skipTravel()">
-    <div class="world" id="travelWorld"></div>
+  <!-- TRAVEL — the stage does the flying; a tap anywhere skips it. -->
+  <main class="scene scene-travel" id="scene-travel" aria-label="Flying through space" onclick="skipTravel()"></main>
+
+  <!-- A PLANET — arrive, find the marker, play, and watch the world change. -->
+  <main class="scene scene-planet" id="scene-planet" aria-label="A planet">
+    <div class="scene-ui">
+      <button class="kid-icon-btn planet-home" id="planetHomeBtn" onclick="flyHome()" aria-label="Fly back to Earth"></button>
+      <button class="star-count" id="planetStars" onclick="sayStarCount()" aria-label="Your stars"></button>
+      <div class="guide planet-guide">
+        <button class="pip" id="planetPip" onclick="tapPip()" aria-label="Pip, your guide"></button>
+        <div class="caption bubble" id="caption-planet" aria-live="polite"></div>
+      </div>
+      <button class="kid-btn launch-btn planet-go-home" id="planetGoHomeBtn" onclick="flyHome()" aria-label="Fly back to Earth"></button>
+    </div>
   </main>
 
-  <!-- MISSION — one task at a time: hear a letter, find it. -->
-  <main class="scene scene-mission" id="scene-mission" aria-label="Moon mission">
-    <div class="world">
-      <div class="mission-earth" id="missionEarth" aria-hidden="true"></div>
-      <div class="mission-ground" id="missionGround" aria-hidden="true"></div>
-    </div>
+  <!-- MISSION — one task at a time, standing on the world. -->
+  <main class="scene scene-mission" id="scene-mission" aria-label="Mission">
     <div class="scene-ui">
       <div class="mission-top">
         <button class="kid-icon-btn" id="missionHomeBtn" onclick="askGoHome()" aria-label="Go back to Earth"></button>
         <div class="progress-stars" id="missionProgress" role="img" aria-label="Mission progress"></div>
         <span class="mission-top-spacer" aria-hidden="true"></span>
       </div>
-      <div class="mission-body">
-        <div class="mission-guide">
-          <div class="pip" id="missionPip"></div>
-          <div class="caption bubble" id="caption-mission" aria-live="polite"></div>
-          <button class="repeat-btn" id="repeatBtn" onclick="repeatPrompt()" aria-label="Hear it again"></button>
+      <div class="mission-guide">
+        <div class="pip" id="missionPip"></div>
+        <div class="caption bubble" id="caption-mission" aria-live="polite"></div>
+        <button class="repeat-btn" id="repeatBtn" onclick="repeatPrompt()" aria-label="Hear it again"></button>
+      </div>
+      <div class="game" id="missionGame" data-game="find-letter">
+        <div class="game-signal" id="gameSignal" aria-hidden="true"></div>
+        <div class="choices" id="missionChoices" role="group" aria-label="Choices"></div>
+        <div class="beats" id="beatGame">
+          <div class="meteor-row" id="meteorRow" role="img" aria-label="Beats tapped"></div>
+          <button class="beat-stone" id="beatStone" onclick="tapBeat()" aria-label="Tap the stone for each beat"></button>
         </div>
-        <div class="choices" id="missionChoices" role="group" aria-label="Letters to choose from"></div>
       </div>
     </div>
   </main>
 
-  <!-- CELEBRATION — the beacon lights, stars arrive, one way forward. -->
-  <main class="scene scene-celebrate" id="scene-celebrate" aria-label="Mission complete">
-    <div class="world">
-      <div class="celebrate-ground" id="celebrateGround" aria-hidden="true"></div>
-      <div class="celebrate-beacon" id="celebrateBeacon" aria-hidden="true"></div>
-    </div>
-    <div class="scene-ui">
-      <button class="star-count" id="celebrateStars" onclick="sayStarCount()" aria-label="Your stars"></button>
-      <div class="celebrate-center">
-        <h2 class="kid-title" id="celebrateTitle">You did it!</h2>
-        <div class="reward-stars" id="rewardStars" role="img" aria-label="Stars earned"></div>
-      </div>
-      <div class="guide celebrate-guide">
-        <div class="pip" id="celebratePip"></div>
-        <div class="caption bubble" id="caption-celebrate" aria-live="polite"></div>
-      </div>
-      <button class="kid-btn launch-btn celebrate-home" id="celebrateHomeBtn" onclick="flyHome()" aria-label="Fly back to Earth"></button>
-    </div>
-  </main>
-
-  <!-- ROCKET DOCK — tap a paint, see it at once, then choose it. -->
+  <!-- ROCKET DOCK — the camera lowers to the pad. Tap a paint, see it at
+       once, then choose it. -->
   <main class="scene scene-dock" id="scene-dock" aria-label="Rocket Dock">
-    <div class="world">
-      <div class="dock-pad" id="dockPad" aria-hidden="true"></div>
-      <div class="dock-rocket" id="dockRocket" aria-hidden="true"></div>
-    </div>
     <div class="scene-ui">
       <button class="kid-icon-btn dock-back" id="dockBackBtn" onclick="leaveDock()" aria-label="Back to Earth"></button>
       <button class="star-count" id="dockStars" onclick="sayStarCount()" aria-label="Your stars"></button>
-      <div class="dock-panel">
-        <div class="swatches" id="dockSwatches" role="radiogroup" aria-label="Rocket paint"></div>
-        <button class="kid-btn launch-btn dock-action" id="dockAction" onclick="dockAction()" aria-label="Use this paint"></button>
-      </div>
       <div class="guide dock-guide">
         <div class="pip" id="dockPip"></div>
         <div class="caption bubble" id="caption-dock" aria-live="polite"></div>
       </div>
+      <div class="dock-panel">
+        <div class="swatches" id="dockSwatches" role="radiogroup" aria-label="Rocket paint"></div>
+        <button class="kid-btn launch-btn dock-action" id="dockAction" onclick="dockAction()" aria-label="Use this paint"></button>
+      </div>
     </div>
   </main>
+
+  <div class="stage-fx" id="stageFx" aria-hidden="true"></div>
 
 </div>
 
@@ -1327,7 +1510,7 @@ body.scroll-locked{
       <div class="section-label">Progress</div>
       <div class="panel" id="gProgress"></div>
 
-      <div class="section-label">Letters practiced</div>
+      <div class="section-label">Practice</div>
       <div class="panel" id="gLetters"></div>
 
       <div class="section-label">Sound</div>
@@ -1510,6 +1693,30 @@ function validateAppId(id){
    history starts at its own first flight.
    ========================================================= */
 const APP_UPDATES = [
+  {
+    id: 'v0-3-0',
+    version: '0.3.0',
+    title: 'A world to explore',
+    date: '2026-09-26',
+    summary: 'The planets are now places you fly between, and Mercury opens after the Moon, ' +
+             'with two new games: Rhyme Radar and Syllable Meteors.',
+    newFeatures: [
+      'Mercury: a new place to visit once the Moon is shining, with its own story',
+      'Rhyme Radar: hear a word and three pictures, and find the one that rhymes',
+      'Syllable Meteors: tap the big stone once for each beat in a word',
+      'Tap a planet in the sky to choose where Launch goes'
+    ],
+    improvements: [
+      'Earth, the Moon and Mercury are places: a flight moves through one world, the planet you leave falling away and the next rising into view',
+      'Missions start from the world itself: tap the beacon, the radar dish or the meteor rocks',
+      'When a mission is done, the world changes in front of you, and your stars fly up to your count',
+      'The letters stand on Moon stones, still on clean, clear plates',
+      'The Rocket Dock is the launch pad itself, with your rocket up close',
+      'Cleaner clay and softer light, and a simpler, friendlier Pip and rocket',
+      'The grown-ups area shows progress place by place, and practice skill by skill'
+    ],
+    fixes: []
+  },
   {
     id: 'v0-2-0',
     version: '0.2.0',
@@ -2197,21 +2404,51 @@ function renderedAsset(id, path, dimensions, purpose){
 }
 
 const ASSET_REGISTRY = [
-  renderedAsset('bg.space',          'assets/backgrounds/space.webp',       '2400×1600', 'Deep space behind every child scene'),
-  renderedAsset('bg.moonGround',     'assets/backgrounds/moon-ground.webp', '2400×800',  'Moon surface under the mission and the celebration'),
-  renderedAsset('planet.earth',      'assets/planets/earth.webp',           '1400×1400', 'Home base: the Earth hero and the start of every flight'),
-  renderedAsset('planet.moon',       'assets/planets/moon.webp',            '800×800',   'The first destination, waiting: cool, its beacon dark'),
-  renderedAsset('planet.moonLit',    'assets/planets/moon-lit.webp',        '800×800',   'The Moon once restored: its beacon lit, warm light in the craters'),
-  renderedAsset('prop.beacon',       'assets/props/beacon.webp',            '512×896',   'The Moon\'s beacon before its mission is complete'),
-  renderedAsset('prop.beaconLit',    'assets/props/beacon-lit.webp',        '512×896',   'The Moon\'s beacon, lit by a finished mission'),
-  renderedAsset('prop.star',         'assets/props/star.webp',              '256×256',   'The star a child earns and spends'),
-  renderedAsset('prop.pad',          'assets/props/pad.webp',               '1200×480',  'The Rocket Dock\'s launch pad'),
-  renderedAsset('rocket.body',       'assets/rocket/rocket.webp',           '640×1088',  'The rocket, with its painted parts in white clay'),
-  renderedAsset('rocket.paintMask',  'assets/rocket/rocket-paint.webp',     '640×1088',  'Where paint goes on the rocket: every paint colour is multiplied through it'),
-  renderedAsset('rocket.flame',      'assets/rocket/flame.webp',            '256×384',   'Engine flame while flying'),
-  renderedAsset('character.pip',     'assets/characters/pip.webp',          '720×660',   'Pip, the guide — an original satellite-buddy design'),
-  renderedAsset('icon.192',          'icon-192.png',                        '192×192',   'Home-screen icon'),
-  renderedAsset('icon.512',          'icon-512.png',                        '512×512',   'Install and splash icon')
+  /* the sky, in layers a flight moves through */
+  renderedAsset('bg.space',           'assets/backgrounds/space.webp',      '1600×1100', 'Deep space behind every place'),
+  renderedAsset('bg.starsFar',        'assets/backgrounds/stars-far.webp',  '2400×2200', 'The far star field: it moves slowly in a flight'),
+  renderedAsset('bg.starsNear',       'assets/backgrounds/stars-near.webp', '2400×2200', 'A few near stars: they move faster in a flight, which reads as speed'),
+  /* the worlds you stand on */
+  renderedAsset('horizon.earth',      'assets/horizons/earth.webp',         '2400×780',  'Home: the curve of Earth, with the launch pad the rocket stands on'),
+  renderedAsset('horizon.moon',       'assets/horizons/moon.webp',          '2400×780',  'The Moon underfoot, where its mission happens'),
+  renderedAsset('horizon.mercury',    'assets/horizons/mercury.webp',       '2400×780',  'Mercury underfoot: warm stone and soft dimples'),
+  /* the worlds seen from afar */
+  renderedAsset('planet.earth',       'assets/planets/earth.webp',          '600×600',   'Home, far behind, in every destination\'s sky'),
+  renderedAsset('planet.moon',        'assets/planets/moon.webp',           '640×640',   'The Moon in the sky, waiting, its beacon dark; also the picture for "moon"'),
+  renderedAsset('planet.moonLit',     'assets/planets/moon-lit.webp',       '640×640',   'The Moon once restored: its beacon lit, warm light in the craters'),
+  renderedAsset('planet.mercury',     'assets/planets/mercury.webp',        '560×560',   'Mercury in the sky, waiting'),
+  renderedAsset('planet.mercuryLit',  'assets/planets/mercury-lit.webp',    '560×560',   'Mercury once restored: warm light in its dimples'),
+  /* what stands on the worlds */
+  renderedAsset('prop.beacon',        'assets/props/beacon.webp',           '512×896',   'The Moon\'s beacon before its mission is complete: the Moon\'s marker'),
+  renderedAsset('prop.beaconLit',     'assets/props/beacon-lit.webp',       '512×896',   'The Moon\'s beacon, lit by a finished mission'),
+  renderedAsset('prop.radar',         'assets/props/radar.webp',            '480×480',   'Mercury\'s radar dish, its signal fuzzy: the Rhyme Radar marker'),
+  renderedAsset('prop.radarOn',       'assets/props/radar-on.webp',         '480×480',   'The radar dish fixed, its tip glowing'),
+  renderedAsset('prop.meteorField',   'assets/props/meteor-field.webp',     '480×360',   'Mercury\'s meteor rocks, cold: the Syllable Meteors marker'),
+  renderedAsset('prop.meteorFieldOn', 'assets/props/meteor-field-on.webp',  '480×360',   'The meteor rocks glowing warm'),
+  renderedAsset('prop.letterStone',   'assets/props/letter-stone.webp',     '400×440',   'A Moon stone carrying a letter plate, in Letter Explorer'),
+  renderedAsset('prop.beatStone',     'assets/props/beat-stone.webp',       '512×400',   'The big stone a child taps once for each beat'),
+  renderedAsset('prop.meteor',        'assets/props/meteor.webp',           '192×192',   'A beat still to tap'),
+  renderedAsset('prop.meteorLit',     'assets/props/meteor-lit.webp',       '192×192',   'A beat tapped: a glowing meteor'),
+  renderedAsset('prop.star',          'assets/props/star.webp',             '256×256',   'The star a child earns and spends'),
+  /* pictures for words: rhymes and beats */
+  renderedAsset('picture.apple',      'assets/pictures/apple.webp',         '384×384',   'A picture for the word "apple"'),
+  renderedAsset('picture.banana',     'assets/pictures/banana.webp',        '384×384',   'A picture for the word "banana"'),
+  renderedAsset('picture.bee',        'assets/pictures/bee.webp',           '384×384',   'A picture for the word "bee"'),
+  renderedAsset('picture.cake',       'assets/pictures/cake.webp',          '384×384',   'A picture for the word "cake"'),
+  renderedAsset('picture.car',        'assets/pictures/car.webp',           '384×384',   'A picture for the word "car"'),
+  renderedAsset('picture.rock',       'assets/pictures/rock.webp',          '384×384',   'A picture for the word "rock"'),
+  renderedAsset('picture.snake',      'assets/pictures/snake.webp',         '384×384',   'A picture for the word "snake"'),
+  renderedAsset('picture.sock',       'assets/pictures/sock.webp',          '384×384',   'A picture for the word "sock"'),
+  renderedAsset('picture.spoon',      'assets/pictures/spoon.webp',         '384×384',   'A picture for the word "spoon"'),
+  renderedAsset('picture.tomato',     'assets/pictures/tomato.webp',        '384×384',   'A picture for the word "tomato"'),
+  renderedAsset('picture.tree',       'assets/pictures/tree.webp',          '384×384',   'A picture for the word "tree"'),
+  /* the rocket and the guide */
+  renderedAsset('rocket.body',        'assets/rocket/rocket.webp',          '640×800',   'The rocket, with its painted parts in white clay; also the picture for "rocket"'),
+  renderedAsset('rocket.paintMask',   'assets/rocket/rocket-paint.webp',    '640×800',   'Where paint goes on the rocket: every paint colour is multiplied through it'),
+  renderedAsset('rocket.flame',       'assets/rocket/flame.webp',           '256×384',   'Engine flame while flying'),
+  renderedAsset('character.pip',      'assets/characters/pip.webp',         '720×660',   'Pip, the guide — an original satellite-buddy design'),
+  renderedAsset('icon.192',           'icon-192.png',                       '192×192',   'Home-screen icon'),
+  renderedAsset('icon.512',           'icon-512.png',                       '512×512',   'Install and splash icon')
 ];
 
 function assetEntry(id){
@@ -2240,14 +2477,15 @@ function artImg(id, cls){
    published curriculum.
    --------------------------------------------------------- */
 
-/* The seven areas the product will teach. Only one is built; the rest
-   are named so a mission can never be filed under a skill nobody
-   planned, and so the grown-ups area never lists one that is not real. */
+/* The seven areas the product will teach. Three are built; the rest are
+   named so a mission can never be filed under a skill nobody planned,
+   and so the grown-ups area never lists one that is not real.
+   firstTry: what "first try" means for the skill, in a grown-up's words. */
 const SKILLS = {
-  'letter-recognition': { label: 'Letter recognition', status: 'active' },
-  'rhyming':            { label: 'Rhyming',            status: 'planned' },
+  'letter-recognition': { label: 'Letter recognition', status: 'active', firstTry: 'found on the first try' },
+  'rhyming':            { label: 'Rhyming',            status: 'active', firstTry: 'rhyme found on the first try' },
   'beginning-sounds':   { label: 'Beginning sounds',   status: 'planned' },
-  'syllables':          { label: 'Counting syllables', status: 'planned' },
+  'syllables':          { label: 'Counting syllables', status: 'active', firstTry: 'beats counted on the first try' },
   'cvc':                { label: 'CVC words',          status: 'planned' },
   'sight-words':        { label: 'Sight words',        status: 'planned' },
   'handwriting':        { label: 'Handwriting',        status: 'planned' }
@@ -2296,50 +2534,167 @@ const LETTERS = {
   Z: { speak: 'zee',        family: 'diagonal', lookalikes: ['N', 'S'] }
 };
 
+/* Words a child hears and sees as a picture: rhyming and beats.
+   picture  the ASSET_REGISTRY id of its picture
+   rime     the part that rhymes — the vowel and what follows it, as it
+            SOUNDS. Two words rhyme exactly when their rimes match.
+   onset    the word's first sound, as a plain label. A wrong choice that
+            starts like the target (cake / car) is the classic mix-up of
+            "starts the same" with "rhymes", so harder rounds include one.
+   beats    the word in spoken beats (syllables); beats.length is the
+            count. Each beat is spelled so the device voice says it
+            clearly on its own — to be checked on the target iPad voice.
+   Development content: every word, rhyme and count is listed for review
+   in docs/CONTENT-REVIEW.md. None is claimed to come from a curriculum. */
+const WORDS = {
+  cake:   { speak: 'cake',   picture: 'picture.cake',   rime: 'ake',   onset: 'k', beats: ['cake'] },
+  snake:  { speak: 'snake',  picture: 'picture.snake',  rime: 'ake',   onset: 's', beats: ['snake'] },
+  bee:    { speak: 'bee',    picture: 'picture.bee',    rime: 'ee',    onset: 'b', beats: ['bee'] },
+  tree:   { speak: 'tree',   picture: 'picture.tree',   rime: 'ee',    onset: 't', beats: ['tree'] },
+  rock:   { speak: 'rock',   picture: 'picture.rock',   rime: 'ock',   onset: 'r', beats: ['rock'] },
+  sock:   { speak: 'sock',   picture: 'picture.sock',   rime: 'ock',   onset: 's', beats: ['sock'] },
+  moon:   { speak: 'moon',   picture: 'planet.moon',    rime: 'oon',   onset: 'm', beats: ['moon'] },
+  spoon:  { speak: 'spoon',  picture: 'picture.spoon',  rime: 'oon',   onset: 's', beats: ['spoon'] },
+  star:   { speak: 'star',   picture: 'prop.star',      rime: 'ar',    onset: 's', beats: ['star'] },
+  car:    { speak: 'car',    picture: 'picture.car',    rime: 'ar',    onset: 'k', beats: ['car'] },
+  apple:  { speak: 'apple',  picture: 'picture.apple',  rime: 'apple', onset: 'a', beats: ['ap', 'pull'] },
+  rocket: { speak: 'rocket', picture: 'rocket.body',    rime: 'ocket', onset: 'r', beats: ['rock', 'it'] },
+  banana: { speak: 'banana', picture: 'picture.banana', rime: 'ana',   onset: 'b', beats: ['ba', 'na', 'na'] },
+  tomato: { speak: 'tomato', picture: 'picture.tomato', rime: 'ato',   onset: 't', beats: ['toe', 'may', 'toe'] }
+};
+/* A beat count a child can tap: one tap per beat, and never more than this. */
+const MAX_BEATS = 4;
+
 /* The STORY layer: places, their order on the journey, and what each one
    is about. The LEARNING layer — which skill a mission practises — is set
    per mission, so resequencing the curriculum never means moving a
-   planet. Phase 1 has one destination; the rest of the planned route is
-   in docs/LEARNING-DESIGN.md rather than here, because declaring
-   destinations nobody can visit would be content pretending to exist. */
+   planet.
+     sky      where a destination hangs in Earth's sky: % of the screen
+              across and down, and its size in vh. Tap it to fly there.
+     horizon  the world you stand on when you arrive (a horizon picture)
+     markers  where each mission happens on that world: a prop standing
+              on the ground at a point of the horizon picture (fractions),
+              its height as a share of the horizon's height, and where its
+              foot is in its own picture (across, down; measured from the
+              render by tools/art)
+   A `planned` destination is the rest of the route, declared so no
+   mission can ever be filed under a place nobody planned. It has no
+   pictures and no missions, and nothing draws it. */
 const DESTINATIONS = {
-  earth: { id: 'earth', kind: 'home', asset: 'planet.earth' },
+  earth: {
+    id: 'earth', kind: 'home', name: 'Earth', asset: 'planet.earth', horizon: 'horizon.earth',
+    /* home, far behind, in every destination's sky */
+    sky: { x: 86, y: 20, size: 11 }
+  },
   moon: {
     /* Every destination has two pictures: waiting, and restored. */
-    id: 'moon', kind: 'destination', asset: 'planet.moon', restoredAsset: 'planet.moonLit',
+    id: 'moon', kind: 'destination', name: 'the Moon',
+    asset: 'planet.moon', restoredAsset: 'planet.moonLit', horizon: 'horizon.moon', skyLamp: true,
     primarySkill: 'letter-recognition', reviewSkills: [],
     missions: ['moon-1'],
     unlock: null,                                  // the first stop is always open
+    sky: { x: 76, y: 31, size: 23 },
+    markers: {
+      'moon-1': { name: 'the beacon', asset: 'prop.beacon', litAsset: 'prop.beaconLit', lamp: true,
+                  at: [0.44, 0.47], height: 0.74, foot: [0.5, 0.885], aspect: '512 / 896', call: 'marker.beacon' }
+    },
     story: {
+      name:         'place.moon',
       firstArrival: 'story.moon.firstArrive',
       arrival:      'story.moon.arrive',
       restored:     'story.moon.restored',         // the mission that relit the beacon
-      shining:      'story.moon.shining'           // every run after that
+      shining:      'story.moon.shining',          // every run after that
+      home:         'guide.moonShining'            // the flight home from the relight
     }
-  }
+  },
+  mercury: {
+    id: 'mercury', kind: 'destination', name: 'Mercury',
+    asset: 'planet.mercury', restoredAsset: 'planet.mercuryLit', horizon: 'horizon.mercury', sun: true,
+    primarySkill: 'rhyming', reviewSkills: ['syllables'],
+    missions: ['mercury-1', 'mercury-2'],
+    unlock: { after: 'moon' },                     // the next route opens when the Moon shines
+    sky: { x: 62, y: 12, size: 12 },
+    markers: {
+      'mercury-1': { name: 'the radar', asset: 'prop.radar', litAsset: 'prop.radarOn',
+                     at: [0.37, 0.5], height: 0.5, foot: [0.4528, 0.8382], aspect: '1', call: 'marker.radar' },
+      'mercury-2': { name: 'the meteor rocks', asset: 'prop.meteorField', litAsset: 'prop.meteorFieldOn',
+                     at: [0.58, 0.55], height: 0.38, foot: [0.5231, 0.5363], aspect: '480 / 360', call: 'marker.meteors' }
+    },
+    story: {
+      name:         'place.mercury',
+      reveal:       'story.mercury.reveal',        // the moment the route to it opens
+      next:         'story.mercury.next',          // home, the first time it is the next stop
+      firstArrival: 'story.mercury.firstArrive',
+      arrival:      'story.mercury.arrive',
+      step:         'story.mercury.step',          // one mission done, one to go
+      restored:     'story.mercury.restored',
+      shining:      'story.mercury.shining',
+      home:         'guide.mercuryShining'
+    }
+  },
+  /* The rest of the route: a plan, not content (docs/LEARNING-DESIGN.md). */
+  venus:   { id: 'venus',   kind: 'planned', primarySkill: 'letter-recognition' },
+  mars:    { id: 'mars',    kind: 'planned', primarySkill: 'beginning-sounds' },
+  jupiter: { id: 'jupiter', kind: 'planned', primarySkill: 'beginning-sounds' },
+  saturn:  { id: 'saturn',  kind: 'planned', primarySkill: 'cvc' },
+  uranus:  { id: 'uranus',  kind: 'planned', primarySkill: 'sight-words' },
+  neptune: { id: 'neptune', kind: 'planned', primarySkill: 'handwriting' }
 };
-const JOURNEY_ORDER = ['moon'];
+const JOURNEY_ORDER = ['moon', 'mercury'];
 
 /* A mission is an ordered set of activities plus the difficulty band the
    engine may adapt within. Targets are authored, so the sequence can be
    reviewed by a person; the wrong choices beside them are chosen by the
-   engine from the letter data, so difficulty can adapt without anyone
-   rewriting a mission. */
+   engine from the data, so difficulty can adapt without anyone
+   rewriting a mission. The first round of each teaches the interaction
+   itself and is not counted as evidence of anything. */
 const MISSIONS = {
   'moon-1': {
     id: 'moon-1', destinationId: 'moon', skillId: 'letter-recognition',
+    howTo: 'mission.howTo',
     choices: 3,
     difficulty: { min: 1, max: 3 },
     reward: { stars: 3 },
     activities: [
-      /* The first round teaches the interaction itself: after the question,
-         Pip shows where to tap. It is not counted as evidence of anything. */
       { type: 'find-letter', target: 'M', form: 'upper', guided: true },
       { type: 'find-letter', target: 'S', form: 'upper' },
       { type: 'find-letter', target: 'O', form: 'upper' },
       { type: 'find-letter', target: 'T', form: 'upper' },
       { type: 'find-letter', target: 'S', form: 'upper' },
       { type: 'find-letter', target: 'M', form: 'upper' }
+    ]
+  },
+  /* Rhyme Radar: hear a word, hear three pictures named, tap the one that
+     rhymes. */
+  'mercury-1': {
+    id: 'mercury-1', destinationId: 'mercury', skillId: 'rhyming',
+    howTo: 'mission.howTo.rhyme',
+    choices: 3,
+    difficulty: { min: 1, max: 2 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'rhyme-pick', target: 'cake', answer: 'snake', guided: true },
+      { type: 'rhyme-pick', target: 'bee',  answer: 'tree' },
+      { type: 'rhyme-pick', target: 'rock', answer: 'sock' },
+      { type: 'rhyme-pick', target: 'moon', answer: 'spoon' },
+      { type: 'rhyme-pick', target: 'star', answer: 'car' }
+    ]
+  },
+  /* Syllable Meteors: hear a word, tap the stone once for each beat. Only
+     the count matters — never the rhythm or the speed. */
+  'mercury-2': {
+    id: 'mercury-2', destinationId: 'mercury', skillId: 'syllables',
+    howTo: 'mission.howTo.beats',
+    choices: 3,
+    difficulty: { min: 1, max: 1 },
+    reward: { stars: 3 },
+    activities: [
+      { type: 'syllable-tap', target: 'rocket', guided: true },
+      { type: 'syllable-tap', target: 'bee' },
+      { type: 'syllable-tap', target: 'apple' },
+      { type: 'syllable-tap', target: 'banana' },
+      { type: 'syllable-tap', target: 'car' },
+      { type: 'syllable-tap', target: 'tomato' }
     ]
   }
 };
@@ -2369,26 +2724,47 @@ const COSMETICS = [
    can get its own recording. */
 const VOICE_CUES = {
   'guide.welcome':          { text: "Hi! I'm Pip.",          speak: "Hi, explorer! I'm Pip, your space buddy. Let's go on an adventure!" },
-  'guide.launchHint.1':     { text: 'Tap Launch!',           speak: 'Tap the big Launch button to fly to the Moon!' },
+  'guide.launchHint.1':     { text: 'Tap Launch!',           speak: 'Tap the big Launch button to fly!' },
   'guide.launchHint.2':     { text: 'Ready? Tap Launch!',    speak: 'Ready to fly? Tap Launch!' },
   'guide.launchHint.3':     { text: "Let's fly!",            speak: "Let's fly! Tap the yellow Launch button." },
   'guide.home.1':           { text: 'Welcome home!',         speak: 'Welcome home, explorer!' },
   'guide.home.2':           { text: 'Home again!',           speak: 'Home again! Nice flying.' },
   'guide.home.3':           { text: 'Back on Earth!',        speak: 'Welcome back to Earth!' },
   'guide.moonShining':      { text: 'The Moon is shining!',  speak: 'Welcome home! Look, the Moon is shining!' },
+  'guide.mercuryShining':   { text: 'Mercury is glowing!',   speak: 'Welcome home! Look, Mercury is glowing!' },
   'guide.dockHint':         { text: 'Paint your rocket!',    speak: 'You have stars! Tap the paint brush to give your rocket new paint.' },
   'travel.launch.1':        { text: "Let's launch!",         speak: "Let's launch!" },
   'travel.launch.2':        { text: 'Blast off!',            speak: 'Blast off!' },
   'travel.launch.3':        { text: 'Here we go!',           speak: 'Here we go!' },
+  'place.moon':             { text: 'The Moon!',             speak: 'The Moon! Tap Launch to fly there.' },
+  'place.mercury':          { text: 'Mercury!',              speak: 'Mercury! Tap Launch to fly there.' },
   'story.moon.firstArrive': { text: 'The Moon!',             speak: "We made it to the Moon! Its beacon is dim. Let's find letters to light it up!" },
-  'story.moon.arrive.1':    { text: 'The Moon!',             speak: "Back on the Moon! Let's find letters." },
+  'story.moon.arrive.1':    { text: 'The Moon!',             speak: 'Back on the Moon!' },
   'story.moon.arrive.2':    { text: 'The Moon!',             speak: 'The Moon again! Ready to find some letters?' },
-  'story.moon.arrive.3':    { text: 'The Moon!',             speak: "Here we are! Let's find more letters." },
+  'story.moon.arrive.3':    { text: 'The Moon!',             speak: 'Here we are on the Moon!' },
   'story.moon.restored':    { text: 'You did it!',           speak: "You did it! The Moon's beacon is shining again!" },
   'story.moon.shining.1':   { text: 'You did it!',           speak: 'You did it! The Moon is shining bright!' },
   'story.moon.shining.2':   { text: 'Hooray!',               speak: 'Hooray! Another mission done!' },
   'story.moon.shining.3':   { text: 'Great work!',           speak: 'Great work, explorer! The Moon is glowing!' },
+  'story.mercury.reveal':   { text: 'Look! Mercury!',        speak: 'Look! A new planet is waiting for us. That is Mercury!' },
+  'story.mercury.next':     { text: 'Next stop: Mercury!',   speak: 'Next stop, Mercury! Tap Launch when you are ready.' },
+  'story.mercury.firstArrive': { text: 'Mercury!',           speak: "We made it to Mercury! Mercury's signal is fuzzy. Let's fix it!" },
+  'story.mercury.arrive.1': { text: 'Mercury!',              speak: 'Back on Mercury!' },
+  'story.mercury.arrive.2': { text: 'Mercury!',              speak: 'Mercury again! Hello, warm rocks!' },
+  'story.mercury.arrive.3': { text: 'Mercury!',              speak: 'Here we are on Mercury!' },
+  'story.mercury.step':     { text: 'It works!',             speak: 'It works! One more thing to fix on Mercury.' },
+  'story.mercury.restored': { text: 'You did it!',           speak: "You did it! Mercury's signal is clear!" },
+  'story.mercury.shining.1': { text: 'You did it!',          speak: 'You did it! Mercury is glowing!' },
+  'story.mercury.shining.2': { text: 'Hooray!',              speak: 'Hooray! Another mission done!' },
+  'story.mercury.shining.3': { text: 'Great work!',          speak: 'Great work, explorer!' },
+  'marker.beacon':          { text: 'Tap the beacon!',       speak: 'Tap the beacon to start!' },
+  'marker.radar':           { text: 'Tap the radar!',        speak: 'Tap the radar dish to start!' },
+  'marker.meteors':         { text: 'Tap the rocks!',        speak: 'Now tap the meteor rocks!' },
+  'planet.homeHint':        { text: 'Fly home!',             speak: 'Tap the big yellow button to fly home!' },
+  'planet.fixed':           { text: 'All fixed!',            speak: 'That one is already fixed. Tap it to play again!' },
   'mission.howTo':          { text: 'Listen, then tap!',     speak: "I'll say a letter. You tap it!" },
+  'mission.howTo.rhyme':    { text: 'Find the rhyme!',       speak: "Rhyming words sound the same at the end, like cat and hat. I'll say a word. You find the picture that rhymes!" },
+  'mission.howTo.beats':    { text: 'Tap the beats!',        speak: 'Words have beats. Tap the big stone once for each beat!' },
   'feedback.almost.1':      { text: 'Almost!',               speak: 'Almost! Listen again.' },
   'feedback.almost.2':      { text: 'Good try!',             speak: 'Good try! Listen again.' },
   'feedback.almost.3':      { text: 'So close!',             speak: 'So close! Listen again.' },
@@ -2402,7 +2778,7 @@ const VOICE_CUES = {
      into a scene's bubble would leave them there after the iPad turns back. */
   'rotate':                 { text: 'Turn your iPad sideways', speak: 'Turn your iPad sideways.', offscreen: true }
 };
-/* Recorded narration, by line id, once it exists. Empty in Phase 1: every
+/* Recorded narration, by line id, once it exists. Empty so far: every
    line currently falls back to the device voice. Paths belong in
    ASSET_REGISTRY like every other file, so a recording is registered there
    first and referenced here by its path. */
@@ -2418,10 +2794,40 @@ const LETTER_LINES = {
           "Wonderful! That's the letter {L}.", 'Super! You found the letter {L}.'],
   show:  ['Here it is! This is the letter {L}. Tap it!']
 };
+/* Rhyme Radar, as templates: {W} is the word heard, {R} the one that
+   rhymes with it. Praise always says both words together, so the rhyme
+   itself is what the child hears last. */
+const RHYME_LINES = {
+  ask:   ['What rhymes with {W}?', 'Which one rhymes with {W}?', 'Find the one that rhymes with {W}!'],
+  again: ['Listen. What rhymes with {W}?', 'Take your time. What rhymes with {W}?'],
+  found: ['Yes! {W}, {R}. They rhyme!', '{W} and {R}. You found the rhyme!', 'Great listening! {W}, {R}!',
+          'You got it! {W} rhymes with {R}!'],
+  show:  ['Here it is! {W}, {R}. Tap the {R}!']
+};
+/* Syllable Meteors: {W} is the word, {N} its count ("two beats"). The
+   question follows the word itself, so it does not say it again. */
+const BEAT_LINES = {
+  ask:      ['Tap the stone once for each beat!', 'How many beats? Tap them!', 'Tap the beats!'],
+  again:    ['Listen. {W}. Tap each beat!', 'Take your time. {W}. Tap each beat!'],
+  found:    ['Yes! {W} has {N}!', 'You got it! {N}!', 'Great tapping! {W}, {N}!'],
+  show:     ["Let's tap it together. Listen!"],
+  yourTurn: ['Now you! {N}. Tap the stone!']
+};
 function letterLine(kind, index, L){
   const list = LETTER_LINES[kind];
   return list[(Math.abs(index) || 0) % list.length].replace('{L}', LETTERS[L].speak);
 }
+function wordLine(lines, kind, index, w, extra){
+  const list = lines[kind];
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  let t = list[(Math.abs(index) || 0) % list.length];
+  t = t.replace(/^\{W\}/, cap(WORDS[w].speak)).replace(/\{W\}/g, WORDS[w].speak);
+  if(extra && extra.R) t = t.replace(/\{R\}/g, WORDS[extra.R].speak);
+  if(extra && extra.N) t = t.replace(/^\{N\}/, cap(extra.N)).replace(/\{N\}/g, extra.N);
+  return t;
+}
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five'];
+function beatWord(n){ return (NUMBER_WORDS[n] || String(n)) + (n === 1 ? ' beat' : ' beats'); }
 
 function countWord(n, one, many){ return n === 1 ? 'one ' + one : n + ' ' + many; }
 
@@ -2434,7 +2840,7 @@ function familyLine(base, n){
 }
 function lineExists(id){ return !!voiceCue(id) || familySize(id) > 0; }
 
-/* Lines that carry a value are built from data, so a new letter or a new
+/* Lines that carry a value are built from data, so a new letter, word or
    price never needs a hand-written line — and never goes without one. */
 function voiceCue(id){
   if(typeof id !== 'string') return null;
@@ -2456,6 +2862,7 @@ function voiceCue(id){
   if(!cue && letterId && p[0] === 'show'){
     cue = { text: 'Here it is!', speak: letterLine('show', k, p[1]) };
   }
+  if(!cue) cue = wordCue(p);
   const n = parseInt(p[p.length - 1], 10);
   if(!cue && id.indexOf('stars.found.') === 0 && n >= 0){
     cue = { text: n === 1 ? 'You found a star!' : 'You found ' + n + ' stars!',
@@ -2479,6 +2886,53 @@ function voiceCue(id){
   return cue;
 }
 
+/* Word lines, by id:
+     word.cake               the word itself, said as a name ("Cake.")
+     rhyme.ask.cake.k        what rhymes with it — phrasing k
+     rhyme.again.cake.n      the n-th nudge
+     rhyme.found.cake.snake.k  praise, naming both words
+     rhyme.show.cake.snake   the answer, shown
+     beats.ask.banana.k      tap the beats of it — phrasing k
+     beats.again.banana.n    the n-th nudge
+     beats.found.banana.k    praise, with the count
+     beats.show.banana       "let's tap it together"
+     beats.turn.banana       "now you: three beats"
+     beat.banana.i           the i-th beat on its own ("ba")
+   The caption for a question names the task, never the answer: a rhyme
+   question shows "What rhymes?" and a beats question "Tap the beats!". */
+function wordCue(p){
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const last = parseInt(p[p.length - 1], 10);
+  const k = p.length > 3 && !isNaN(last) ? last : 0;
+  if(p[0] === 'word' && p.length === 2 && WORDS[p[1]]){
+    return { text: cap(WORDS[p[1]].speak), speak: cap(WORDS[p[1]].speak) + '.' };
+  }
+  if(p[0] === 'beat' && p.length === 3 && WORDS[p[1]]){
+    const b = WORDS[p[1]].beats[parseInt(p[2], 10)];
+    return b ? { text: b, speak: b + '!' } : null;
+  }
+  const w = WORDS[p[2]];
+  if(!w || !(k >= 0)) return null;
+  if(p[0] === 'rhyme'){
+    if(p[1] === 'ask' && p.length <= 4) return { text: 'What rhymes?', visual: 'What rhymes with ' + w.speak + '?', speak: wordLine(RHYME_LINES, 'ask', k, p[2]) };
+    if(p[1] === 'again' && p.length <= 4) return { text: 'What rhymes?', visual: 'What rhymes with ' + w.speak + '?', speak: wordLine(RHYME_LINES, 'again', k, p[2]) };
+    const r = WORDS[p[3]];
+    if(!r) return null;
+    if(p[1] === 'found' && p.length <= 5) return { text: 'They rhyme!', speak: wordLine(RHYME_LINES, 'found', k, p[2], { R: p[3] }) };
+    if(p[1] === 'show' && p.length === 4) return { text: 'Here it is!', speak: wordLine(RHYME_LINES, 'show', 0, p[2], { R: p[3] }) };
+    return null;
+  }
+  if(p[0] === 'beats'){
+    const N = beatWord(w.beats.length);
+    if(p[1] === 'ask' && p.length <= 4) return { text: 'Tap the beats!', speak: wordLine(BEAT_LINES, 'ask', k, p[2]) };
+    if(p[1] === 'again' && p.length <= 4) return { text: 'Tap the beats!', speak: wordLine(BEAT_LINES, 'again', k, p[2]) };
+    if(p[1] === 'found' && p.length <= 4) return { text: cap(N) + '!', speak: wordLine(BEAT_LINES, 'found', k, p[2], { N: N }) };
+    if(p[1] === 'show' && p.length === 3) return { text: 'Listen!', speak: wordLine(BEAT_LINES, 'show', 0, p[2]) };
+    if(p[1] === 'turn' && p.length === 3) return { text: cap(N) + '!', speak: wordLine(BEAT_LINES, 'yourTurn', 0, p[2], { N: N }) };
+  }
+  return null;
+}
+
 /* Returns a list of problems; empty means sound. Run at boot and in the
    contracts, so bad content is a failing build, not a broken lesson. */
 function validateContent(){
@@ -2496,6 +2950,17 @@ function validateContent(){
     });
   });
 
+  Object.keys(WORDS).forEach(k => {
+    const w = WORDS[k];
+    if(!/^[a-z]+$/.test(k)) flag('word key ' + k + ' is not one lowercase word');
+    if(!w.speak) flag('word ' + k + ' has no spoken form');
+    if(!assetEntry(w.picture)) flag('word ' + k + ' has no picture');
+    if(!w.rime || !w.onset) flag('word ' + k + ' needs a rime and an onset');
+    if(!(Array.isArray(w.beats) && w.beats.length >= 1 && w.beats.length <= MAX_BEATS && w.beats.every(Boolean))){
+      flag('word ' + k + ' needs 1 to ' + MAX_BEATS + ' beats');
+    }
+  });
+
   Object.keys(MISSIONS).forEach(id => {
     const m = MISSIONS[id];
     const where = 'mission ' + id;
@@ -2509,6 +2974,7 @@ function validateContent(){
       flag(where + ' has an impossible difficulty band');
     }
     if(!(m.reward && Number.isInteger(m.reward.stars) && m.reward.stars > 0)) flag(where + ' rewards no stars');
+    if(!lineExists(m.howTo)) flag(where + ' never explains its task');
     if(!Array.isArray(m.activities) || m.activities.length < 5 || m.activities.length > 8){
       flag(where + ' must hold 5 to 8 interactions');
     }
@@ -2524,15 +2990,38 @@ function validateContent(){
 
   Object.keys(DESTINATIONS).forEach(id => {
     const d = DESTINATIONS[id];
+    if(d.id !== id) flag('destination ' + id + ' is filed under the wrong id');
+    if(d.kind === 'planned'){
+      /* The rest of the route: a plan only, so nothing may hang off it. */
+      if(d.asset || (d.missions || []).length || JOURNEY_ORDER.indexOf(id) !== -1) flag('planned destination ' + id + ' pretends to exist');
+      if(!SKILLS[d.primarySkill]) flag('planned destination ' + id + ' has unknown primary skill');
+      return;
+    }
     if(!assetEntry(d.asset)) flag('destination ' + id + ' has no picture');
+    if(!assetEntry(d.horizon)) flag('destination ' + id + ' has no horizon to stand on');
+    if(!(d.sky && d.sky.x >= 0 && d.sky.x <= 100 && d.sky.y >= 0 && d.sky.y <= 100 && d.sky.size > 0)) flag('destination ' + id + ' has no place in the sky');
     if(d.kind === 'destination'){
       if(!assetEntry(d.restoredAsset)) flag('destination ' + id + ' has no restored picture');
       if(JOURNEY_ORDER.indexOf(id) === -1) flag('destination ' + id + ' is not on the journey');
       if(!SKILLS[d.primarySkill]) flag('destination ' + id + ' has unknown primary skill');
       Object.keys(d.story || {}).forEach(k => { if(!lineExists(d.story[k])) flag('destination ' + id + ' story line ' + k + ' is missing'); });
+      if(d.unlock && JOURNEY_ORDER.indexOf(d.unlock.after) === -1) flag('destination ' + id + ' unlocks after a place not on the journey');
+      if(d.unlock && JOURNEY_ORDER.indexOf(d.unlock.after) >= JOURNEY_ORDER.indexOf(id)) flag('destination ' + id + ' unlocks after a place later on the journey');
+      if(d.unlock && !(d.story && d.story.reveal)) flag('destination ' + id + ' opens without being shown');
+      (d.missions || []).forEach(mid => {
+        const mk = (d.markers || {})[mid];
+        if(!mk){ flag('mission ' + mid + ' has no marker on ' + id); return; }
+        if(!assetEntry(mk.asset) || !assetEntry(mk.litAsset)) flag('marker for ' + mid + ' has no picture');
+        if(!(mk.at && mk.at[0] > 0 && mk.at[0] < 1 && mk.at[1] > 0 && mk.at[1] < 1)) flag('marker for ' + mid + ' is not on the ground');
+        if(!(mk.foot && mk.foot[0] > 0 && mk.foot[0] < 1 && mk.foot[1] > 0 && mk.foot[1] < 1)) flag('marker for ' + mid + ' does not say where its foot is');
+        if(!lineExists(mk.call)) flag('marker for ' + mid + ' is never pointed out');
+      });
     }
   });
   JOURNEY_ORDER.forEach(id => { if(!DESTINATIONS[id]) flag('journey names unknown destination ' + id); });
+  if(JOURNEY_ORDER.length && DESTINATIONS[JOURNEY_ORDER[0]] && DESTINATIONS[JOURNEY_ORDER[0]].unlock){
+    flag('the first stop on the journey must always be open');
+  }
 
   const seen = {};
   COSMETICS.forEach(c => {
@@ -2648,8 +3137,35 @@ function pickDistractors(target, tier, count, rand){
   return out;
 }
 
+/* ---- rhyme: which pictures stand beside the one that rhymes ----
+   A wrong choice never rhymes with the word asked about. At the easy
+   level it starts differently too (cake: snake, bee, sock); above it, one
+   wrong choice starts with the same sound as the word asked about (cake:
+   snake, car, bee) — "starts the same" is the classic mix-up with
+   "rhymes", and hearing past it is the skill. */
+function rhymeDistractorPools(a){
+  const t = WORDS[a.target];
+  const usable = Object.keys(WORDS).filter(k => k !== a.target && k !== a.answer && WORDS[k].rime !== t.rime);
+  return {
+    sameStart: usable.filter(k => WORDS[k].onset === t.onset),
+    other:     usable.filter(k => WORDS[k].onset !== t.onset)
+  };
+}
+function pickRhymeDistractors(a, tier, count, rand){
+  const p = rhymeDistractorPools(a);
+  const order = tier >= 2
+    ? [shuffled(p.sameStart, rand).slice(0, 1), shuffled(p.other, rand), shuffled(p.sameStart, rand)]
+    : [shuffled(p.other, rand), shuffled(p.sameStart, rand)];
+  const out = [];
+  order.forEach(group => group.forEach(k => { if(out.length < count && out.indexOf(k) === -1) out.push(k); }));
+  return out;
+}
+
 /* One entry per kind of activity. A new skill is a new entry plus
-   content; no scene is rewritten for an activity that already exists. */
+   content; no scene is rewritten for an activity that already exists.
+   `repeatable`: the answer is something the child makes again, not a
+   tile — a wrong count of beats can be tapped again, so a miss does not
+   remove it. */
 const ACTIVITY_TYPES = {
   'find-letter': {
     skillId: 'letter-recognition',
@@ -2664,6 +3180,46 @@ const ACTIVITY_TYPES = {
     buildRound(a, o){
       const options = shuffled([a.target].concat(pickDistractors(a.target, o.tier, o.choices - 1, o.rand)), o.rand);
       return { options: options, answer: options.indexOf(a.target) };
+    }
+  },
+  /* Hear a word, then three pictures named; tap the one that rhymes. */
+  'rhyme-pick': {
+    skillId: 'rhyming',
+    validate(a){
+      const t = WORDS[a.target], r = WORDS[a.answer];
+      if(!t) return 'unknown word ' + a.target;
+      if(!r) return 'unknown word ' + a.answer;
+      if(a.target === a.answer) return 'a word is not its own rhyme';
+      if(t.rime !== r.rime) return a.answer + ' does not rhyme with ' + a.target;
+      const p = rhymeDistractorPools(a);
+      if(p.sameStart.length + p.other.length < 2) return 'too few pictures that do not rhyme with ' + a.target;
+      return null;
+    },
+    evidenceKey(a){ return { item: a.target, form: 'rhyme' }; },
+    promptCue(a){ return 'rhyme.ask.' + a.target; },
+    buildRound(a, o){
+      const options = shuffled([a.answer].concat(pickRhymeDistractors(a, o.tier, o.choices - 1, o.rand)), o.rand);
+      return { options: options, answer: options.indexOf(a.answer) };
+    }
+  },
+  /* Hear a word; tap once for each beat. The choice is the count tapped,
+     1 to MAX_BEATS. Only the count matters — never the rhythm, never the
+     speed. */
+  'syllable-tap': {
+    skillId: 'syllables',
+    repeatable: true,
+    validate(a){
+      const w = WORDS[a.target];
+      if(!w) return 'unknown word ' + a.target;
+      if(!(w.beats && w.beats.length >= 1 && w.beats.length <= MAX_BEATS)) return a.target + ' has no countable beats';
+      return null;
+    },
+    evidenceKey(a){ return { item: a.target, form: 'beats' }; },
+    promptCue(a){ return 'beats.ask.' + a.target; },
+    buildRound(a){
+      const options = [];
+      for(let n = 1; n <= MAX_BEATS; n++) options.push(n);
+      return { options: options, answer: WORDS[a.target].beats.length - 1 };
     }
   }
 };
@@ -2715,20 +3271,27 @@ function beginRound(run, evidence, opts){
      first miss   that choice steps aside; listen again
      second miss  it steps aside too, and the answer is shown
    With three choices the answer is then the only one left, so every
-   round can be finished — and nothing here can ever cost a star. */
+   round can be finished — and nothing here can ever cost a star.
+   A repeatable answer (a count of beats) does not step aside: the child
+   makes it again. After the second miss the answer is shown and tapped
+   along with, and the scene then accepts only that count. */
 function answerRound(run, choice){
   const r = run && run.round;
   if(!r || r.resolved) return { ignored: true };
-  if(!(choice >= 0 && choice < r.options.length) || r.out.indexOf(choice) !== -1) return { ignored: true };
+  const type = ACTIVITY_TYPES[r.activity.type];
+  const repeatable = !!(type && type.repeatable);
+  if(!(choice >= 0 && choice < r.options.length)) return { ignored: true };
+  if(!repeatable && r.out.indexOf(choice) !== -1) return { ignored: true };
   if(choice === r.answer){
     r.resolved = true;
     const outcome = (r.guided || !r.audible) ? null : (r.misses === 0 ? 1 : 0);
-    run.results.push({ target: r.activity.target, form: r.activity.form, tier: r.tier, misses: r.misses, outcome: outcome });
+    const key = type.evidenceKey(r.activity);
+    run.results.push({ target: key.item, form: key.form, tier: r.tier, misses: r.misses, outcome: outcome });
     return { correct: true, outcome: outcome, misses: r.misses };
   }
   r.misses += 1;
-  r.out.push(choice);
-  const wrongLeft = r.options.length - 1 - r.out.length;
+  if(!repeatable) r.out.push(choice);
+  const wrongLeft = repeatable ? r.options.length : r.options.length - 1 - r.out.length;
   return { correct: false, hint: (r.misses >= 2 || wrongLeft <= 0) ? 'show' : 'almost', misses: r.misses };
 }
 
@@ -2767,15 +3330,26 @@ function destinationProgress(destId, completions){
   const done = all.filter(mid => completions.some(c => c.missionId === mid)).length;
   return { done: done, total: all.length, restored: all.length > 0 && done >= all.length };
 }
+/* A destination opens when the one it follows is restored: the next route
+   appears because the child finished the last one, never on a timer. */
+function destinationUnlocked(destId, completions){
+  const d = DESTINATIONS[destId];
+  if(!d || d.kind !== 'destination') return false;
+  if(!d.unlock) return true;
+  return destinationProgress(d.unlock.after, completions).restored;
+}
+/* The next stop: the first open destination not yet restored, or the
+   last one open once everything is. */
 function currentDestination(completions){
-  for(let i = 0; i < JOURNEY_ORDER.length; i++){
-    if(!destinationProgress(JOURNEY_ORDER[i], completions).restored) return JOURNEY_ORDER[i];
+  const open = JOURNEY_ORDER.filter(id => destinationUnlocked(id, completions));
+  for(let i = 0; i < open.length; i++){
+    if(!destinationProgress(open[i], completions).restored) return open[i];
   }
-  return JOURNEY_ORDER[JOURNEY_ORDER.length - 1];
+  return open[open.length - 1];
 }
 /* The first mission here not yet finished. A restored destination offers
-   its mission again: in Phase 1 the Moon is the whole journey, and a child
-   who wants to go back should always be able to. */
+   its missions again: a child who wants to go back should always be able
+   to. */
 function nextMission(destId, completions){
   const all = (DESTINATIONS[destId] && DESTINATIONS[destId].missions) || [];
   for(let i = 0; i < all.length; i++){
@@ -2976,11 +3550,15 @@ function motionReduced(){ return motionPref === 'reduce' || prefersReducedMotion
    in milliseconds instead of minutes.
    --------------------------------------------------------- */
 const TIMING = {
-  travel: 1100, travelFirst: 2600, travelReduced: 320, travelSettle: 40,
-  praiseMin: 950, betweenRounds: 260, celebrateGuard: 1100, starEvery: 420, starFirst: 450,
+  travel: 1300, travelFirst: 2200, travelReduced: 320, travelSettle: 40,
+  praiseMin: 950, betweenRounds: 260, celebrateGuard: 1100,
+  starFirst: 650, starEvery: 240, starFlight: 620,  // reward stars: quick, one after another
   reprompt: 10000, maxReprompts: 2, gateHold: 3000,
-  relight: 600,                                    // home after the relight: a beat, then the Moon lights up
-  idleHint: 12000,                                 // a pause this long on Earth or in the Dock earns one hint
+  relight: 600,                                    // a beat, then what was fixed lights up
+  beatPause: 1500,                                 // a pause this long after a beat ends the count
+  beatSettle: 350,                                 // the count cannot go higher: answer after this
+  beatBounce: 90,                                  // taps closer than this are one finger bouncing
+  idleHint: 12000,                                 // a pause this long on Earth, a planet or in the Dock earns one hint
   captionBase: 900, captionPerChar: 55,            // pacing when nothing can be heard
   speechStartGrace: 1200,                          // a voice that has not begun by now is not coming
   speechSafetyBase: 2500, speechSafetyPerChar: 110 // iOS sometimes never reports the end
@@ -3153,11 +3731,21 @@ const Voice = (function(){
     return line(cue);
   }
   /* Lines in order. Anything said in the meantime — a tap, a new
-     question — ends the sequence where it stands. */
+     question — ends the sequence where it stands. A step may be
+     { say, cue }: `cue` runs as its line begins — a picture lighting up
+     as it is named — and a step with no line is only its cue. */
   function sequence(ids){
     const mine = ++seq;
     let p = Promise.resolve();
-    ids.filter(Boolean).forEach(id => { p = p.then(() => (mine === seq ? line(resolveCue(id)) : null)); });
+    ids.filter(Boolean).forEach(step => {
+      p = p.then(() => {
+        if(mine !== seq) return null;
+        const isStep = typeof step === 'object' && ('say' in step || 'cue' in step);
+        if(isStep && typeof step.cue === 'function'){ try{ step.cue(); }catch(e){} }
+        if(isStep && !step.say) return null;
+        return line(resolveCue(isStep ? step.say : step));
+      });
+    });
     return p;
   }
   function stop(){ seq++; halt(); }
@@ -3233,6 +3821,7 @@ const Sfx = (function(){
     almost:  t => tone(392, t, 0.3, { type: 'triangle', to: 330, gain: 0.1 }),
     star:    t => { tone(1319, t, 0.12, { gain: 0.1 }); tone(1568, t + 0.07, 0.14, { gain: 0.1 }); tone(2093, t + 0.14, 0.2, { gain: 0.08 }); },
     unlock:  t => { [523, 659, 784, 1047].forEach((f, i) => tone(f, t + i * 0.08, 0.26, { gain: 0.15 })); },
+    beat:    t => { tone(294, t, 0.14, { type: 'triangle', gain: 0.18 }); tone(587, t, 0.06, { gain: 0.05 }); },
     launch:  t => { whoosh(t, 1.0, 0.18); tone(110, t, 0.9, { type: 'triangle', to: 240, gain: 0.07 }); }
   };
   function play(name){
@@ -3256,14 +3845,23 @@ const session = {
   idleTimer: null, holdTimer: null, dockPick: null, celebrateReadyAt: 0,
   /* What Pip has said this session, so recurring moments rotate. */
   said: { launch: 0, arrive: 0, home: 0, almost: 0, hint: 0, dockIdle: 0, pip: 0 },
-  praiseAt: 0, hintGiven: false, hintTimer: null, justRelit: false, dockWelcomed: false
+  praiseAt: 0, hintGiven: false, hintTimer: null, justRelit: null, revealed: null, dockWelcomed: false,
+  /* The world: where the rocket stands, which of the stage's two slots
+     shows it, where Launch goes if the child chose, and this visit to a
+     planet. */
+  place: 'earth', slot: 'A', pick: null, visit: null, asking: null,
+  /* What is held back for a beat so the child sees it change: a planet
+     in Earth's sky about to light up, a marker just fixed, a new route. */
+  relightHold: null, markerHold: null, revealHold: null,
+  /* Syllable meteors: the taps counted in the current try. */
+  beat: { taps: 0, timer: null, lastAt: 0, hold: false }
 };
 
 /* ---- When Pip speaks ----
    By rule, never by chance, and never an AI:
    1. An instruction is given once. After that Pip stays quiet and offers a
       hint only when the child seems stuck — no tap for TIMING.idleHint on
-      Earth or in the Dock — and at most once per visit.
+      Earth, on a planet or in the Dock — and at most once per visit.
    2. A moment that recurs (launching, arriving, coming home, each question,
       praise, "almost") rotates through its family of phrasings, so two in
       a row are never the same.
@@ -3284,6 +3882,9 @@ function armIdleHint(){
     } else if(currentScene === 'dock'){
       session.hintGiven = true;
       Voice.say(familyLine('dock.idle', session.said.dockIdle++));
+    } else if(currentScene === 'planet' && session.visit){
+      session.hintGiven = true;
+      Voice.say(planetHint(session.visit.dest));
     }
   }, TIMING.idleHint);
 }
@@ -3312,6 +3913,8 @@ function glyph(name, size){
   return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" aria-hidden="true" ' +
          'focusable="false" fill="currentColor">' + (GLYPHS[name] || '') + '</svg>';
 }
+function capitalize(s){ return String(s).charAt(0).toUpperCase() + String(s).slice(1); }
+function pct(v){ return (Math.round(v * 1000) / 10) + '%'; }
 
 function pipHtml(){
   return '<span class="pip-figure">' + artImg('character.pip', 'pip-art') +
@@ -3324,13 +3927,41 @@ function pipHtml(){
 function rocketHtml(paintId, flying){
   const c = cosmeticById(paintId) || starterCosmetic('paint');
   const mask = 'url(' + assetSrc('rocket.paintMask') + ')';
-  return '<span class="rocket" style="--paint: var(--' + escapeAttr(c.tint) + ')">' +
+  return '<span class="rocket' + (flying ? ' is-flying' : '') + '" style="--paint: var(--' + escapeAttr(c.tint) + ')">' +
            (flying ? artImg('rocket.flame', 'rocket-flame') : '') +
            artImg('rocket.body', 'rocket-art') +
            '<span class="rocket-paint" style="-webkit-mask-image: ' + escapeAttr(mask) + '; mask-image: ' + escapeAttr(mask) + '"></span>' +
          '</span>';
 }
+/* The rocket on the stage is drawn once. Its paint is a colour set on it,
+   so previewing a paint in the Dock never redraws the picture, and its
+   flame is always there, shown only while it flies. */
+function paintStageRocket(paintId){
+  const el = document.getElementById('stageRocket');
+  if(!el) return;
+  const mask = 'url(' + assetSrc('rocket.paintMask') + ')';
+  paint('stageRocket', '<span class="rocket">' + artImg('rocket.flame', 'rocket-flame') + artImg('rocket.body', 'rocket-art') +
+    '<span class="rocket-paint" style="-webkit-mask-image: ' + escapeAttr(mask) + '; mask-image: ' + escapeAttr(mask) + '"></span></span>');
+  const c = cosmeticById(paintId) || starterCosmetic('paint');
+  el.setAttribute('style', '--paint: var(--' + c.tint + ')');
+}
+/* A word's picture. The rocket is always the child's own, in its paint. */
+function pictureHtml(word){
+  const p = WORDS[word].picture;
+  return p === 'rocket.body' ? '<span class="picture-art picture-rocket">' + rocketHtml(currentPaint(), false) + '</span>'
+                             : artImg(p, 'picture-art');
+}
 function setHtml(id, html){ const el = document.getElementById(id); if(el) el.innerHTML = html; return el; }
+/* Stage pictures are redrawn only when what they show has changed: a
+   picture put back unchanged is still a new image to decode, and on an
+   iPad that can blink. */
+const _painted = {};
+function paint(id, html){
+  const el = document.getElementById(id);
+  if(el && _painted[id] === html) return el;
+  _painted[id] = html;
+  return setHtml(id, html);
+}
 function setStarCount(id, n, bump){
   const el = setHtml(id, artImg('prop.star', 'star-count-icon') + '<span class="star-count-num">' + n + '</span>');
   if(!el) return;
@@ -3338,17 +3969,297 @@ function setStarCount(id, n, bump){
   if(bump){ el.classList.remove('is-bumped'); void el.offsetWidth; el.classList.add('is-bumped'); }
 }
 function sayStarCount(){ unlockAudio(); Voice.say('stars.have.' + starBalance(journey.stars)); }
+function boxOf(el){
+  if(!el || typeof el.getBoundingClientRect !== 'function') return null;
+  const r = el.getBoundingClientRect();
+  return r && r.width ? { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height } : null;
+}
+
+/* ---- The world stage ----
+   One stage and two place slots: the place the rocket is in, and the one
+   a flight is bringing in. A place is drawn from data — its horizon, what
+   hangs in its sky, the markers standing on it — and every position is a
+   fraction of the horizon picture, so nothing floats off the ground at
+   any screen size. */
+function otherSlot(){ return session.slot === 'A' ? 'B' : 'A'; }
+function setStageView(view){ const s = document.getElementById('stage'); if(s) s.setAttribute('data-view', view); }
+function missionDone(missionId){ return journey.completions.some(c => c.missionId === missionId); }
+function placeRestored(placeId){
+  const d = DESTINATIONS[placeId];
+  return !!d && d.kind === 'destination' && destinationProgress(placeId, journey.completions).restored;
+}
+/* Where Launch goes: the place the child tapped in the sky, or else the
+   next stop on the journey. */
+function launchTarget(){
+  if(session.pick && destinationUnlocked(session.pick, journey.completions)) return session.pick;
+  return currentDestination(journey.completions);
+}
+
+function skyBodyHtml(id, o){
+  const d = DESTINATIONS[id];
+  const at = o.at || d.sky;
+  const cls = 'sky-body' + (placeRestored(id) ? ' is-restored' : '') + (o.picked ? ' is-picked' : '') +
+              (o.far ? ' is-far' : '') + (o.fresh ? ' is-new' : '');
+  const style = '--sx: ' + at.x + '%; --sy: ' + at.y + '%; --ss: ' + at.size + 'vh';
+  const held = session.relightHold === id ? ' data-held="true"' : '';
+  const inner = artImg(d.asset, 'planet-art') + (d.restoredAsset ? artImg(d.restoredAsset, 'planet-art body-lit') : '') +
+                (d.skyLamp ? '<span class="moon-light"></span>' : '');
+  if(o.pickable){
+    return '<button class="' + cls + '" id="sky-' + id + '"' + held + ' style="' + style + '" onclick="pickDestination(\'' + id + '\')" ' +
+           'aria-label="' + escapeAttr(capitalize(d.name) + (o.picked ? '. Launch goes here.' : '. Tap to fly here.')) + '">' + inner + '</button>';
+  }
+  return '<span class="' + cls + '" id="sky-' + id + '"' + held + ' style="' + style + '">' + inner + '</span>';
+}
+/* Earth's sky holds every destination that is open, and Launch's target
+   wears the ring. A destination's sky holds home, far behind, and — once
+   this place is restored — the next route, seen from here first. */
+function skyHtml(placeId, fresh){
+  if(placeId === 'earth'){
+    const target = launchTarget();
+    return JOURNEY_ORDER.filter(id => destinationUnlocked(id, journey.completions))
+      .map(id => skyBodyHtml(id, { pickable: true, picked: id === target, fresh: fresh === id })).join('');
+  }
+  const d = DESTINATIONS[placeId];
+  let html = (d.sun ? '<span class="sun-glow"></span>' : '') + skyBodyHtml('earth', { far: true });
+  JOURNEY_ORDER.forEach(id => {
+    const n = DESTINATIONS[id];
+    if(!n.unlock || n.unlock.after !== placeId || !destinationUnlocked(id, journey.completions) || session.revealHold === id) return;
+    html += skyBodyHtml(id, { fresh: fresh === id, at: { x: n.sky.x, y: n.sky.y, size: Math.round(n.sky.size * 0.8) } });
+  });
+  return html;
+}
+/* The mission to play here now: the first not yet finished. On a place
+   already restored, the next one round (so every mission gets replayed) —
+   until the child has played one this visit, when the way forward is home. */
+function markerNext(placeId){
+  const d = DESTINATIONS[placeId];
+  if(!d || !d.missions || !d.missions.length) return null;
+  if(!placeRestored(placeId)) return nextMission(placeId, journey.completions);
+  const v = session.visit;
+  if(v && v.dest === placeId && v.played) return null;
+  return d.missions[journey.completions.filter(c => c.destinationId === placeId).length % d.missions.length];
+}
+function planetHint(placeId){
+  const next = markerNext(placeId);
+  return next ? DESTINATIONS[placeId].markers[next].call : 'planet.homeHint';
+}
+function markerHtml(placeId, missionId, state){
+  const mk = DESTINATIONS[placeId].markers[missionId];
+  const done = missionDone(missionId);
+  const cls = 'marker' + (done ? ' is-lit' : '') + (state === 'next' ? ' is-next' : '') + (state === 'waiting' ? ' is-waiting' : '');
+  const style = '--mx: ' + pct(mk.at[0]) + '; --my: ' + pct(mk.at[1]) + '; --mh: ' + pct(mk.height) +
+                '; --mfx: ' + pct(mk.foot[0]) + '; --mb: ' + pct(mk.foot[1]) + '; --ma: ' + mk.aspect;
+  const label = state === 'next' ? 'Start: ' + mk.name : capitalize(mk.name) + (done ? ', fixed' : ', not yet');
+  const held = session.markerHold === missionId ? ' data-held="true"' : '';
+  return '<button class="' + cls + '" id="marker-' + missionId + '"' + held + ' style="' + style + '" ' +
+           'onclick="tapMarker(\'' + missionId + '\')" aria-label="' + escapeAttr(label) + '">' +
+           artImg(mk.asset, 'marker-art marker-off') + artImg(mk.litAsset, 'marker-art marker-on') +
+           (mk.lamp ? '<span class="beacon-lamp"></span>' : '') +
+         '</button>';
+}
+function propsHtml(placeId){
+  const d = DESTINATIONS[placeId];
+  if(!d || d.kind !== 'destination') return '';
+  const next = markerNext(placeId);
+  return d.missions.map(mid => markerHtml(placeId, mid, mid === next ? 'next' : (missionDone(mid) ? 'done' : 'waiting'))).join('');
+}
+function drawPlace(slot, placeId, fresh){
+  const d = DESTINATIONS[placeId];
+  const el = document.getElementById('place' + slot);
+  if(el){
+    el.setAttribute('data-place', placeId);
+    el.classList.toggle('is-restored', placeRestored(placeId) && session.markerHold === null);
+  }
+  const first = d.markers ? d.missions[0] : null;
+  const glowAt = first ? d.markers[first].at[0] : 0.5;
+  paint('place' + slot + 'Sky', skyHtml(placeId, fresh));
+  paint('place' + slot + 'Art', artImg(d.horizon, 'horizon-art') + '<span class="horizon-glow" style="--gx: ' + pct(glowAt) + '"></span>');
+  paint('place' + slot + 'Props', propsHtml(placeId));
+  const sky = document.getElementById('place' + slot + 'Sky');
+  if(sky) sky.classList.toggle('is-holding', !!session.relightHold);
+  const props = document.getElementById('place' + slot + 'Props');
+  if(props) props.classList.toggle('is-holding', !!session.markerHold);
+}
+/* Draw the world where the rocket is, at once: at boot, and whenever
+   saved progress changes under it (an import, an erase). */
+function renderStage(){
+  paint('stageSky', artImg('bg.space', 'sky-art'));
+  paint('starsFar', artImg('bg.starsFar', 'stars-art'));
+  paint('starsNear', artImg('bg.starsNear', 'stars-art'));
+  const stage = document.getElementById('stage');
+  if(stage) stage.setAttribute('data-place', session.place);
+  drawPlace(session.slot, session.place);
+  const here = document.getElementById('place' + session.slot), there = document.getElementById('place' + otherSlot());
+  if(here) here.classList.add('is-shown');
+  if(there) there.classList.remove('is-shown');
+  paintStageRocket(currentScene === 'dock' ? (session.dockPick || currentPaint()) : currentPaint());
+}
+/* Pictures the stage will need are fetched and decoded while the child is
+   still on Earth, so no flight ever shows a planet arriving as a blank. */
+const _preloaded = [];
+function preloadStage(){
+  try{
+    if(typeof window === 'undefined' || typeof window.Image !== 'function') return;
+    ASSET_REGISTRY.forEach(a => {
+      if(!/^(horizon|planet|bg|prop|rocket|character)\./.test(a.id)) return;
+      const img = new window.Image();
+      img.src = a.path;
+      if(typeof img.decode === 'function') img.decode().catch(() => {});
+      _preloaded.push(img);
+    });
+  }catch(e){}
+}
+
+/* ---- Flights ----
+   A flight is the camera moving through one stage: the rocket lifts off,
+   the world it leaves falls away, the stars stream past, the destination
+   grows, its horizon rises into place and the rocket settles onto it.
+   Transforms and opacity only, so an iPad composites it without
+   repainting. About a second; longer the first time to a new place; a
+   short crossfade with Reduce Motion; and a tap anywhere skips it. The
+   resting state of a flight is its destination, so whatever interrupts
+   it — a skip, a hidden tab, a browser that cannot animate — the child is
+   where they were going. */
+function travelTo(to, opts){
+  const o = opts || {};
+  const prev = session.slot, next = otherSlot();
+  showScene('travel');
+  setStageView('travel');
+  const reduced = motionReduced();
+  const duration = reduced ? TIMING.travelReduced : (o.first ? TIMING.travelFirst : TIMING.travel);
+  const stage = document.getElementById('stage');
+  const rocket = document.getElementById('stageRocket');
+  const prevEl = document.getElementById('place' + prev), nextEl = document.getElementById('place' + next);
+  drawPlace(next, to);
+  /* The rocket's landing spot is its place's: measure where it stands,
+     move the stage to the destination, and fly from the one to the other. */
+  const from = boxOf(rocket);
+  if(stage) stage.setAttribute('data-place', to);
+  const land = boxOf(rocket);
+  if(nextEl){ nextEl.classList.add('is-shown'); nextEl.classList.add('is-arriving'); }
+  if(rocket) rocket.classList.add('is-flying');
+  session.place = to;
+  session.slot = next;
+  return new Promise(resolve => {
+    let finished = false, timer = null, moves = [];
+    const done = () => {
+      if(finished) return;
+      finished = true;
+      if(timer) clearTimeout(timer);
+      moves.forEach(a => { try{ a.cancel(); }catch(e){} });
+      if(prevEl) prevEl.classList.remove('is-shown');
+      if(nextEl) nextEl.classList.remove('is-arriving');
+      if(rocket) rocket.classList.remove('is-flying');
+      /* The place left behind is emptied, so no picture in it answers
+         to a name the new place uses. */
+      ['Sky', 'Art', 'Props'].forEach(k => paint('place' + prev + k, ''));
+      session.travel = null;
+      resolve();
+    };
+    session.travel = { finish: done };
+    timer = setTimeout(done, duration + TIMING.travelSettle);
+    moves = flightMoves({ to: to, prevEl: prevEl, nextEl: nextEl, rocket: rocket, from: from, land: land, duration: duration, reduced: reduced });
+    if(!moves.length && prevEl) prevEl.classList.remove('is-shown');
+  });
+}
+function skipTravel(){ if(session.travel) session.travel.finish(); }
+
+function flightMoves(f){
+  const list = [];
+  const move = (el, frames, extra) => {
+    if(!el || typeof el.animate !== 'function') return;
+    try{ list.push(el.animate(frames, Object.assign({ duration: f.duration, fill: 'both' }, extra || {}))); }catch(e){}
+  };
+  const q = (root, sel) => (root && typeof root.querySelector === 'function' ? root.querySelector(sel) : null);
+  const px = (x, y) => 'translate(' + x.toFixed(1) + 'px, ' + y.toFixed(1) + 'px)';
+  const dx = f.from && f.land ? f.from.cx - f.land.cx : 0, dy = f.from && f.land ? f.from.cy - f.land.cy : 0;
+  if(f.reduced){
+    /* Reduce Motion: one place fades into the other. Nothing slides and
+       nothing streams past; the rocket reappears where it landed. */
+    move(f.prevEl, [{ opacity: 1 }, { opacity: 0 }], { easing: 'ease' });
+    move(f.nextEl, [{ opacity: 0 }, { opacity: 1 }], { easing: 'ease' });
+    move(f.rocket, [
+      { transform: px(dx, dy), opacity: 1 },
+      { transform: px(dx, dy), opacity: 0, offset: 0.45 },
+      { transform: px(0, 0), opacity: 0, offset: 0.55 },
+      { transform: px(0, 0), opacity: 1 }
+    ]);
+    return list;
+  }
+  const W = window.innerWidth || 1024, H = window.innerHeight || 768, vh = H / 100;
+  const prevSky = q(f.prevEl, '.place-sky'), prevGround = q(f.prevEl, '.place-ground');
+  const nextSky = q(f.nextEl, '.place-sky'), nextGround = q(f.nextEl, '.place-ground');
+  /* The world left behind falls away as the rocket climbs. */
+  move(prevGround, [
+    { transform: 'translateY(0px)', easing: 'cubic-bezier(0.55, 0, 0.85, 0.5)' },
+    { transform: 'translateY(' + (92 * vh).toFixed(1) + 'px)', offset: 0.5 },
+    { transform: 'translateY(' + (92 * vh).toFixed(1) + 'px)' }
+  ]);
+  /* The destination, seen from here, grows until it is the ground ahead. */
+  const target = q(prevSky, '#sky-' + f.to), tb = boxOf(target);
+  if(tb){
+    const gx = W * 0.5 - tb.cx, gy = H * 0.7 - tb.cy;
+    move(target, [
+      { transform: px(0, 0) + ' scale(1)', opacity: 1, easing: 'cubic-bezier(0.45, 0, 0.6, 1)' },
+      { transform: px(gx * 0.55, gy * 0.4) + ' scale(2.4)', opacity: 1, offset: 0.5 },
+      { transform: px(gx, gy) + ' scale(3.8)', opacity: 0, offset: 0.72 },
+      { transform: px(gx, gy) + ' scale(3.8)', opacity: 0 }
+    ]);
+  }
+  /* Everything else in the sky behind drifts away and fades. */
+  const others = prevSky && typeof prevSky.querySelectorAll === 'function' ? prevSky.querySelectorAll('.sky-body, .sun-glow') : [];
+  for(let i = 0; i < others.length; i++){
+    if(others[i] === target) continue;
+    move(others[i], [
+      { transform: 'translateY(0px)', opacity: 1 },
+      { transform: 'translateY(' + (32 * vh).toFixed(1) + 'px)', opacity: 0, offset: 0.45 },
+      { transform: 'translateY(' + (32 * vh).toFixed(1) + 'px)', opacity: 0 }
+    ], { easing: 'ease-in' });
+  }
+  /* The destination rises into place under the rocket. */
+  move(nextGround, [
+    { transform: 'translateY(' + (96 * vh).toFixed(1) + 'px)' },
+    { transform: 'translateY(' + (96 * vh).toFixed(1) + 'px)', offset: 0.4, easing: 'cubic-bezier(0.16, 0.6, 0.3, 1)' },
+    { transform: 'translateY(0px)', offset: 0.96 },
+    { transform: 'translateY(0px)' }
+  ]);
+  move(nextSky, [{ opacity: 0 }, { opacity: 0, offset: 0.72 }, { opacity: 1 }]);
+  /* The stars stream past, the near ones further than the far ones. */
+  [['starsFar', 10], ['starsNear', 28]].forEach(s => {
+    move(document.getElementById(s[0]), [
+      { transform: 'translateY(0px)', easing: 'ease-in-out' },
+      { transform: 'translateY(' + (s[1] * vh).toFixed(1) + 'px)', offset: 0.5, easing: 'ease-in-out' },
+      { transform: 'translateY(0px)' }
+    ]);
+  });
+  /* The rocket lifts straight up, leans into the crossing, and settles
+     upright onto its landing spot. */
+  const side = f.from && f.land && f.land.cx < f.from.cx ? -1 : 1;
+  const mx = f.land ? W * 0.5 - f.land.cx : 0, my = f.land ? H * 0.32 - f.land.cy : 0;
+  move(f.rocket, [
+    { transform: px(dx, dy) + ' rotate(0deg)', easing: 'cubic-bezier(0.5, 0, 0.9, 0.6)' },
+    { transform: px(dx, dy - 9 * vh) + ' rotate(0deg)', offset: 0.16, easing: 'cubic-bezier(0.3, 0.25, 0.5, 1)' },
+    { transform: px(mx, my) + ' rotate(' + (side * 34) + 'deg)', offset: 0.52, easing: 'cubic-bezier(0.4, 0, 0.3, 1)' },
+    { transform: px(0, -12 * vh) + ' rotate(' + (side * 5) + 'deg)', offset: 0.84, easing: 'cubic-bezier(0.3, 0, 0.3, 1)' },
+    { transform: px(0, 0) + ' rotate(0deg)' }
+  ]);
+  return list;
+}
 
 /* ---- which scene a launch of the app opens on ---- */
 function openingScene(){ return journey.profile ? 'earth' : 'welcome'; }
 
 function renderProduct(){
-  setHtml('backdrop', artImg('bg.space', 'backdrop-art'));
   if(currentScene === null || (!journey.profile && currentScene !== 'welcome')){
+    session.place = 'earth';
+    session.visit = null;
     showScene(openingScene());
+    setStageView('home');
   }
+  renderStage();
   renderWelcome();
   renderEarth();
+  if(currentScene === 'planet') renderPlanet();
   renderDockScene();
   renderGrownups();
 }
@@ -3374,18 +4285,12 @@ function startAdventure(){
   });
 }
 
-/* ---- Earth ---- */
+/* ---- Earth ----
+   The planet fills the bottom, the rocket stands on its pad, Pip floats
+   above it, and every open destination waits in the sky. */
 function renderEarth(){
-  const moon = destinationProgress('moon', journey.completions);
-  setHtml('earthPlanet', artImg('planet.earth', 'planet-art') +
-    '<button class="earth-rocket" onclick="launch()" aria-label="Your rocket. Tap to fly to the Moon.">' +
-      rocketHtml(currentPaint(), false) + '</button>');
-  /* Both states are drawn; restoring the Moon crossfades from one to the
-     other, so relighting it is a change a child sees happen. */
-  const moonEl = setHtml('earthMoon', artImg(DESTINATIONS.moon.asset, 'planet-art moon-dim') +
-                                      artImg(DESTINATIONS.moon.restoredAsset, 'planet-art moon-lit') +
-                                      '<span class="moon-light"></span>');
-  if(moonEl) moonEl.classList.toggle('is-restored', moon.restored);
+  if(session.place === 'earth') drawPlace(session.slot, 'earth');
+  if(currentScene !== 'dock') paintStageRocket(currentPaint());
   setHtml('earthPip', pipHtml());
   setStarCount('earthStars', starBalance(journey.stars));
 
@@ -3395,7 +4300,11 @@ function renderEarth(){
     '</span><span class="kid-icon-label">Dock</span>');
   if(dock) dock.setAttribute('aria-label', news ? 'Rocket Dock. You have enough stars for new paint.' : 'Rocket Dock');
 
-  setHtml('launchBtn', glyph('rocket', 46) + '<span>Launch!</span>');
+  const where = DESTINATIONS[launchTarget()].name;
+  const launchBtn = setHtml('launchBtn', glyph('rocket', 46) + '<span>Launch!</span>');
+  if(launchBtn) launchBtn.setAttribute('aria-label', 'Launch to ' + where);
+  const rocket = document.getElementById('stageRocket');
+  if(rocket) rocket.setAttribute('aria-label', 'Your rocket. Tap to fly to ' + where + '.');
 
   const warn = journey.saveFailed || !Store.isPersistent();
   const gate = setHtml('gateBtn',
@@ -3408,28 +4317,27 @@ function renderEarth(){
 
 function goEarth(lines){
   showScene('earth');
+  setStageView('home');
   renderEarth();
   drawFlightPath();
+  /* Back from the Dock the camera is still rising for a moment: draw the
+     path again once it has settled. */
+  setTimeout(drawFlightPath, 760);
   session.hintGiven = false;
   disarmIdleHint();
   return Voice.sequence(lines || []).then(() => { if(currentScene === 'earth') armIdleHint(); });
 }
 
-/* A dotted path from the rocket to where the adventure is going: the
-   "see your current destination" step, drawn from where things actually
-   are on this screen rather than guessed. */
+/* A dotted path from the rocket to where Launch goes: drawn from where
+   things actually are on this screen rather than guessed. */
 function drawFlightPath(){
-  const svgEl = document.getElementById('earthPath');
-  const moon = document.getElementById('earthMoon');
-  const planet = document.getElementById('earthPlanet');
-  const rocket = planet && typeof planet.querySelector === 'function' ? planet.querySelector('.earth-rocket') : null;
-  if(!svgEl || !moon || !rocket || currentScene !== 'earth') return;
-  if(typeof rocket.getBoundingClientRect !== 'function') return;
-  const a = rocket.getBoundingClientRect(), b = moon.getBoundingClientRect();
-  if(!a.width || !b.width) return;
-  const x1 = a.left + a.width * 0.78, y1 = a.top + a.height * 0.08;
-  const x2 = b.left + b.width * 0.08, y2 = b.top + b.height * 0.7;
-  const cx = (x1 + x2) / 2, cy = Math.min(y1, y2) - Math.abs(x2 - x1) * 0.16;
+  const svgEl = document.getElementById('flightPath');
+  const rocket = boxOf(document.getElementById('stageRocket'));
+  const target = boxOf(document.getElementById('sky-' + launchTarget()));
+  if(!svgEl || !rocket || !target || currentScene !== 'earth') return;
+  const x1 = rocket.cx + rocket.w * 0.12, y1 = rocket.cy - rocket.h * 0.42;
+  const x2 = target.cx - target.w * 0.42, y2 = target.cy + target.h * 0.3;
+  const cx = (x1 + x2) / 2 - Math.abs(x2 - x1) * 0.08, cy = Math.min(y1, y2) - Math.abs(x2 - x1) * 0.12;
   svgEl.setAttribute('viewBox', '0 0 ' + window.innerWidth + ' ' + window.innerHeight);
   svgEl.innerHTML = '<path d="M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + ' Q' + cx.toFixed(1) + ' ' +
                     cy.toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1) + '"/>';
@@ -3438,18 +4346,34 @@ function drawFlightPath(){
 /* Tapping Pip is the child asking for help, so Pip answers — and then does
    not also volunteer the idle hint on this visit. With stars to spend the
    answers take turns between the two things there are to do; otherwise it
-   is the launch hint, in a phrasing not just heard. */
+   is the launch hint, in a phrasing not just heard. On a planet, Pip
+   points at what to tap. */
 function tapPip(){
   unlockAudio();
-  if(currentScene !== 'earth') return;
+  if(currentScene !== 'earth' && currentScene !== 'planet') return;
   session.hintGiven = true;
   disarmIdleHint();
   if(Voice.speaking()) return;
+  if(currentScene === 'planet'){ if(session.visit) Voice.say(planetHint(session.visit.dest)); return; }
   const dockTurn = affordablePaints().length > 0 && session.said.pip++ % 2 === 0;
   Voice.say(dockTurn ? 'guide.dockHint' : familyLine('guide.launchHint', ++session.said.hint));
 }
 
-/* ---- Launch and travel ---- */
+/* Tapping a planet in Earth's sky chooses it: the ring and the path move
+   to it, and Launch will fly there. Nothing launches until Launch. */
+function pickDestination(id){
+  if(session.busy || currentScene !== 'earth' || overlayOpen() || !destinationUnlocked(id, journey.completions)) return;
+  unlockAudio();
+  Sfx.play('tap');
+  session.pick = id;
+  session.hintGiven = true;
+  disarmIdleHint();
+  renderEarth();
+  drawFlightPath();
+  Voice.say(DESTINATIONS[id].story.name);
+}
+
+/* ---- Launch and arrival ---- */
 function launch(){
   if(session.busy || currentScene !== 'earth' || overlayOpen()) return Promise.resolve();
   session.busy = true;
@@ -3458,135 +4382,106 @@ function launch(){
   disarmIdleHint();
   Sfx.play('launch');
   Voice.say(familyLine('travel.launch', journey.completions.length + session.said.launch++));
-  const dest = currentDestination(journey.completions);
+  const dest = launchTarget();
   const first = !storyFlag('arrived.' + dest);
-  return travel('out', { first: first }).then(() => enterMission(dest, first));
+  return travelTo(dest, { first: first }).then(() => arriveAt(dest, first));
 }
 
-function travelSceneHtml(direction){
-  let streaks = '';
-  ['16%', '30%', '47%', '62%', '78%', '88%'].forEach(y => { streaks += '<span class="t-streak" style="--y:' + y + '"></span>'; });
-  const moon = DESTINATIONS.moon;
-  const moonArt = destinationProgress('moon', journey.completions).restored ? moon.restoredAsset : moon.asset;
-  return '<div class="world travel-' + direction + '">' +
-    artImg('bg.space', 't-stars') + streaks +
-    '<div class="t-earth">' + artImg('planet.earth', 'planet-art') + '</div>' +
-    '<div class="t-moon">' + artImg(moonArt, 'planet-art') + '</div>' +
-    '<div class="t-rocket">' + rocketHtml(currentPaint(), true) + '</div>' +
-  '</div>';
+/* On a planet: its story, then Pip points at the marker to tap. The
+   marker is the screen's one primary action; the world is the menu. */
+function arriveAt(dest, first){
+  const d = DESTINATIONS[dest];
+  session.visit = { dest: dest, played: false };
+  session.pick = null;
+  if(first) setStoryFlag('arrived.' + dest);
+  showScene('planet');
+  setStageView('planet');
+  renderPlanet();
+  session.busy = false;
+  session.hintGiven = false;
+  disarmIdleHint();
+  const next = markerNext(dest);
+  const lines = [first ? d.story.firstArrival : familyLine(d.story.arrival, journey.completions.length + session.said.arrive++)];
+  if(next) lines.push(d.markers[next].call);
+  return Voice.sequence(lines).then(() => { if(currentScene === 'planet') armIdleHint(); });
 }
 
-/* The flight itself: ~1s normally, longer only the first time to the Moon,
-   a quick crossfade with Reduce Motion, and a tap anywhere skips it. */
-function travel(direction, opts){
-  const o = opts || {};
-  showScene('travel');
-  const world = setHtml('travelWorld', travelSceneHtml(direction));
-  const reduced = motionReduced();
-  const duration = reduced ? TIMING.travelReduced : (o.first ? TIMING.travelFirst : TIMING.travel);
-  return new Promise(resolve => {
-    let finished = false, timer = null;
-    const done = () => {
-      if(finished) return;
-      finished = true;
-      if(timer) clearTimeout(timer);
-      session.travel = null;
-      resolve();
-    };
-    session.travel = {
-      finish(){
-        try{
-          if(world && typeof world.getAnimations === 'function') world.getAnimations({ subtree: true }).forEach(a => a.cancel());
-        }catch(e){}
-        done();
-      }
-    };
-    timer = setTimeout(done, duration + TIMING.travelSettle);
-    if(!reduced) animateTravel(world, direction, duration);
-  });
-}
-function skipTravel(){ if(session.travel) session.travel.finish(); }
-
-function animateTravel(world, direction, duration){
-  if(!world || typeof world.querySelector !== 'function') return;
-  const ease = 'cubic-bezier(0.45, 0, 0.2, 1)';
-  const run = (el, frames, extra) => {
-    if(!el || typeof el.animate !== 'function') return;
-    try{ el.animate(frames, Object.assign({ duration: duration, easing: ease }, extra || {})); }catch(e){}
-  };
-  const farEarth = 'translate(-30vw, 40vh) scale(0.4)';
-  const farMoon = 'translate(34vw, -24vh) scale(0.2)';
-  const out = direction === 'out';
-  run(world.querySelector('.t-earth'), out
-    ? [{ transform: 'none', opacity: 1 }, { transform: farEarth, opacity: 0 }]
-    : [{ transform: farEarth, opacity: 0 }, { opacity: 1, offset: 0.5 }, { transform: 'none', opacity: 1 }]);
-  run(world.querySelector('.t-moon'), out
-    ? [{ transform: farMoon, opacity: 0 }, { opacity: 1, offset: 0.4 }, { transform: 'none', opacity: 1 }]
-    : [{ transform: 'none', opacity: 1 }, { transform: farMoon, opacity: 0 }]);
-  const tilt = out ? 'rotate(60deg)' : 'rotate(-120deg)';
-  run(world.querySelector('.t-rocket'), [
-    { transform: 'translate(-4vw, 6vh) ' + tilt },
-    { transform: 'translate(0, -2vh) ' + tilt, offset: 0.5 },
-    { transform: 'translate(3vw, 0) ' + tilt }
-  ]);
-  run(world.querySelector('.t-stars'), [{ transform: 'translateX(0)' }, { transform: 'translateX(' + (out ? '-12%' : '12%') + ')' }]);
-  const streaks = world.querySelectorAll('.t-streak');
-  for(let i = 0; i < streaks.length; i++){
-    run(streaks[i], [
-      { transform: 'translateX(0)', opacity: 0 },
-      { opacity: 0.9, offset: 0.25 },
-      { transform: 'translateX(-130vw)', opacity: 0 }
-    ], { duration: Math.max(300, duration * 0.55), delay: (i * duration) / 9, easing: 'linear' });
+function renderPlanet(){
+  const v = session.visit;
+  if(!v) return;
+  drawPlace(session.slot, v.dest);
+  setHtml('planetPip', pipHtml());
+  setHtml('planetHomeBtn', '<span class="kid-icon-disc">' + glyph('house', 38) + '</span><span class="kid-icon-label">Home</span>');
+  setHtml('planetGoHomeBtn', glyph('house', 44) + '<span>Home</span>');
+  setStarCount('planetStars', starBalance(journey.stars));
+  const scene = document.getElementById('scene-planet');
+  if(scene){
+    /* Nothing left to play this visit: the way forward is home, and it
+       becomes the yellow button. */
+    scene.classList.toggle('is-done', !markerNext(v.dest));
+    scene.setAttribute('aria-label', capitalize(DESTINATIONS[v.dest].name));
   }
 }
 
+/* One mission at a time: the marker to play pulses. Tapping another one
+   is answered by pointing at the one that is ready. */
+function tapMarker(missionId){
+  const v = session.visit;
+  if(session.busy || currentScene !== 'planet' || overlayOpen() || !v) return Promise.resolve();
+  const d = DESTINATIONS[v.dest];
+  if(!d.markers || !d.markers[missionId]) return Promise.resolve();
+  unlockAudio();
+  session.hintGiven = true;
+  disarmIdleHint();
+  const next = markerNext(v.dest);
+  if(next && missionId !== next){ Voice.say(d.markers[next].call); return Promise.resolve(); }
+  return startMission(missionId);
+}
+
 /* ---- Mission ---- */
-function enterMission(dest, first){
-  const missionId = nextMission(dest, journey.completions);
+function startMission(missionId){
+  const m = MISSIONS[missionId];
   const run = startRun(missionId, new Date());
-  if(!run){ session.busy = false; return goEarth([]); }
+  if(!run) return Promise.resolve();
   session.run = run;
-  if(first) setStoryFlag('arrived.' + dest);
+  Voice.stop();
+  Sfx.play('tap');
   showScene('mission');
+  setStageView('mission');
   renderMissionFrame();
   beginNextRound(run);
   setLocked(true);
-  session.busy = false;
   /* Praise starts at a different phrasing each run, then rotates. */
-  session.praiseAt = hashString(run.id) % LETTER_LINES.found.length;
-  const d = DESTINATIONS[dest];
-  const intro = first ? [d.story.firstArrival, 'mission.howTo']
-                      : [familyLine(d.story.arrival, journey.completions.length + session.said.arrive++)];
+  session.praiseAt = hashString(run.id) % GAME_VIEWS[m.activities[0].type].praiseCount;
+  /* The task is explained until it has been done once. */
+  const intro = missionDone(missionId) ? [] : [m.howTo];
   return Voice.sequence(intro).then(() => (session.run === run ? askRound(run) : null));
 }
 
 function renderMissionFrame(){
-  setHtml('missionGround', artImg('bg.moonGround', 'ground-art'));
-  setHtml('missionEarth', artImg('planet.earth', 'planet-art'));
   setHtml('missionPip', pipHtml());
   setHtml('missionHomeBtn', '<span class="kid-icon-disc">' + glyph('house', 38) + '</span>');
   setHtml('repeatBtn', glyph('speaker', 54));
+  setHtml('beatStone', artImg('prop.beatStone', 'stone-art'));
 }
 
 function beginNextRound(run){
-  const target = MISSIONS[run.missionId].activities[run.index].target;
-  beginRound(run, journey.evidence, { audible: lineAudible(voiceCue('find.' + target)) });
+  const a = MISSIONS[run.missionId].activities[run.index];
+  beginRound(run, journey.evidence, { audible: lineAudible(voiceCue(ACTIVITY_TYPES[a.type].promptCue(a))) });
+  resetBeats();
   renderRound(run);
 }
 
 function renderRound(run){
   const r = run && run.round;
-  const host = document.getElementById('missionChoices');
-  if(host && r){
-    host.innerHTML = r.options.map((L, i) =>
-      '<button class="choice" id="choice-' + i + '" onclick="choose(' + i + ')" aria-label="Letter ' + L + '">' +
-        '<span class="choice-glyph" aria-hidden="true">' + L + '</span>' +
-        '<span class="choice-badge" aria-hidden="true">' + glyph('check', 30) + '</span>' +
-      '</button>').join('');
-    host.classList.remove('is-new');
-    void host.offsetWidth;
-    host.classList.add('is-new');
-  }
+  if(!r) return;
+  const game = document.getElementById('missionGame');
+  if(game) game.setAttribute('data-game', r.activity.type);
+  GAME_VIEWS[r.activity.type].draw(r);
+  ['missionChoices', 'gameSignal'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.classList.remove('is-new'); void el.offsetWidth; el.classList.add('is-new'); }
+  });
   renderProgress(run);
 }
 
@@ -3599,7 +4494,8 @@ function renderProgress(run){
     html += '<span class="progress-star' + (i < done ? ' is-done' : '') + '">' + glyph('star', 34) + '</span>';
   }
   const host = setHtml('missionProgress', html);
-  if(host) host.setAttribute('aria-label', done + ' of ' + total + ' letters found');
+  const type = MISSIONS[run.missionId].activities[0].type;
+  if(host) host.setAttribute('aria-label', done + ' of ' + total + ' ' + GAME_VIEWS[type].progressWord);
 }
 
 function setLocked(on){
@@ -3617,18 +4513,228 @@ function questionLine(r){
   if(r.index === 0) return 'find.' + t;
   return 'find.' + t + '.' + (((r.index - 1) % (LETTER_LINES.find.length - 1)) + 1);
 }
+/* The same rule for any family of questions: plainest first, then rotate. */
+function questionIndex(r, lines){ return r.index === 0 ? 0 : ((r.index - 1) % (lines.length - 1)) + 1; }
 
-/* Ask the round's question. The tiles open for tapping as soon as the
+/* Each picture named in turn, lit while its name is said: a child who
+   cannot read cannot rhyme with a picture nobody has named. */
+function nameChoices(r){
+  const steps = [];
+  r.options.forEach((w, i) => {
+    if(r.out.indexOf(i) !== -1) return;
+    steps.push({ say: 'word.' + w, cue: () => namingChoice(i) });
+  });
+  steps.push({ cue: () => namingChoice(-1) });
+  return steps;
+}
+function namingChoice(i){
+  for(let j = 0; j < 4; j++){
+    const t = document.getElementById('choice-' + j);
+    if(t) t.classList.toggle('is-naming', j === i);
+  }
+}
+
+/* ---- Syllable meteors ----
+   One tap on the stone is one beat, and each beat lights a meteor, so the
+   child can see the count they are making. A pause ends a count; only the
+   number of taps is ever judged — never the rhythm, never the speed. */
+function meteorSlot(lit){
+  return '<span class="meteor-slot' + (lit ? ' is-lit' : '') + '">' +
+           artImg('prop.meteor', 'meteor-art meteor-dim') + artImg('prop.meteorLit', 'meteor-art meteor-lit') + '</span>';
+}
+/* Waiting meteors are drawn only while Pip is showing the count: shown
+   before a first try, they would give the answer away. */
+function meteorsReset(waiting){
+  let html = '';
+  for(let i = 0; i < waiting; i++) html += meteorSlot(false);
+  const row = setHtml('meteorRow', html);
+  if(row){
+    row.classList.remove('is-correct');
+    row.setAttribute('aria-label', waiting ? waiting + ' beats to tap' : 'Beats tapped');
+  }
+}
+function meteorLight(i){
+  const row = document.getElementById('meteorRow');
+  if(!row) return;
+  const slots = typeof row.querySelectorAll === 'function' ? row.querySelectorAll('.meteor-slot') : [];
+  if(slots[i]) slots[i].classList.add('is-lit');
+  else if(typeof row.insertAdjacentHTML === 'function') row.insertAdjacentHTML('beforeend', meteorSlot(true));
+  row.setAttribute('aria-label', (i + 1) + (i === 0 ? ' beat tapped' : ' beats tapped'));
+}
+function stopBeats(){
+  const b = session.beat;
+  if(b.timer){ clearTimeout(b.timer); b.timer = null; }
+  b.taps = 0;
+  b.hold = false;
+}
+/* Clears the taps of this try. A count Pip has shown stays shown: its
+   meteors wait again, and the stone keeps its "tap here" ring. */
+function resetBeats(){
+  stopBeats();
+  const r = session.run && session.run.round;
+  const shown = r && r.guide ? r.guide : 0;
+  meteorsReset(shown);
+  const stone = document.getElementById('beatStone');
+  if(stone){ stone.classList.toggle('is-hint', shown > 0); stone.removeAttribute('aria-disabled'); }
+}
+/* Showing the beats: Pip says each one as a meteor lights, then hands
+   over — "now you" — with that many meteors waiting. Taps wait until Pip
+   has finished, and then the count can only end right. */
+function modelBeats(run){
+  const r = run.round;
+  const word = r.activity.target;
+  const n = WORDS[word].beats.length;
+  resetBeats();
+  const b = session.beat;
+  b.hold = true;
+  r.guide = n;
+  meteorsReset(n);
+  const stone = document.getElementById('beatStone');
+  if(stone){ stone.setAttribute('aria-disabled', 'true'); stone.classList.remove('is-hint'); }
+  const steps = ['beats.show.' + word];
+  WORDS[word].beats.forEach((_, i) => steps.push({ say: 'beat.' + word + '.' + i, cue: () => meteorLight(i) }));
+  steps.push({ cue: () => meteorsReset(n) });
+  steps.push('beats.turn.' + word);
+  return Voice.sequence(steps).then(() => {
+    if(session.run !== run || r.resolved) return;
+    b.hold = false;
+    if(stone){ stone.removeAttribute('aria-disabled'); stone.classList.add('is-hint'); }
+    armReprompt(run);
+  });
+}
+function tapBeat(){
+  const run = session.run;
+  if(!run || currentScene !== 'mission' || overlayOpen()) return;
+  const r = run.round;
+  if(!r || r.resolved || r.activity.type !== 'syllable-tap') return;
+  /* A tap during the intro is a child ready to start: skip to the question. */
+  if(session.locked){ Voice.stop(); return; }
+  const b = session.beat;
+  if(b.hold) return;
+  const now = Date.now();
+  if(now - b.lastAt < TIMING.beatBounce) return;      // one finger bouncing is one beat
+  b.lastAt = now;
+  const limit = r.guide || MAX_BEATS;
+  if(b.taps >= limit) return;
+  unlockAudio();
+  disarmReprompt();
+  meteorLight(b.taps);
+  b.taps += 1;
+  Sfx.play('beat');
+  const stone = document.getElementById('beatStone');
+  if(stone){ stone.classList.remove('is-hint'); stone.classList.remove('is-struck'); void stone.offsetWidth; stone.classList.add('is-struck'); }
+  if(b.timer) clearTimeout(b.timer);
+  /* Once Pip has shown the count, a pause is only a pause: the round ends
+     when that many beats are tapped, however long it takes. */
+  if(r.guide){
+    if(b.taps >= r.guide) b.timer = setTimeout(() => settleBeats(run), TIMING.beatSettle);
+    return;
+  }
+  b.timer = setTimeout(() => settleBeats(run), b.taps >= limit ? TIMING.beatSettle : TIMING.beatPause);
+}
+/* The count is in: answer with it, through the same path as any choice. */
+function settleBeats(run){
+  const b = session.beat;
+  if(b.timer){ clearTimeout(b.timer); b.timer = null; }
+  if(session.run !== run || !run.round || run.round.resolved || b.taps < 1) return Promise.resolve();
+  return choose(Math.min(b.taps, MAX_BEATS) - 1);
+}
+
+/* One view per kind of activity: how its round is drawn, and what Pip
+   says at each step of the help ladder. A new activity type is an engine
+   entry, content, and one of these — never a new scene. */
+const GAME_VIEWS = {
+  'find-letter': {
+    progressWord: 'letters found',
+    praiseCount: LETTER_LINES.found.length,
+    /* Letter stones stand on the Moon. The letter is on a clean plate on
+       the stone's face, never on the clay. */
+    draw(r){
+      setHtml('gameSignal', '');
+      const host = setHtml('missionChoices', r.options.map((L, i) =>
+        '<button class="choice choice-stone" id="choice-' + i + '" onclick="choose(' + i + ')" aria-label="Letter ' + L + '">' +
+          artImg('prop.letterStone', 'stone-art') +
+          '<span class="choice-face" aria-hidden="true"><span class="choice-glyph">' + L + '</span></span>' +
+          '<span class="choice-badge" aria-hidden="true">' + glyph('check', 30) + '</span>' +
+        '</button>').join(''));
+      if(host) host.setAttribute('aria-label', 'Letters to choose from');
+    },
+    ask(r){ return [questionLine(r)]; },
+    guide(run){ tileClass(run.round.answer, 'is-hint'); },
+    again(r, n){ return 'again.' + r.activity.target + '.' + n; },
+    praise(r, k){ return 'found.' + r.activity.target + '.' + (k % LETTER_LINES.found.length); },
+    correct(r, i){ tileClass(i, 'is-correct'); },
+    wrong(r, i){ tileClass(i, 'is-wrong'); tileClass(i, 'is-out'); },
+    retry(r){ return ['find.' + r.activity.target]; },
+    show(run){ tileClass(run.round.answer, 'is-hint'); return Voice.sequence(['show.' + run.round.activity.target]); }
+  },
+  'rhyme-pick': {
+    progressWord: 'rhymes found',
+    praiseCount: RHYME_LINES.found.length,
+    /* The radar hears one word, shown in its window; three pictures stand
+       on the ground below it. */
+    draw(r){
+      setHtml('gameSignal', pictureHtml(r.activity.target));
+      const host = setHtml('missionChoices', r.options.map((w, i) =>
+        '<button class="choice choice-picture" id="choice-' + i + '" onclick="choose(' + i + ')" aria-label="' + escapeAttr(capitalize(WORDS[w].speak)) + '">' +
+          pictureHtml(w) +
+          '<span class="choice-badge" aria-hidden="true">' + glyph('check', 30) + '</span>' +
+        '</button>').join(''));
+      if(host) host.setAttribute('aria-label', 'Pictures to choose from');
+    },
+    ask(r){
+      const t = r.activity.target;
+      return ['word.' + t, 'rhyme.ask.' + t + '.' + questionIndex(r, RHYME_LINES.ask)].concat(nameChoices(r));
+    },
+    guide(run){ tileClass(run.round.answer, 'is-hint'); },
+    again(r, n){ return 'rhyme.again.' + r.activity.target + '.' + n; },
+    praise(r, k){ return 'rhyme.found.' + r.activity.target + '.' + r.activity.answer + '.' + (k % RHYME_LINES.found.length); },
+    correct(r, i){ namingChoice(-1); tileClass(i, 'is-correct'); },
+    wrong(r, i){ namingChoice(-1); tileClass(i, 'is-wrong'); tileClass(i, 'is-out'); },
+    retry(r){ return ['rhyme.ask.' + r.activity.target].concat(nameChoices(r)); },
+    show(run){
+      const r = run.round;
+      tileClass(r.answer, 'is-hint');
+      return Voice.sequence(['rhyme.show.' + r.activity.target + '.' + r.activity.answer]);
+    }
+  },
+  'syllable-tap': {
+    progressWord: 'words tapped',
+    praiseCount: BEAT_LINES.found.length,
+    draw(r){
+      setHtml('gameSignal', pictureHtml(r.activity.target));
+      setHtml('missionChoices', '');
+      meteorsReset(0);
+    },
+    ask(r){ return ['word.' + r.activity.target, 'beats.ask.' + r.activity.target + '.' + questionIndex(r, BEAT_LINES.ask)]; },
+    guide(run){ return modelBeats(run); },
+    again(r, n){ return 'beats.again.' + r.activity.target + '.' + n; },
+    praise(r, k){ return 'beats.found.' + r.activity.target + '.' + (k % BEAT_LINES.found.length); },
+    correct(){ const row = document.getElementById('meteorRow'); if(row) row.classList.add('is-correct'); },
+    wrong(){ resetBeats(); },
+    retry(r){ return ['word.' + r.activity.target, 'beats.ask.' + r.activity.target]; },
+    show(run){ return modelBeats(run); }
+  }
+};
+
+/* Ask the round's question. What can be tapped opens as soon as the
    question starts, so a quick child is never kept waiting. */
 function askRound(run){
   const r = run.round;
   if(!r || r.resolved || session.run !== run) return Promise.resolve();
   setLocked(false);
   armReprompt(run);
-  r.askLine = questionLine(r);
-  return Voice.say(r.askLine).then(() => {
-    if(r.guided && !r.resolved && session.run === run) tileClass(r.answer, 'is-hint');
+  r.askLines = GAME_VIEWS[r.activity.type].ask(r);
+  return sayAsk(run).then(() => {
+    if(r.guided && !r.resolved && session.run === run) return GAME_VIEWS[r.activity.type].guide(run);
   });
+}
+function sayAsk(run){
+  const r = run.round;
+  const lines = r.askLines || GAME_VIEWS[r.activity.type].ask(r);
+  session.asking = r;
+  const said = lines.length === 1 ? Voice.say(lines[0]) : Voice.sequence(lines);
+  return said.then(() => { if(session.asking === r) session.asking = null; });
 }
 
 /* Repeat means "say that again": the same words, not a new phrasing. */
@@ -3637,21 +4743,25 @@ function repeatPrompt(){
   const run = session.run;
   if(!run || !run.round || run.round.resolved || currentScene !== 'mission') return;
   if(session.locked){ Voice.stop(); return; }         // still in the intro: skip to the question
+  if(session.beat.hold) return;                        // Pip is showing the beats
+  if(session.asking === run.round && Voice.speaking()) return;
   armReprompt(run);
-  Voice.say(run.round.askLine || questionLine(run.round));
+  sayAsk(run);
 }
 
 /* If nothing is tapped for a while, Pip asks again — twice at most, and it
-   never counts against the child. */
+   never counts against the child. A child in the middle of a count is not
+   stuck, unless Pip has shown the count and they stopped part way. */
 function armReprompt(run){
   disarmReprompt();
   session.idleTimer = setTimeout(() => {
     const r = run.round;
     if(session.run !== run || !r || r.resolved || currentScene !== 'mission' || overlayOpen()) return;
+    if((session.beat.taps > 0 && !r.guide) || session.beat.hold) return;
     if(r.reprompts >= TIMING.maxReprompts) return;
     r.reprompts += 1;
     /* "Listen. Find…", then "Take your time. Find…": a nudge, not a replay. */
-    Voice.say('again.' + r.activity.target + '.' + (r.reprompts - 1))
+    Voice.say(GAME_VIEWS[r.activity.type].again(r, r.reprompts - 1))
       .then(() => { if(session.run === run) armReprompt(run); });
   }, TIMING.reprompt);
 }
@@ -3667,11 +4777,13 @@ function choose(i){
   if(res.ignored) return Promise.resolve();
   unlockAudio();
   disarmReprompt();
+  const view = GAME_VIEWS[r.activity.type];
 
   if(res.correct){
     setLocked(true);
+    stopBeats();
     Sfx.play('correct');
-    tileClass(i, 'is-correct');
+    view.correct(r, i);
     if(res.outcome !== null){
       const type = ACTIVITY_TYPES[r.activity.type];
       const key = type.evidenceKey(r.activity);
@@ -3681,20 +4793,16 @@ function choose(i){
       saveEvidence();
     }
     renderProgress(run);
-    const praise = 'found.' + r.activity.target + '.' + ((session.praiseAt++) % LETTER_LINES.found.length);
+    const praise = view.praise(r, session.praiseAt++);
     return Promise.all([Voice.say(praise), delay(TIMING.praiseMin)])
       .then(() => (session.run === run ? nextStep(run) : null));
   }
 
   Sfx.play('almost');
-  tileClass(i, 'is-wrong');
-  tileClass(i, 'is-out');
-  if(res.hint === 'show'){
-    tileClass(r.answer, 'is-hint');
-    return Voice.sequence(['show.' + r.activity.target]);
-  }
+  view.wrong(r, i);
+  if(res.hint === 'show') return view.show(run);
   /* A rotating "almost", then the question in its plainest words. */
-  return Voice.sequence([familyLine('feedback.almost', session.said.almost++), 'find.' + r.activity.target])
+  return Voice.sequence([familyLine('feedback.almost', session.said.almost++)].concat(view.retry(r)))
     .then(() => { if(session.run === run && !r.resolved) armReprompt(run); });
 }
 
@@ -3713,59 +4821,132 @@ function nextStep(run){
 function finishMission(run){
   const m = MISSIONS[run.missionId];
   const before = destinationProgress(m.destinationId, journey.completions);
+  const wasOpen = JOURNEY_ORDER.filter(id => destinationUnlocked(id, journey.completions));
   const rec = completionRecord(run, new Date());
   const c = addCompletion(journey.completions, rec);
   if(c.added){ journey.completions = c.list; saveCompletions(); }
   const s = awardStars(journey.stars, run.id, m.reward.stars, rec.completedAt);
   if(s.awarded){ journey.stars = s.ledger; saveStars(); }
   if(session.run === run) session.run = null;
+  stopBeats();
   const after = destinationProgress(m.destinationId, journey.completions);
   const restoredNow = after.restored && !before.restored;
-  /* Remembered for the flight home: "look, the Moon is shining" is news
-     exactly once — on the return from the mission that relit it. */
-  session.justRelit = restoredNow;
-  return celebrate({ mission: m, stars: s.awarded ? m.reward.stars : 0, restoredNow: restoredNow });
+  const opened = JOURNEY_ORDER.filter(id => wasOpen.indexOf(id) === -1 && destinationUnlocked(id, journey.completions))[0] || null;
+  /* Remembered for the flight home: "look, the Moon is shining" and "next
+     stop, Mercury" are news exactly once — on the return from the mission
+     that made them true. */
+  if(restoredNow) session.justRelit = m.destinationId;
+  if(opened) session.revealed = opened;
+  return celebrate({ mission: m, stars: s.awarded ? m.reward.stars : 0, restoredNow: restoredNow, opened: opened });
 }
 
-/* ---- Celebration ---- */
+/* ---- The world answers ----
+   Back on the planet: what the child fixed lights up in front of them, a
+   restored world brightens, three stars arc to the count, Pip cheers, and
+   whatever comes next is shown — the next marker, or a new planet in the
+   sky and the yellow way home. */
 function celebrate(o){
-  showScene('celebrate');
+  const dest = o.mission.destinationId;
+  const d = DESTINATIONS[dest];
+  if(!session.visit || session.visit.dest !== dest) session.visit = { dest: dest, played: false };
+  session.visit.played = true;
   session.celebrateReadyAt = Date.now() + TIMING.celebrateGuard;
-  const total = starBalance(journey.stars);
-  const start = total - o.stars;
-  setHtml('celebrateGround', artImg('bg.moonGround', 'ground-art'));
-  const beacon = setHtml('celebrateBeacon', artImg('prop.beacon', 'beacon-art beacon-off') +
-                                            artImg('prop.beaconLit', 'beacon-art beacon-on') +
-                                            '<span class="beacon-lamp"></span>');
-  if(beacon) beacon.classList.remove('is-lit');
-  setHtml('celebratePip', pipHtml());
-  let stars = '';
-  for(let i = 0; i < o.stars; i++) stars += '<span class="reward-star" id="rewardStar-' + i + '">' + artImg('prop.star', 'reward-star-art') + '</span>';
-  const row = setHtml('rewardStars', stars);
-  if(row) row.setAttribute('aria-label', o.stars === 1 ? '1 star earned' : o.stars + ' stars earned');
-  setStarCount('celebrateStars', start);
-  setHtml('celebrateHomeBtn', glyph('house', 44) + '<span>Back to Earth</span>');
-
+  session.markerHold = o.mission.id;
+  session.revealHold = o.opened;
+  showScene('planet');
+  setStageView('planet');
+  renderPlanet();
+  const start = starBalance(journey.stars) - o.stars;
+  setStarCount('planetStars', start);
   const reduced = motionReduced();
-  setTimeout(() => { if(beacon) beacon.classList.add('is-lit'); }, reduced ? 0 : 200);
-  for(let i = 0; i < o.stars; i++){
+  setTimeout(() => {
+    session.markerHold = null;
+    session.revealHold = null;
+    if(session.place !== dest) return;
+    const slot = session.slot;
+    const props = document.getElementById('place' + slot + 'Props');
+    if(props) props.classList.remove('is-holding');
+    const place = document.getElementById('place' + slot);
+    if(place) place.classList.toggle('is-restored', placeRestored(dest));
+    if(o.opened) paint('place' + slot + 'Sky', skyHtml(dest, o.opened));
+  }, reduced ? 0 : TIMING.relight);
+  flyRewardStars(o.mission.id, o.stars, start);
+  cheer('planetPip');
+  const next = markerNext(dest);
+  const lines = [o.restoredNow ? d.story.restored
+                 : (next && !missionDone(next) ? d.story.step : familyLine(d.story.shining, journey.completions.length)),
+                 o.stars ? 'stars.found.' + o.stars : null];
+  if(o.opened) lines.push(DESTINATIONS[o.opened].story.reveal);
+  if(next) lines.push(d.markers[next].call);
+  return Voice.sequence(lines).then(() => {
+    if(currentScene === 'planet'){ session.hintGiven = false; armIdleHint(); }
+  });
+}
+function cheer(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('is-cheering');
+  void el.offsetWidth;
+  el.classList.add('is-cheering');
+  setTimeout(() => el.classList.remove('is-cheering'), 1900);
+}
+/* Three clay stars arc from what the child fixed to the star count, and
+   the count goes up as each one lands. With Reduce Motion the count just
+   goes up. */
+function flyRewardStars(missionId, count, start){
+  const reduced = motionReduced();
+  for(let i = 0; i < count; i++){
     setTimeout(() => {
-      if(currentScene !== 'celebrate') return;
-      const el = document.getElementById('rewardStar-' + i);
-      if(el) el.classList.add('is-earned');
-      setStarCount('celebrateStars', start + i + 1, !reduced);
-      Sfx.play('star');
+      if(currentScene !== 'planet') return;
+      const land = () => {
+        if(currentScene === 'planet') setStarCount('planetStars', start + i + 1, !reduced);
+        Sfx.play('star');
+      };
+      if(reduced || !arcStar(missionId, land)) land();
     }, reduced ? 0 : TIMING.starFirst + i * TIMING.starEvery);
   }
-  const d = DESTINATIONS[o.mission.destinationId];
-  return Voice.sequence([o.restoredNow ? d.story.restored : familyLine(d.story.shining, journey.completions.length),
-                         o.stars ? 'stars.found.' + o.stars : null]);
+}
+function arcStar(missionId, land){
+  const fx = document.getElementById('stageFx');
+  const from = boxOf(document.getElementById('marker-' + missionId));
+  const counter = document.getElementById('planetStars');
+  const to = boxOf(counter && typeof counter.querySelector === 'function' ? counter.querySelector('.star-count-icon') : null);
+  if(!fx || !from || !to) return false;
+  const star = document.createElement('img');
+  if(typeof star.animate !== 'function') return false;
+  star.className = 'fx-star';
+  star.src = assetSrc('prop.star');
+  star.alt = '';
+  fx.appendChild(star);
+  const x0 = from.cx, y0 = from.cy - from.h * 0.15, x2 = to.cx, y2 = to.cy;
+  const x1 = (x0 + x2) / 2, y1 = Math.min(y0, y2) - (window.innerHeight || 768) * 0.16;
+  const frames = [];
+  for(let s = 0; s <= 8; s++){
+    const t = s / 8, u = 1 - t;
+    const x = u * u * x0 + 2 * u * t * x1 + t * t * x2, y = u * u * y0 + 2 * u * t * y1 + t * t * y2;
+    const size = 0.45 + 0.75 * Math.sin(Math.PI * Math.min(1, t * 1.3)) + 0.25 * t;
+    frames.push({ transform: 'translate(' + x.toFixed(1) + 'px, ' + y.toFixed(1) + 'px) scale(' + size.toFixed(2) + ')', opacity: s === 0 ? 0 : 1 });
+  }
+  let landed = false;
+  const finish = () => {
+    if(landed) return;
+    landed = true;
+    if(star.parentNode) star.parentNode.removeChild(star);
+    land();
+  };
+  try{
+    const a = star.animate(frames, { duration: TIMING.starFlight, easing: 'cubic-bezier(0.35, 0, 0.3, 1)' });
+    a.onfinish = finish;
+  }catch(e){ finish(); return true; }
+  /* A hidden tab never finishes an animation; the star still lands. */
+  setTimeout(finish, TIMING.starFlight + 250);
+  return true;
 }
 
 function flyHome(){
-  if(session.busy || currentScene !== 'celebrate') return Promise.resolve();
-  /* The last letter was found with a tap near this corner; a second, eager
-     tap must not skip the celebration it was meant to see. */
+  if(session.busy || currentScene !== 'planet') return Promise.resolve();
+  /* The last answer was tapped near here; a second, eager tap must not
+     skip the celebration it was meant to see. */
   if(Date.now() < session.celebrateReadyAt) return Promise.resolve();
   return returnToEarth();
 }
@@ -3774,13 +4955,21 @@ function returnToEarth(){
   session.busy = true;
   Voice.stop();
   disarmReprompt();
+  disarmIdleHint();
+  stopBeats();
   Sfx.play('launch');
-  return travel('home', {}).then(() => {
+  /* A place relit by the mission just finished is drawn dark in Earth's
+     sky, and lights up once the child is home to see it. */
+  if(session.justRelit) session.relightHold = session.justRelit;
+  return travelTo('earth', {}).then(() => {
     session.busy = false;
-    const relit = session.justRelit;
-    session.justRelit = false;
-    const lines = [relit ? 'guide.moonShining'
+    session.visit = null;
+    const relit = session.justRelit, opened = session.revealed;
+    session.justRelit = null;
+    session.revealed = null;
+    const lines = [relit ? DESTINATIONS[relit].story.home
                          : familyLine('guide.home', journey.completions.length + session.said.home++)];
+    if(opened) lines.push(DESTINATIONS[opened].story.next);
     if(affordablePaints().length && !storyFlag('heard.dockHint')){
       lines.push('guide.dockHint');
       setStoryFlag('heard.dockHint');
@@ -3791,16 +4980,14 @@ function returnToEarth(){
   });
 }
 
-/* Home from the mission that relit the Moon: it is drawn dark for a beat,
+/* Home from the mission that relit a place: it is drawn dark for a beat,
    then lights up in front of the child, rather than already being lit —
    the payoff happens where they can see it. */
 function showRelight(){
-  const m = document.getElementById('earthMoon');
-  if(!m) return;
-  m.classList.remove('is-restored');
-  void m.offsetWidth;                 // settle the dark state, so the change animates
   setTimeout(() => {
-    if(currentScene === 'earth' && destinationProgress('moon', journey.completions).restored) m.classList.add('is-restored');
+    session.relightHold = null;
+    const sky = document.getElementById('place' + session.slot + 'Sky');
+    if(sky) sky.classList.remove('is-holding');
   }, motionReduced() ? 0 : TIMING.relight);
 }
 
@@ -3824,8 +5011,8 @@ function closeHomeSheet(){
     if(session.locked) askRound(run); else armReprompt(run);
   }
 }
-/* Letters already found stay recorded; no stars are given for a mission
-   that was not finished, and none are taken away either. */
+/* What was already answered stays recorded; no stars are given for a
+   mission that was not finished, and none are taken away either. */
 function goHomeFromMission(){
   closeOverlay('homeSheet');
   releaseOverlayHistory();
@@ -3834,7 +5021,8 @@ function goHomeFromMission(){
 }
 
 /* ---- Rocket Dock ----
-   Writes stars (a spend) and rocket (what is worn). Nothing else. */
+   The camera lowers to the pad and the rocket is the hero. Writes stars
+   (a spend) and rocket (what is worn). Nothing else. */
 function openDock(){
   if(session.busy || currentScene !== 'earth' || overlayOpen()) return;
   unlockAudio();
@@ -3842,6 +5030,7 @@ function openDock(){
   Sfx.play('tap');
   session.dockPick = currentPaint();
   showScene('dock');
+  setStageView('dock');
   renderDockScene();
   session.hintGiven = false;
   disarmIdleHint();
@@ -3863,8 +5052,7 @@ function renderDockScene(){
   const balance = starBalance(journey.stars);
   const worn = currentPaint();
 
-  setHtml('dockPad', artImg('prop.pad', 'pad-art'));
-  setHtml('dockRocket', rocketHtml(pick.id, false));
+  if(currentScene === 'dock') paintStageRocket(pick.id);
   setHtml('dockPip', pipHtml());
   setHtml('dockBackBtn', '<span class="kid-icon-disc">' + glyph('back', 40) + '</span><span class="kid-icon-label">Earth</span>');
   setStarCount('dockStars', balance);
@@ -3945,7 +5133,7 @@ function dockAction(){
   Voice.say('dock.unlocked');
 }
 function popDockRocket(){
-  const el = document.getElementById('dockRocket');
+  const el = document.getElementById('stageRocket');
   if(!el) return;
   el.classList.remove('is-new'); void el.offsetWidth; el.classList.add('is-new');
 }
@@ -3955,6 +5143,8 @@ function leaveDock(){
   session.dockPick = null;            // an unchosen preview is only a preview
   Sfx.play('tap');
   Voice.stop();
+  const el = document.getElementById('stageRocket');
+  if(el) el.classList.remove('is-new');
   goEarth([]);
 }
 
@@ -4024,15 +5214,22 @@ function detailRow(label, value){
          '<span class="detail-value">' + escapeHtml(value) + '</span></div>';
 }
 function letterRowHtml(e){
-  return '<div class="letter-row"><span class="letter-row-glyph">' + escapeHtml(e.item) + '</span>' +
+  const word = e.item.length > 1;
+  return '<div class="letter-row"><span class="letter-row-glyph' + (word ? ' is-word' : '') + '">' + escapeHtml(e.item) + '</span>' +
     '<span class="letter-row-text">Heard ' + e.seen + (e.seen === 1 ? ' time' : ' times') +
-      ' · found on the first try ' + e.firstTry + (e.firstTry === 1 ? ' time' : ' times') + '</span>' +
+      ' · ' + ((SKILLS[e.skillId] && SKILLS[e.skillId].firstTry) || 'right on the first try') + ' ' + e.firstTry + (e.firstTry === 1 ? ' time' : ' times') + '</span>' +
     '<span class="letter-row-date">' + escapeHtml(formatDate(e.lastPracticed)) + '</span></div>';
+}
+/* Where the journey stands, place by place, in plain words. */
+function placeStatus(id){
+  if(!destinationUnlocked(id, journey.completions)) return 'Not reached yet';
+  const p = destinationProgress(id, journey.completions);
+  if(p.restored) return 'Restored';
+  return p.done + ' of ' + p.total + (p.total === 1 ? ' mission' : ' missions') + ' done';
 }
 
 function renderGrownups(){
   const earned = ledgerTotal(journey.stars, 'earn');
-  const moon = destinationProgress('moon', journey.completions);
   const paint = cosmeticById(currentPaint());
   setHtml('gProgress',
     '<div class="stat-grid">' +
@@ -4040,19 +5237,23 @@ function renderGrownups(){
       statHtml(earned, 'Stars earned') +
       statHtml(starBalance(journey.stars), 'Stars to spend') +
     '</div>' +
-    detailRow('Moon beacon', moon.restored ? 'Relit' : 'Not relit yet') +
+    JOURNEY_ORDER.map(id => detailRow(capitalize(DESTINATIONS[id].name), placeStatus(id))).join('') +
     detailRow('Rocket paint', paint.name + ' · ' + ownedCosmetics(journey.stars).length + ' of ' + COSMETICS.length + ' unlocked') +
     detailRow('Stars spent', String(ledgerTotal(journey.stars, 'spend'))) +
     detailRow('Explorer since', journey.profile ? formatDate(journey.profile.createdAt) : 'Not started'));
 
-  const rows = journey.evidence.slice()
-    .sort((a, b) => a.skillId.localeCompare(b.skillId) || a.item.localeCompare(b.item));
-  setHtml('gLetters', rows.length
-    ? '<div class="letter-table">' + rows.map(letterRowHtml).join('') + '</div>' +
+  /* Practice, skill by skill: plain counts, never a grade. */
+  const groups = Object.keys(SKILLS).filter(k => SKILLS[k].status === 'active').map(k => {
+    const rows = journey.evidence.filter(e => e.skillId === k).sort((a, b) => a.item.localeCompare(b.item));
+    return rows.length ? '<div class="practice-skill">' + escapeHtml(SKILLS[k].label) + '</div>' +
+                         '<div class="letter-table">' + rows.map(letterRowHtml).join('') + '</div>' : '';
+  }).filter(Boolean);
+  setHtml('gLetters', groups.length
+    ? groups.join('') +
       '<p class="field-hint" style="margin-top:var(--space-md)">Counts include only questions asked out loud. ' +
-      '"First try" means found without help. These are practice notes, not a grade.</p>'
-    : emptyStateHtml({ title: 'No letters practiced yet',
-                       body: 'After a Moon mission, each letter your child listened for shows up here.' }));
+      '"First try" means without help. These are practice notes, not a grade.</p>'
+    : emptyStateHtml({ title: 'Nothing practiced yet',
+                       body: 'After a mission, each letter or word your child worked on shows up here, under its skill.' }));
 
   const v = document.getElementById('voiceToggle');
   if(v) v.setAttribute('aria-checked', String(soundPrefs.voice));
@@ -4137,9 +5338,13 @@ function wireProduct(){
   });
 
   /* Leaving the app mid-sentence must not leave Pip talking to an empty
-     room, or a hold half-way to the grown-ups area. */
+     room, a count of beats half-finished, or a hold half-way to the
+     grown-ups area. */
   document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'hidden'){ Voice.stop(); disarmReprompt(); disarmIdleHint(); cancelGateHold(); }
+    if(document.visibilityState === 'hidden'){
+      Voice.stop(); disarmReprompt(); disarmIdleHint(); cancelGateHold();
+      if(session.beat.taps) resetBeats();
+    }
   });
 
   try{
@@ -4153,7 +5358,7 @@ function wireProduct(){
       if(currentScene !== 'mission' || !run || !run.round || run.round.resolved || overlayOpen()) return;
       if(session.locked){ askRound(run); return; }
       armReprompt(run);
-      Voice.say(run.round.askLine || questionLine(run.round));
+      sayAsk(run);
     };
     if(mq && typeof mq.addEventListener === 'function') mq.addEventListener('change', onTurn);
     else if(mq && typeof mq.addListener === 'function') mq.addListener(onTurn);
@@ -4161,6 +5366,7 @@ function wireProduct(){
 
   checkStorage();
   setTimeout(drawFlightPath, 80);
+  setTimeout(preloadStage, 600);
 }
 
 /* ---------- the product claims the foundation's seams ---------- */

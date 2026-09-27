@@ -25,9 +25,10 @@ experience and keep the complexity behind the scenes.
 ## The story
 
 The child is a new space explorer, and Earth is home base. Across the solar
-system, friendly beacons have gone dim. The explorer flies from world to world
-finding letters (and, later, sounds and words) to light them again. Every
-restored place brings more light to the map.
+system, things have gone quiet: the Moon's beacon is dim, and Mercury's
+signal is fuzzy. The explorer flies from world to world, finding letters,
+rhymes and beats to set them right. Every restored place brightens, and
+opens the route to the next.
 
 The story is hopeful, curious and warm. It has no villain, no danger and no
 lore to read. It is told through flight, short lines from **Pip** (the guide),
@@ -36,40 +37,48 @@ and the world changing.
 ## The loop
 
 ```
-open → Earth → see the destination → Launch → fly → a short mission →
-celebration → stars → the Moon relit on the map → next mission / Rocket Dock / stop
+open → Earth → see the destination in the sky → Launch → fly →
+land on the planet → tap its marker → a short mission →
+the world answers: it lights up, brightens, stars arc to the count →
+the next marker, or home → the place relit in Earth's sky → Launch / Rocket Dock / stop
 ```
 
-Every screen has one obvious next action, and the Earth screen is always a
-natural place to stop.
+**The world is the navigation.** There are no menus: places are the
+screens, and a place's markers are its missions. Every screen has one
+obvious next action, and Earth is always a natural place to stop.
 
-## Phase 1: what is built
+## Phase 2: what is built
 
-The flow is welcome → Earth → Launch → space travel → Moon → one
-letter-recognition mission → supportive feedback → celebration → stars → home
-→ Rocket Dock → unlock and equip a paint → reload, with everything persisted.
+The flow is welcome → Earth → Launch → a flight through one world → the Moon
+→ tap the beacon → Letter Explorer → the beacon lights, stars arc to the
+count → Mercury appears → home → Launch → Mercury → Rhyme Radar → the radar
+is fixed → Syllable Meteors → Mercury restored → home → Rocket Dock → reload,
+with everything persisted.
 
 | Area | Built |
 |---|---|
-| Welcome | First launch only. Pip introduces themself; the tap also unlocks sound on iPad |
-| Earth | Earth fills half the screen. The rocket stands on it, and a dotted path leads to the Moon. One huge **Launch**, plus the Dock, a star count, and the grown-ups lock |
-| Travel | About 1s, 2.6s on the first arrival. A tap skips it; with Reduce Motion it is a crossfade |
-| Mission `moon-1` | Six rounds of "hear a letter name, find it" (M S O T S M, uppercase). The first round is guided, and difficulty adapts per letter |
-| Feedback | Correct: pop, ring, check mark, "Yes! That's the letter em." Wrong: the tile wiggles and steps aside, "Almost! Listen again." Second wrong: the answer is shown |
-| Celebration | The beacon lights, 3 stars arrive one by one, and one button leads back to Earth |
-| Progress | The Moon glows on Earth's sky, the star count updates, and the Dock sparkles when a paint is affordable |
-| Rocket Dock | Four paints: classic (free), sky (3★), sunny (5★), lime (6★). A tap previews at once, then unlock or use |
-| Grown-ups | Progress counts and letters practised (plain counts, not grades), voice and effects toggles, Reduce Motion, backup, erase, what's new, and storage and privacy status |
-| Offline | The service worker precaches the shell and every registered asset |
-| Replay | A finished Moon offers its mission again, with a shorter arrival line. Replays earn stars too |
+| The world stage | One continuous stage behind every child scene: space, two star layers, and the place you are in (its sky, its horizon, its markers). Planets are places, not screens |
+| Welcome | First launch only, on Earth. Pip introduces itself; the tap also unlocks sound on iPad |
+| Earth | A large curved clay horizon across the bottom ~40%; the rocket standing on its launch pad; Pip floating; the Moon (and, once open, Mercury) waiting in the sky, the one Launch will fly to ringed and joined by a dotted path. One huge **Launch**; the Dock, the star count and the grown-ups lock in the corners. Tap a planet in the sky to choose it |
+| Flights | The camera moves through the world: lift-off, Earth falling away, parallax stars, the destination growing, its horizon rising, the rocket settling. About 1.3s; 2.2s the first time to a place; a tap skips it; Reduce Motion crossfades. Transforms and opacity only; every picture preloaded |
+| A planet | Arrive, hear its story, tap the marker that pulses. One mission at a time; the world lights up and brightens as it is restored; a new route appears in its sky; the way home turns yellow when nothing is left to play |
+| Letter Explorer `moon-1` | Six rounds of "hear a letter name, find it" (M S O T S M, uppercase), on Moon stones with clean letter plates. The first round is guided, and difficulty adapts per letter |
+| Rhyme Radar `mercury-1` | Five rounds: hear a word and three pictures named, tap the one that rhymes. The harder level adds a picture that starts like the word. Development content |
+| Syllable Meteors `mercury-2` | Six rounds: hear a word, tap the stone once for each beat. Only the count is judged; Pip shows the beats after a second miss. Development content |
+| Feedback | Correct: a ring, a check mark, praise that names the answer. Wrong: the choice steps aside (a count clears), "Almost! Listen again." Second wrong: the answer is shown |
+| Rewards | Three clay stars arc from what was fixed to the star count, which counts up as each lands |
+| Rocket Dock | The camera lowers to the pad and the rocket is the hero. Four paints: classic (free), sky (3★), sunny (5★), lime (6★). A tap previews at once, then unlock or use |
+| Grown-ups | The journey place by place, practice skill by skill (plain counts, not grades), voice and effects toggles, Reduce Motion, backup, erase, what's new, and storage and privacy status |
+| Offline | The service worker precaches the shell and every registered picture (39 files) |
+| Replay | A restored place can be visited again; its missions come round in turn, with a shorter arrival line. Replays earn stars too |
 
 ## Deliberately not built yet
 
 These are not built yet:
 
-- the other six learning areas
-- more missions
-- the other planets
+- beginning sounds, CVC words, sight words and handwriting
+- more missions, and a bigger word bank
+- the other planets (declared as `planned`, never drawn)
 - a review mission
 - lowercase letters or a school font
 - handwriting
@@ -129,6 +138,52 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Phase 2 QA record (2026-09-26/27)
+
+**Tested in Chromium (headless Edge and the in-app browser on Windows) with
+emulated iPad viewports, not on a physical iPad.** The real-iPad checklist is
+[IPAD-QA-PHASE-2.md](IPAD-QA-PHASE-2.md); nothing in it is marked tested.
+
+| Check | How | Result |
+|---|---|---|
+| The whole journey | Scripted through the app's own functions, captured at 1180×820 (2×), 1024×768 and 1366×1024: welcome → Earth → flight → the Moon → beacon → Letter Explorer → the world answers → home → Mercury → Rhyme Radar → Syllable Meteors → Mercury restored → home → Dock → Reduce Motion → grown-ups | Passed at all three sizes, no page errors, after fix 4 below |
+| Flights | Paused at 16%, 50% and 82% through (Web Animations `currentTime`) | Lift-off with the flame and the pad below; the Moon growing while the rocket crosses; the Moon's ground risen, the rocket settling. No blank frame |
+| Composition | The same 19 moments at every size | The horizon fills the bottom ~40% and runs off both sides; the rocket stands on its pad; nothing overlaps the corners; the letters stay clear |
+| Reduce Motion | The grown-ups setting, a flight paused half way | A crossfade: nothing slides, the stars do not stream |
+| Offline | Headless Edge: loaded once, the network cut in DevTools and the server stopped, then reloaded | The app, Earth, both planets in the sky, the flight to Mercury and Rhyme Radar loaded with **no** missing picture. The v0.3.0 cache holds all 39 registered pictures |
+| Contracts | `npm run verify` | 855 passed, 0 failed |
+| Mutation check | 25 defects planted one at a time (tiles vs. counts, rhyme leaks, locked markers, uncapped taps, finger bounce, pause judging, captions giving answers away, Mercury open too early, both places drawn, layout animation, the yellow button, anchors, held beats, a floating marker, a wrong beat count, a missing review row, a letter on clay, a scene naming a word) | 23 caught. The other 2 changed no behaviour and were replaced; 3 real gaps they exposed were closed with new contracts |
+
+**Defects found and fixed in QA:**
+
+1. **Rhyme Radar's pictures were missing or tiny.** Their padding was a
+   percentage, which CSS takes from the *row's* width, so the word's picture
+   in the radar window had no room at all. Padding is now in the card's own
+   size.
+2. **The destination ring flew with the planet,** spinning round the Moon as
+   it grew mid-flight. It now shows only at home.
+3. **The flight path lingered** for a moment after lift-off, pointing from
+   an empty pad. It now disappears the instant the rocket lifts.
+4. **A child could get stuck in Syllable Meteors.** After Pip showed the
+   beats, tapping part of the count and pausing was judged as a miss, which
+   cleared the shown count — and the stone then waited for a count that no
+   longer existed, ignoring every tap. Now, once shown, a pause is only a
+   pause, and leaving the app mid-count keeps the count shown. A regression
+   contract covers it, and both ways of planting the bug are caught.
+5. **The marker's ring faded to nothing** once a cycle. It now breathes but
+   never vanishes, like every "tap here".
+6. **Two moons at once:** the growing Moon and the rising Moon ground
+   overlapped too long. The Moon fades sooner.
+
+**Not physically tested on an iPad** (see the checklist):
+
+- how flights feel and perform on the device, and the first flight to Mercury
+- Safari's speech voice, and especially the spoken beats ("ba! na! na!")
+- the audio unlock, Web Audio effects
+- touch: markers, planets in the sky, the meteor stone, fast and bouncing taps
+- the Home Screen install and offline after install
+- safe areas, Split View, other iPad sizes
 
 ## Phase 1 QA record (2026-09-26)
 
