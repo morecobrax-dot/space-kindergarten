@@ -7,7 +7,7 @@ results never count here. Phase 1's record is in
 
 | | |
 |---|---|
-| **Build under test** | v0.3.0 — the commit named in the release report |
+| **Build under test** | v0.3.0, commit `c80d252` (live on Pages since 2026-09-27) |
 | **Served from** | GitHub Pages: https://morecobrax-dot.github.io/space-kindergarten/ |
 | **Device** | a physical iPad · Safari first, then the Home Screen install |
 | **Tester** | — |

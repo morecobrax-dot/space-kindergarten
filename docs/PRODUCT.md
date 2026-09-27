@@ -153,7 +153,7 @@ emulated iPad viewports, not on a physical iPad.** The real-iPad checklist is
 | Reduce Motion | The grown-ups setting, a flight paused half way | A crossfade: nothing slides, the stars do not stream |
 | Offline | Headless Edge: loaded once, the network cut in DevTools and the server stopped, then reloaded | The app, Earth, both planets in the sky, the flight to Mercury and Rhyme Radar loaded with **no** missing picture. The v0.3.0 cache holds all 39 registered pictures |
 | Contracts | `npm run verify` | 855 passed, 0 failed |
-| Mutation check | 25 defects planted one at a time (tiles vs. counts, rhyme leaks, locked markers, uncapped taps, finger bounce, pause judging, captions giving answers away, Mercury open too early, both places drawn, layout animation, the yellow button, anchors, held beats, a floating marker, a wrong beat count, a missing review row, a letter on clay, a scene naming a word) | 23 caught. The other 2 changed no behaviour and were replaced; 3 real gaps they exposed were closed with new contracts |
+| Mutation check | 25 defects planted one at a time (tiles vs. counts, rhyme leaks, locked markers, uncapped taps, finger bounce, pause judging, captions giving answers away, Mercury open too early, both places drawn, layout animation, the yellow button, anchors, held beats, a floating marker, a wrong beat count, a missing review row, a letter on clay, a scene naming a word) | First run: 17 of 22 caught. Of the 5 missed, 2 changed no behaviour (equivalent) and were replaced by a real one; the other 3 exposed genuine test gaps, now closed. With 2 more for the soft-lock (fix 4), all 23 meaningful defects are caught |
 
 **Defects found and fixed in QA:**
 
