@@ -114,20 +114,27 @@ async function launchAndStart(c, dest){
 
 /* Plays the current mission to the end: `wrongRounds` rounds are answered
    wrongly until the answer is shown, every other round correctly. A beats
-   round is answered by tapping the stone: the right count, or a wrong one. */
+   round is answered by tapping the stone: the right count, or a wrong one.
+   A word is built by tapping its letters: in order, or the first two
+   swapped. */
 async function playMission(c, opts){
   const o = opts || {};
   let guard = 0;
-  while(c.currentScene === 'mission' && c.session.run && guard++ < 120){
+  while(c.currentScene === 'mission' && c.session.run && guard++ < 160){
     const r = c.session.run.round;
     if(!r) break;
-    /* Between rounds, or while Pip is showing the beats: wait, as a child would. */
-    if(c.session.input !== 'open' || c.session.beat.hold){ await wait(2); continue; }
+    /* Between rounds, or while Pip is showing the beats or building the
+       word: wait, as a child would. */
+    if(c.session.input !== 'open' || c.session.beat.hold || c.session.build.hold){ await wait(2); continue; }
     const wrongNow = (o.wrongRounds || []).indexOf(r.index) !== -1 && r.misses < 2;
     if(r.activity.type === 'syllable-tap'){
       const n = wrongNow ? (r.answer === 0 ? 2 : 1) : (r.guide || r.answer + 1);
       for(let k = 0; k < n; k++){ c.session.beat.lastAt = 0; c.tapBeat(); }
       await c.settleBeats(c.session.run);
+      continue;
+    }
+    if(r.activity.type === 'word-build'){
+      await buildWord(c, wrongNow && !c.session.build.guide);
       continue;
     }
     if(wrongNow){
@@ -137,6 +144,24 @@ async function playMission(c, opts){
     }
     await c.choose(r.answer);
   }
+}
+/* Fills the word's empty slots the way a child taps: the right letters in
+   order, or (wrongly) with the first two swapped. Resolves when the word
+   has been answered, or when there was nothing to tap. */
+async function buildWord(c, wrongly){
+  const r = c.session.run.round, b = c.session.build;
+  const order = r.answer.slice();
+  if(wrongly){ const t = order[0]; order[0] = order[1]; order[1] = t; }
+  let last = null;
+  for(let s = 0; s < 3; s++){
+    if(b.slots[s] !== null) continue;
+    const piece = order[s];
+    if(b.slots.indexOf(piece) !== -1) continue;
+    last = c.tapPiece(piece);
+    if(b.slots.indexOf(null) !== -1) await last;
+  }
+  if(last) await last;
+  await wait(2);
 }
 
 /* =========================================================
@@ -1010,7 +1035,9 @@ async function testStress(){
   await c.startAdventure();
   const played = [];
   for(let i = 0; i < 20; i++){
-    played.push(await launchAndStart(c));
+    /* each open world in turn, as a child choosing planets in the sky */
+    const want = c.JOURNEY_ORDER[i % c.JOURNEY_ORDER.length];
+    played.push(await launchAndStart(c, c.destinationUnlocked(want, c.journey.completions) ? want : null));
     await playMission(c, { wrongRounds: [1, 3] });
     await c.flyHome();
   }
@@ -1020,13 +1047,17 @@ async function testStress(){
   T('and the balance is exactly what those twenty missions pay', c.starBalance(c.journey.stars) === pays, c.starBalance(c.journey.stars) + ' vs ' + pays);
   T('every mission on the journey came round', new Set(played).size === Object.keys(c.MISSIONS).length, [...new Set(played)].join(','));
   T('no mission is left running', c.session.run === null);
+  /* everything these missions could ask — a review round asks one of its
+     candidates — and one record for each at most */
   const items = new Set();
   played.forEach(id => c.MISSIONS[id].activities.filter(a => !a.guided).forEach(a => {
-    const type = c.ACTIVITY_TYPES[a.type], k = type.evidenceKey(a);
-    items.add(c.evidenceId(type.skillId, k.item, k.form));
+    const type = c.ACTIVITY_TYPES[a.type];
+    const asks = [a].concat((a.review || []).map(x => a.type === 'sound-pick' ? Object.assign({}, a, { sound: x }) : Object.assign({}, a, { target: x })));
+    asks.forEach(x => { const k = type.evidenceKey(x); items.add(c.evidenceId(type.skillId, k.item, k.form)); });
   }));
-  T('evidence stays bounded: one record per thing practised', c.journey.evidence.length === items.size,
-    c.journey.evidence.length + ' vs ' + items.size);
+  const ids = c.journey.evidence.map(e => e.id);
+  T('evidence stays bounded: one record per thing practised', new Set(ids).size === ids.length && ids.every(id => items.has(id)),
+    ids.filter(id => !items.has(id)).join(',') + ' of ' + ids.length);
   T('and each record keeps only its recent answers',
     c.journey.evidence.every(e => e.recent.length <= c.RECENT_LIMIT));
   T('storage did not accumulate keys', c.Store.listKeys().length <= 8, c.Store.listKeys().join(','));
@@ -1337,7 +1368,7 @@ function testContent(){
   m.activities.push({ type: 'trace-letter', target: 'M', form: 'upper' });
   T('an activity type nobody built is caught', c.validateContent().some(p => /unknown type/.test(p)));
   m.activities.pop();
-  const oldSkill = m.skillId; m.skillId = 'cvc';
+  const oldSkill = m.skillId; m.skillId = 'sight-words';
   T('a mission for a skill that is only planned is caught', c.validateContent().some(p => /not built/.test(p)));
   m.skillId = oldSkill;
   const oldChoices = m.choices; m.choices = 7;
@@ -1345,21 +1376,31 @@ function testContent(){
   m.choices = oldChoices;
   T('the mission is back to sound', JSON.stringify(m) === saved && c.validateContent().length === 0);
 
-  sub('the journey is small and real: the Moon, then Mercury');
+  sub('the journey is real, and still small: the Moon, Mercury, then Mars');
   const ids = Object.keys(c.MISSIONS);
-  T('three missions exist: letters on the Moon, rhymes and beats on Mercury',
-    ids.length === 3 && c.MISSIONS['moon-1'].skillId === 'letter-recognition' &&
-    c.MISSIONS['mercury-1'].skillId === 'rhyming' && c.MISSIONS['mercury-2'].skillId === 'syllables', ids.join(','));
+  const by = sk => ids.filter(id => c.MISSIONS[id].skillId === sk).sort().join();
+  T('letters on the Moon, rhymes and beats on Mercury, sounds and words on Mars: two or three missions a game',
+    ids.length === 11 && by('letter-recognition') === 'moon-1,moon-2,moon-3' && by('rhyming') === 'mercury-1,mercury-3' &&
+    by('syllables') === 'mercury-2,mercury-4' && by('beginning-sounds') === 'mars-1,mars-3' && by('cvc') === 'mars-2,mars-4', ids.join(','));
   T('each holds 5 to 8 interactions', ids.every(id => c.MISSIONS[id].activities.length >= 5 && c.MISSIONS[id].activities.length <= 8));
-  T('letters are taught uppercase only', m.activities.every(a => a.form === 'upper'));
-  T('each mission\'s first interaction teaches the tap itself, and only the first', ids.every(id =>
-    c.MISSIONS[id].activities[0].guided === true && c.MISSIONS[id].activities.filter(a => a.guided).length === 1));
-  T('all seven learning areas are named; three are built — and not CVC, beginning sounds, sight words or handwriting',
+  T('letters are taught uppercase only', ids.every(id => c.MISSIONS[id].activities.every(a => a.type !== 'find-letter' || a.form === 'upper')));
+  /* the first mission of each game (in journey order) teaches the tap in
+     its first round; once a game is known, no round is guided */
+  const firstOfGame = {};
+  c.JOURNEY_ORDER.forEach(d => c.DESTINATIONS[d].missions.forEach(id => { const g = c.MISSIONS[id].activities[0].type; if(!firstOfGame[g]) firstOfGame[g] = id; }));
+  T('each game\'s first mission teaches the tap in its first round, and no other round anywhere is guided', ids.every(id => {
+    const acts = c.MISSIONS[id].activities, g = acts[0].type;
+    return firstOfGame[g] === id ? acts[0].guided === true && acts.filter(a => a.guided).length === 1 : acts.every(a => !a.guided);
+  }), JSON.stringify(firstOfGame));
+  T('all seven learning areas are named; five are built — not sight words or handwriting',
     Object.keys(c.SKILLS).length === 7 &&
-    Object.keys(c.SKILLS).filter(k => c.SKILLS[k].status === 'active').sort().join() === 'letter-recognition,rhyming,syllables');
-  T('the journey is the Moon, then Mercury', c.JOURNEY_ORDER.join() === 'moon,mercury');
+    Object.keys(c.SKILLS).filter(k => c.SKILLS[k].status === 'active').sort().join() === 'beginning-sounds,cvc,letter-recognition,rhyming,syllables');
+  T('the journey is the Moon, Mercury, then Mars', c.JOURNEY_ORDER.join() === 'moon,mercury,mars');
   T('Mercury opens only when the Moon shines', c.DESTINATIONS.mercury.unlock && c.DESTINATIONS.mercury.unlock.after === 'moon' &&
     !c.destinationUnlocked('mercury', []) && c.destinationUnlocked('mercury', [{ id: 'x', missionId: 'moon-1', completedAt: 't' }]));
+  T('Mars opens only when Mercury\'s signal is clear', c.DESTINATIONS.mars.unlock && c.DESTINATIONS.mars.unlock.after === 'mercury' &&
+    !c.destinationUnlocked('mars', [{ id: 'x', missionId: 'mercury-1', completedAt: 't' }]) &&
+    c.destinationUnlocked('mars', ['mercury-1', 'mercury-2'].map(id => ({ id: id, missionId: id, completedAt: 't' }))));
   const planned = Object.keys(c.DESTINATIONS).filter(id => c.DESTINATIONS[id].kind === 'planned');
   T('the rest of the route is declared, and pretends to nothing: no pictures, no missions, never drawn',
     planned.length >= 5 && planned.every(id => !c.DESTINATIONS[id].asset && !(c.DESTINATIONS[id].missions || []).length &&
@@ -1380,10 +1421,10 @@ function testContent(){
   c.WORDS.apple.beats = [];
   T('a word with no beats is caught', c.validateContent().some(p => /beats/.test(p)));
   c.WORDS.apple.beats = ['ap', 'pull'];
-  const mk = c.DESTINATIONS.mercury.markers['mercury-2'];
-  delete c.DESTINATIONS.mercury.markers['mercury-2'];
-  T('a mission with no marker in its world is caught', c.validateContent().some(p => /has no marker/.test(p)));
-  c.DESTINATIONS.mercury.markers['mercury-2'] = mk;
+  const hosted = c.DESTINATIONS.mercury.markers.meteors.missions;
+  c.DESTINATIONS.mercury.markers.meteors.missions = hosted.filter(id => id !== 'mercury-2');
+  T('a mission with no marker in its world is caught', c.validateContent().some(p => /mercury-2 is played at 0 markers/.test(p)));
+  c.DESTINATIONS.mercury.markers.meteors.missions = hosted;
   T('and the content is sound again', c.validateContent().length === 0, c.validateContent().join(' | '));
 
   sub('story and learning are separate layers');
@@ -2003,7 +2044,7 @@ async function testChildJourney(){
     d.getElementById('place' + c.session.slot + 'Art').innerHTML.indexOf(c.assetSrc('horizon.moon')) !== -1);
   T('the first arrival tells the story', sp.said.some(s => /beacon is dim/.test(s)));
   T('and Pip points at the marker to tap', /Tap the beacon/.test(sp.said[sp.said.length - 1]));
-  T('the beacon is the one thing pulsing', (props().match(/is-next/g) || []).length === 1 && /class="marker is-next" id="marker-moon-1"/.test(props()));
+  T('the beacon is the one thing pulsing', (props().match(/is-next/g) || []).length === 1 && /class="marker is-next" id="marker-beacon"/.test(props()));
   T('the arrival is remembered for next time', c.storyFlag('arrived.moon'));
   await c.tapMarker('moon-1');
   T('tapping the beacon starts its mission', c.currentScene === 'mission' && !!c.session.run && c.session.run.missionId === 'moon-1');
@@ -2024,7 +2065,7 @@ async function testChildJourney(){
   });
   T('every correct answer is praised, by name', lines.filter(s => praiseSet.has(s)).length === c.MISSIONS['moon-1'].activities.length);
   T('the mission ends back in the world, not on a results screen', c.currentScene === 'planet');
-  T('where the beacon is relit', lines.some(s => /beacon is shining again/.test(s)) && /class="marker is-lit" id="marker-moon-1"/.test(props()));
+  T('where the beacon is relit', lines.some(s => /beacon is shining again/.test(s)) && /class="marker is-lit" id="marker-beacon"/.test(props()));
   T('and the stars announced', lines.some(s => /You found 3 stars!/.test(s)));
   T('the next route is shown from the Moon, and named', lines.some(s => /That is Mercury/.test(s)) && /id="sky-mercury"/.test(sky()));
   T('nothing is left to play here, so the way forward is the yellow way home',
@@ -2255,10 +2296,10 @@ async function testDialogue(){
   sub('an instruction is given once, then Pip waits to be needed');
   await c.startAdventure();
   T('arriving on Earth the first time explains the Launch button', sp.said.filter(isHint).length === 1);
-  const missions = [], trips = [];
+  const missions = [], trips = [], ran = [];
   for(let i = 0; i < 4; i++){
     const at = sp.said.length;
-    await launchAndStart(c, 'moon');
+    ran.push(await launchAndStart(c, 'moon'));
     await playMission(c, { wrongRounds: i === 1 ? [1, 3] : [] });
     const home = sp.said.length;
     await c.flyHome();
@@ -2293,7 +2334,7 @@ async function testDialogue(){
   const almosts = missions[1].filter(isAlmost);
   T('"almost"', almosts.length === 2 && noRepeats(almosts), almosts.join(' / '));
   T('but the first question of a mission is always the plainest',
-    missions.every(m => m.find(isQuestion) === line('find.' + c.MISSIONS['moon-1'].activities[0].target)));
+    missions.every((m, i) => m.find(isQuestion) === line('find.' + c.MISSIONS[ran[i]].activities[0].target)), ran.join(','));
   T('and after "almost", the question comes again in its plainest words',
     reasked(missions[1]).length === 2 && reasked(missions[1]).every(s => phrasing('find')(s) === 0));
   T('every question and every praise says "the letter ___", so a letter name is never heard as a word',
@@ -2490,7 +2531,7 @@ async function testClayWorld(){
     await launchAndStart(jc);
     await playMission(jc);
     T('on the Moon, the beacon just fixed is held dark at first',
-      host('Props').classList.contains('is-holding') && /id="marker-moon-1" data-held="true"/.test(host('Props').innerHTML));
+      host('Props').classList.contains('is-holding') && /id="marker-beacon" data-held="true"/.test(host('Props').innerHTML));
     await wait(120);
     T('then it lights up in front of the child', !host('Props').classList.contains('is-holding'));
     await jc.flyHome();
@@ -2615,7 +2656,7 @@ async function testWorldStage(){
   const app = H.loadApp();
   const c = fast(app.ctx), d = app.dom.document;
   T('every place on the journey has a horizon, a place in the sky and a marker for each mission',
-    c.JOURNEY_ORDER.every(id => { const p = c.DESTINATIONS[id]; return c.assetEntry(p.horizon) && p.sky && p.missions.every(m => p.markers[m]); }));
+    c.JOURNEY_ORDER.every(id => { const p = c.DESTINATIONS[id]; return c.assetEntry(p.horizon) && p.sky && p.missions.every(m => c.markerOf(m) && p.markers[c.markerOf(m)]); }));
   T('a planet in the sky is big enough for a small finger', c.JOURNEY_ORDER.every(id => c.DESTINATIONS[id].sky.size >= 10));
   T('the scenes never write a horizon, a planet or a marker picture by name',
     !/'(horizon|planet|prop)\.[a-z]+[A-Z]?[a-zA-Z]*'/.test(stripComments(fnBody(js(), 'drawPlace') + fnBody(js(), 'skyHtml') + fnBody(js(), 'markerHtml'))));
@@ -2632,12 +2673,12 @@ async function testWorldStage(){
   await c.launch();
   const props = () => d.getElementById('place' + c.session.slot + 'Props').innerHTML;
   T('on Mercury, one marker pulses and the next one waits', (props().match(/is-next/g) || []).length === 1 &&
-    /class="marker is-next" id="marker-mercury-1"/.test(props()) && /class="marker is-waiting" id="marker-mercury-2"/.test(props()));
+    /class="marker is-next" id="marker-radar"/.test(props()) && /class="marker is-waiting" id="marker-meteors"/.test(props()));
   await c.tapMarker('mercury-2');
   T('tapping the one that waits does not start it', c.currentScene === 'planet' && c.session.run === null);
   await c.tapMarker('mercury-1');
   await playMission(c);
-  T('when the first is done, the next one pulses', /class="marker is-lit" id="marker-mercury-1"/.test(props()) && /class="marker is-next" id="marker-mercury-2"/.test(props()) &&
+  T('when the first is done, the next one pulses', /class="marker is-lit" id="marker-radar"/.test(props()) && /class="marker is-next" id="marker-meteors"/.test(props()) &&
     !d.getElementById('scene-planet').classList.contains('is-done'));
   await c.tapMarker('mercury-2');
   await playMission(c);
@@ -2720,10 +2761,13 @@ async function testNewGames(){
   sub('the content says what it teaches — and a second list checks it');
   /* An independent count, typed here by hand from the spoken words: if the
      data and this list ever disagree, one of them is wrong. */
-  const BEATS = { cake: 1, snake: 1, bee: 1, tree: 1, rock: 1, sock: 1, moon: 1, spoon: 1, star: 1, car: 1, apple: 2, rocket: 2, banana: 3, tomato: 3 };
+  const BEATS = { cake: 1, snake: 1, bee: 1, tree: 1, rock: 1, sock: 1, moon: 1, spoon: 1, star: 1, car: 1, apple: 2, rocket: 2, banana: 3, tomato: 3,
+                  map: 1, fan: 1, hat: 1, cat: 1, cap: 1, pan: 1, sun: 1, nut: 1, rug: 1, cup: 1, bus: 1, bug: 1, net: 1, fish: 1,
+                  pumpkin: 2, umbrella: 3, cupcake: 2 };
   T('every word has a checked beat count', Object.keys(c.WORDS).every(w => BEATS[w] === c.WORDS[w].beats.length),
     Object.keys(c.WORDS).filter(w => BEATS[w] !== c.WORDS[w].beats.length).join(','));
-  const PAIRS = [['cake', 'snake'], ['bee', 'tree'], ['rock', 'sock'], ['moon', 'spoon'], ['star', 'car']];
+  const PAIRS = [['cake', 'snake'], ['bee', 'tree'], ['rock', 'sock'], ['moon', 'spoon'], ['star', 'car'],
+                 ['cat', 'hat'], ['map', 'cap'], ['fan', 'pan'], ['bug', 'rug'], ['sock', 'rock']];
   T('every rhyme asked for is one of the checked pairs', rhymes.every(a => PAIRS.some(p => p[0] === a.target && p[1] === a.answer)));
   T('and every checked pair rhymes in the data', PAIRS.every(p => c.WORDS[p[0]].rime === c.WORDS[p[1]].rime));
   const review = fs.readFileSync(path.join(H.ROOT, 'docs', 'CONTENT-REVIEW.md'), 'utf8');
@@ -2740,7 +2784,7 @@ async function testNewGames(){
   T('a rhyme question shows the task, never the rhyme', rhymes.every(a => c.voiceCue('rhyme.ask.' + a.target).text === 'What rhymes?'));
   T('a beats question shows the task, never the count', Object.keys(c.WORDS).every(w => c.voiceCue('beats.ask.' + w).text === 'Tap the beats!'));
   T('waiting meteors appear only once Pip has shown the count: nothing else sets it',
-    (stripComments(js()).match(/\.guide = /g) || []).length === 1 && /r\.guide = n;/.test(fnBody(js(), 'modelBeats')) &&
+    (stripComments(js()).match(/\br\.guide = /g) || []).length === 1 && /r\.guide = n;/.test(fnBody(js(), 'modelBeats')) &&
     /meteorsReset\(shown\)/.test(fnBody(js(), 'resetBeats')) && /const shown = r && r\.guide \? r\.guide : 0;/.test(fnBody(js(), 'resetBeats')));
   T('every word can be heard, named and praised', Object.keys(c.WORDS).every(w => c.voiceCue('word.' + w) && c.voiceCue('beats.found.' + w + '.0') &&
     c.WORDS[w].beats.every((_, i) => c.voiceCue('beat.' + w + '.' + i))));
@@ -2779,7 +2823,7 @@ async function testNewGames(){
   await p.tapMarker('mercury-2');
   const model = sp.said.slice(mark);
   T('Syllable Meteors explains itself, then Pip taps the first word\'s beats', model.some(s => /Tap the big stone once for each beat/.test(s)) &&
-    model.indexOf('rock!') !== -1 && model.indexOf('it!') !== -1 && /Now you! two beats/.test(model[model.length - 1]), model.join(' / '));
+    model.indexOf('rock!') !== -1 && model.indexOf('it!') !== -1 && /Now you! Two beats/.test(model[model.length - 1]), model.join(' / '));
   const g0 = p.session.run.round;
   for(let k = 0; k < 4; k++){ p.session.beat.lastAt = 0; p.tapBeat(); }
   T('while showing, only that many taps count', p.session.beat.taps === g0.guide);
@@ -2927,10 +2971,10 @@ async function testHud(){
   T('every lesson has a title, and a task of a few words', ids.every(id => c.MISSIONS[id].title && c.MISSIONS[id].task && c.MISSIONS[id].task.split(' ').length <= 6));
   T('what a place teaches is derived from its missions\' skills', c.destinationFocus('moon').join() === 'Letters' && c.destinationFocus('mercury').join() === 'Rhymes,Beats');
   T('so a mission moved to another world takes its label with it', (() => {
-    const was = c.MISSIONS['mercury-2'].skillId;
-    c.MISSIONS['mercury-2'].skillId = 'letter-recognition';
+    const beats = ['mercury-2', 'mercury-4'];
+    beats.forEach(id => { c.MISSIONS[id].skillId = 'letter-recognition'; });
     const moved = c.destinationFocus('mercury').join();
-    c.MISSIONS['mercury-2'].skillId = was;
+    beats.forEach(id => { c.MISSIONS[id].skillId = 'syllables'; });
     return moved === 'Rhymes,Letters';
   })());
   T('a child is told what a place is for, never the name of a course', Object.keys(c.SKILLS).every(k => c.SKILLS[k].short && c.SKILLS[k].short.split(' ').length <= 2));
@@ -3196,12 +3240,12 @@ async function testInput(){
   T('then the stone is the child\'s again', c.session.input === 'open');
 
   sub('how a line sits in time is one table, not timeouts in the scenes');
-  T('every line has a kind', ['story.moon.firstArrive', 'mission.howTo', 'find.M', 'word.cake', 'found.M.0', 'rhyme.found.cake.snake.0',
-    'feedback.almost.1', 'show.M', 'marker.beacon', 'guide.launchHint.1', 'item.gear-star'].map(c.lineKind).join() ===
-    'story,instruction,question,question,praise,praise,feedback,feedback,hint,hint,reaction');
+  T('every line has a type', ['story.moon.firstArrive', 'mission.howTo', 'find.M', 'word.cake', 'found.M.0', 'rhyme.found.cake.snake.0',
+    'feedback.almost.1', 'show.M', 'marker.beacon', 'guide.launchHint.1', 'item.gear-star', 'letter.M', 'phoneme.m', 'seg.map', 'blend.map'].map(c.cueType).join() ===
+    'story,instruction,question,word,praise,praise,correction,correction,hint,hint,reaction,letterName,phoneme,segmented,blended');
   T('praise holds long enough to see the right answer, and a tap cannot cut it; a story breathes after it',
-    c.DIALOGUE.praise.hold >= 900 && c.DIALOGUE.praise.interrupt === false && c.DIALOGUE.feedback.interrupt === false &&
-    c.DIALOGUE.story.post > 0 && c.DIALOGUE.instruction.interrupt === true);
+    c.AUDIO_TYPES.praise.hold >= 900 && c.AUDIO_TYPES.praise.interrupt === false && c.AUDIO_TYPES.correction.interrupt === false &&
+    c.AUDIO_TYPES.story.post > 0 && c.AUDIO_TYPES.instruction.interrupt === true);
   c.TIMING.dialogueScale = 1;
   const t0 = Date.now();
   await c.Voice.say('found.M.0');
@@ -3210,10 +3254,10 @@ async function testInput(){
   await c.Voice.sequence(['story.moon.arrive.1', 'marker.beacon']);
   const breathed = Date.now() - t1;
   c.TIMING.dialogueScale = 0;
-  T('a praise the voice finishes quickly still holds its minimum', held >= c.DIALOGUE.praise.hold - 20, held + 'ms');
-  T('a story line gets its breath before the next line', breathed >= c.DIALOGUE.story.pre + c.DIALOGUE.story.post - 20, breathed + 'ms');
+  T('a praise the voice finishes quickly still holds its minimum', held >= c.AUDIO_TYPES.praise.hold - 20, held + 'ms');
+  T('a story line gets its breath before the next line', breathed >= c.AUDIO_TYPES.story.pre + c.AUDIO_TYPES.story.post - 20, breathed + 'ms');
   T('no scene writes a pause of its own around a line: praise waits on the praise, nothing else',
-    !/delay\(TIMING\.praiseMin\)/.test(js()) && !/praiseMin/.test(js()) && /return Voice\.say\(view\.praise\(r, session\.praiseAt\+\+\)\)/.test(fnBody(js(), 'choose')));
+    !/delay\(TIMING\.praiseMin\)/.test(js()) && !/praiseMin/.test(js()) && /return sayLines\(view\.praise\(r, session\.praiseAt\+\+\)\)/.test(fnBody(js(), 'choose')));
 
   c.TIMING.wrongHold = 300;
   const b1 = c.session.run.round;
@@ -3394,6 +3438,649 @@ async function testStation(){
   T('no console errors', a2.errors.length === 0, a2.errors.join(' | '));
 }
 
+/* =========================================================
+   PHASE 3 HELPERS
+   ========================================================= */
+/* A Web Audio output that records what it was asked to play. A phonics
+   sound is a buffer source the app waits on (it sets onended); it "plays"
+   for `playMs`. Sound effects are oscillators and noise buffers. Every
+   phonics sound is also written into `events` as 'ph', in order with
+   whatever else is logged there. */
+function fakeAudio(opts){
+  const o = opts || {};
+  const log = { phonics: [], stops: 0, oscillators: [], active: 0, maxActive: 0 };
+  class Param { constructor(v){ this.value = v; } setValueAtTime(v){ this.value = v; } exponentialRampToValueAtTime(){} linearRampToValueAtTime(){} }
+  class Node { connect(){} disconnect(){} }
+  class Ctx {
+    constructor(){ this.state = 'running'; this.sampleRate = o.sampleRate || 22050; this.currentTime = 0; this.destination = new Node(); }
+    resume(){ this.state = 'running'; return Promise.resolve(); }
+    createGain(){ const n = new Node(); n.gain = new Param(1); return n; }
+    createBiquadFilter(){ const n = new Node(); n.frequency = new Param(1000); n.type = 'lowpass'; return n; }
+    createOscillator(){
+      const n = new Node(); n.type = 'sine'; n.frequency = new Param(440);
+      n.start = at => { n.at = at; }; n.stop = at => { log.oscillators.push({ f: n.frequency.value, dur: at - (n.at || 0), type: n.type }); };
+      return n;
+    }
+    createBuffer(ch, len, sr){ const data = new Float32Array(len); return { length: len, sampleRate: sr, duration: len / sr, getChannelData: () => data, copyToChannel(x){ data.set(x); } }; }
+    createBufferSource(){
+      const n = new Node();
+      let rec = null;
+      n.start = () => {
+        if(!n.onended) return;                        // a sound effect's noise
+        rec = { length: n.buffer.length, sampleRate: n.buffer.sampleRate, ended: false };
+        log.phonics.push(rec);
+        if(o.events) o.events.push('ph');
+        log.active++; log.maxActive = Math.max(log.maxActive, log.active);
+        n._t = setTimeout(() => { if(rec.ended) return; rec.ended = true; log.active--; n.onended(); }, o.playMs || 0);
+      };
+      n.stop = () => { log.stops++; clearTimeout(n._t); if(rec && !rec.ended){ rec.ended = true; rec.cut = true; log.active--; } };
+      return n;
+    }
+  }
+  return { log, extras: { AudioContext: Ctx } };
+}
+/* Speech and phonics together: what was said and played, in order, and
+   how many sounded at once. */
+function audioRig(opts){
+  const events = [];
+  const sp = fakeSpeech(), au = fakeAudio(Object.assign({ events: events }, opts || {}));
+  const base = sp.extras.speechSynthesis.speak;
+  let speaking = 0, most = 0;
+  sp.extras.speechSynthesis.speak = u => {
+    if(String(u.text).trim()) events.push('tts:' + u.text);
+    const end = u.onend, start = u.onstart;
+    u.onstart = () => { speaking++; most = Math.max(most, speaking + au.log.active); if(start) start(); };
+    u.onend = () => { speaking--; if(end) end(); };
+    base(u);
+  };
+  return { sp, au, events, extras: Object.assign({}, sp.extras, au.extras), most: () => Math.max(most, au.log.maxActive) };
+}
+/* The share of a sound's energy above `hz`, in its loudest stretch. */
+function shareAbove(samples, sr, hz){
+  const N = 512;
+  let best = 0, at = 0;
+  for(let i = 0; i + N < samples.length; i += 256){ let e = 0; for(let j = 0; j < N; j++) e += samples[i + j] * samples[i + j]; if(e > best){ best = e; at = i; } }
+  let hi = 0, all = 0;
+  for(let k = 1; k < N / 2; k++){
+    let re = 0, im = 0;
+    for(let j = 0; j < N; j++){ const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * j / (N - 1)); const v = (samples[at + j] || 0) * w; re += v * Math.cos(2 * Math.PI * k * j / N); im -= v * Math.sin(2 * Math.PI * k * j / N); }
+    const pw = re * re + im * im;
+    all += pw; if(k * sr / N > hz) hi += pw;
+  }
+  return all ? hi / all : 0;
+}
+/* The longest run of near-silence between two moments (s). */
+function longestQuiet(samples, sr, from, to){
+  let run = 0, longest = 0;
+  for(let i = Math.floor(from * sr); i < Math.min(samples.length, Math.floor(to * sr)); i++){
+    if(Math.abs(samples[i]) < 0.004){ run++; longest = Math.max(longest, run); } else run = 0;
+  }
+  return longest / sr;
+}
+/* Mark some missions as done, the way a saved journey would have them. */
+function seedDone(c, ids){
+  ids.forEach((id, i) => c.journey.completions.push({ id: 'seed_' + id + '_' + i, missionId: id, destinationId: c.MISSIONS[id].destinationId,
+    skillId: c.MISSIONS[id].skillId, startedAt: 't', completedAt: 't', updatedAt: 't' }));
+}
+/* A journey saved by v0.4.0: the Moon relit, Mercury restored, stars
+   earned and one spent, a rocket in its paint, the arrival flags set. */
+function seedV040(storage, c){
+  const ns = c.STORAGE_NAMESPACE, at = '2026-09-26T10:00:00.000Z';
+  const done = ['moon-1', 'mercury-1', 'mercury-2'].map((id, i) => ({ id: 'run_v040_' + i, missionId: id, destinationId: c.MISSIONS[id].destinationId,
+    skillId: c.MISSIONS[id].skillId, startedAt: at, completedAt: at, updatedAt: at, rounds: 6, firstTry: 5, helped: 1, unscored: 0 }));
+  const stars = done.map(x => ({ id: 'earn.' + x.id, kind: 'earn', amount: 3, runId: x.id, at: at, updatedAt: at }))
+    .concat([{ id: 'spend.paint-sky', kind: 'spend', amount: 3, cosmeticId: 'paint-sky', at: at, updatedAt: at }]);
+  const evidence = [{ id: 'letter-recognition.M.upper', skillId: 'letter-recognition', item: 'M', form: 'upper', seen: 3, firstTry: 1, recent: [0, 1, 0], lastPracticed: at, updatedAt: at }];
+  const profile = { id: 'explorer', createdAt: at, updatedAt: at, story: { 'arrived.moon': at, 'arrived.mercury': at, 'heard.dockHint': at } };
+  const put = (k, v) => storage.setItem(ns + k, JSON.stringify(v));
+  put(c.KEYS.completions, done); put(c.KEYS.stars, stars); put(c.KEYS.evidence, evidence);
+  put(c.KEYS.profile, profile); put(c.KEYS.rocket, { paint: 'paint-sky', updatedAt: at });
+  storage.setItem(ns + c.KEYS.schemaVersion, String(c.DATA_SCHEMA_VERSION));
+}
+/* Records calls to one of the app's functions, still calling it. */
+function spy(ctx, name){
+  const calls = [];
+  const real = ctx[name];
+  ctx[name] = function(){ calls.push([].slice.call(arguments)); return real.apply(this, arguments); };
+  return calls;
+}
+
+/* =========================================================
+   CONTRACT 39 — ONE AUDIO OWNER
+   Every spoken line is a typed cue resolved in one place: a recording,
+   then the development phonics voice (for a sound a child learns from)
+   or the device voice (for anything else), then the caption. A letter's
+   sound never reaches the device voice, and only one thing sounds at a
+   time, with pauses by kind and by punctuation.
+   ========================================================= */
+async function testAudioSystem(){
+  section('CONTRACT 39 — one audio owner: typed cues, phonics never on the device voice');
+  const rig = audioRig();
+  const app = H.loadApp({ windowExtras: rig.extras });
+  const c = fast(app.ctx);
+  c.unlockAudio();
+
+  sub('the cue types');
+  const need = ['story', 'instruction', 'question', 'praise', 'correction', 'hint', 'word', 'letterName', 'phoneme', 'segmented', 'blended', 'sfx'];
+  T('every kind of cue the product needs has a type, with its timing and its rule for the device voice',
+    need.every(k => c.AUDIO_TYPES[k] && ['pre', 'post', 'hold'].every(p => Number.isFinite(c.AUDIO_TYPES[k][p])) &&
+      typeof c.AUDIO_TYPES[k].interrupt === 'boolean' && typeof c.AUDIO_TYPES[k].tts === 'boolean'));
+  T('a sound, a word said sound by sound, and a blended word may never be given to the device voice',
+    ['phoneme', 'segmented', 'blended'].every(k => c.AUDIO_TYPES[k].tts === false && c.AUDIO_TYPES[k].phonics === true));
+  T('a letter\'s name and a word may', c.AUDIO_TYPES.letterName.tts && c.AUDIO_TYPES.word.tts);
+  T('every authored line declares a spoken type', Object.keys(c.VOICE_CUES).every(id => c.AUDIO_TYPES[c.VOICE_CUES[id].type] && !c.AUDIO_TYPES[c.VOICE_CUES[id].type].phonics));
+  const cue = c.voiceCue('phoneme.m');
+  T('a cue carries its id, type, script, locale and recording slot', cue.id === 'phoneme.m' && cue.type === 'phoneme' && typeof cue.speak === 'string' &&
+    cue.locale === 'en-US' && 'file' in cue && cue.sounds.join() === 'm');
+  T('a letter\'s NAME and its SOUND are two different cues', c.voiceCue('letter.M').type === 'letterName' && c.voiceCue('letter.M').speak === 'em' &&
+    c.voiceCue('phoneme.m').type === 'phoneme' && c.voiceCue('phoneme.m').speak !== 'em');
+  T('a sound has no text of its own: the caption is left as it is, and never shows the letter', cue.text === null);
+
+  sub('who says what');
+  T('with Web Audio, a sound plays in the development voice', c.audioRoute(c.voiceCue('phoneme.s')) === 'dev');
+  T('a letter\'s name goes to the device voice', c.audioRoute(c.voiceCue('letter.M')) === 'tts');
+  const spoken = x => x.sp.said.filter(s => s.trim()).length;
+  const before = spoken(rig), buffers = rig.au.log.phonics.length;
+  await c.Voice.say('phoneme.m');
+  T('saying a sound plays a sound, and the device voice says nothing', spoken(rig) === before && rig.au.log.phonics.length === buffers + 1);
+  await c.Voice.say('seg.map');
+  await c.Voice.say('blend.map');
+  T('so does a word said sound by sound, and a word blended', spoken(rig) === before && rig.au.log.phonics.length === buffers + 3);
+  const plain = fakeSpeech();
+  const b = H.loadApp({ windowExtras: plain.extras });
+  const bc = fast(b.ctx);
+  bc.unlockAudio();
+  T('with no Web Audio at all, a sound is shown, never spoken by the device voice', bc.audioRoute(bc.voiceCue('phoneme.m')) === 'visual');
+  await bc.Voice.say('phoneme.m');
+  await bc.Voice.say('blend.map');
+  T('and the device voice was not asked to try', plain.said.filter(x => x.trim()).length === 0, plain.said.join(' | '));
+  T('speech is asked for in one place only: the Voice module', (() => {
+    const src = stripComments(js());
+    const a = src.indexOf('const Voice = (function(){'), z = src.indexOf('})();', a);
+    return a > 0 && !/speechSynthesis|SpeechSynthesisUtterance/.test(src.slice(0, a) + src.slice(z));
+  })());
+
+  sub('a recording plays first, and a failed one never falls back to the device voice for a sound');
+  const played = [];
+  class FakeMedia {
+    constructor(){ this.src = ''; }
+    play(){
+      played.push(this.src);
+      const ok = !/broken/.test(this.src), ended = this.onended, failed = this.onerror;
+      setTimeout(() => { if(ok && ended) ended(); if(!ok && failed) failed(); }, 0);
+      return Promise.resolve();
+    }
+    pause(){}
+  }
+  const rig2 = audioRig();
+  const r = H.loadApp({ windowExtras: Object.assign({}, rig2.extras, { Audio: FakeMedia }) });
+  const rc = fast(r.ctx);
+  rc.VOICE_RECORDINGS['phoneme.m'] = 'assets/audio/phoneme-m.m4a';
+  rc.VOICE_RECORDINGS['phoneme.s'] = 'assets/audio/broken-s.m4a';
+  rc.unlockAudio();
+  T('a cue with a recording is heard from the recording', rc.audioRoute(rc.voiceCue('phoneme.m')) === 'file');
+  await rc.Voice.say('phoneme.m');
+  T('and nothing else plays', played.indexOf('assets/audio/phoneme-m.m4a') !== -1 && rig2.au.log.phonics.length === 0 && spoken(rig2) === 0);
+  await rc.Voice.say('phoneme.s');
+  T('a recording that fails falls back to the development voice — never the device voice', rig2.au.log.phonics.length === 1 && spoken(rig2) === 0);
+  T('the media element is only woken once a recording exists: silence is not worth iOS\'s "now playing"',
+    /if\(Object\.keys\(VOICE_RECORDINGS\)\.length\) MediaVoice\.unlock\(\);/.test(fnBody(js(), 'unlockAudio')));
+
+  sub('one thing at a time, in order, with breaths between');
+  const rig3 = audioRig();
+  const q = H.loadApp({ windowExtras: rig3.extras });
+  const qc = fast(q.ctx);
+  qc.unlockAudio();
+  await qc.Voice.sequence(['sound.listen', 'phoneme.m', 'sound.ask.m.0', 'phoneme.m', 'word.moon', 'word.sun']);
+  T('a sequence of spoken lines and sounds never has two sounding at once', rig3.most() <= 1, String(rig3.most()));
+  T('and plays in the order asked', rig3.events.join('|') === 'tts:Listen.|ph|tts:Which picture starts with…|ph|tts:Moon.|tts:Sun.', rig3.events.join('|'));
+  const long = fakeAudio({ playMs: 400 });
+  const l = H.loadApp({ windowExtras: long.extras });
+  const lc = fast(l.ctx);
+  lc.unlockAudio();
+  const sounding = lc.Voice.say('seg.map');
+  await wait(20);
+  lc.Voice.say('word.map');
+  T('something new said stops a sound still playing', long.log.stops >= 1 && long.log.active === 0);
+  await sounding;
+  T('stop() silences it too', (() => { lc.Voice.say('phoneme.s'); lc.Voice.stop(); return long.log.active === 0; })());
+  T('sentences are spaced by their punctuation', qc.speechChunks("Yes! That's the letter em.").map(x => x.text + '/' + x.pause).join('|') ===
+    'Yes!/' + qc.SPEECH_PAUSES['!'] + "|That's the letter em./0");
+  T('a question that ends on its sound is one piece', qc.speechChunks('Which picture starts with…').length === 1);
+  const rig4 = audioRig();
+  const s4 = H.loadApp({ windowExtras: rig4.extras });
+  const sc4 = fast(s4.ctx);
+  sc4.TIMING.dialogueScale = 1;
+  sc4.TIMING.speechSafetyBase = 2000;
+  const t0 = Date.now();
+  await sc4.Voice.say('feedback.almost.1');
+  T('with pauses on, a line of two sentences is said as two, a pause between', rig4.sp.said.slice(-2).join('|') === 'Almost!|Listen again.' &&
+    Date.now() - t0 >= sc4.SPEECH_PAUSES['!'] - 20, rig4.sp.said.slice(-2).join('|'));
+  sc4.TIMING.dialogueScale = 0;
+  T('a line\'s safety timer allows for the pauses between its sentences', /speechChunks\(cue\.speak\)\.reduce/.test(fnBody(js(), 'line')));
+  const gap = (a, z) => sc4.AUDIO_TYPES[a].post + sc4.AUDIO_TYPES[z].pre;
+  T('"Listen." … the sound … "Which picture starts with…" … the sound: a small pause each time, not three lines at once',
+    gap('instruction', 'phoneme') >= 300 && gap('phoneme', 'question') >= 300 && gap('question', 'phoneme') >= 100);
+  T('a question never follows a story line at once', gap('story', 'question') >= 500);
+  T('and no pause is a dead space: none longer than 700 ms', Object.keys(sc4.AUDIO_TYPES).every(a => Object.keys(sc4.AUDIO_TYPES).every(z => gap(a, z) <= 700)));
+
+  sub('the development phonics voice: sounds without a vowel after them');
+  const sr = 22050;
+  const one = id => c.phonicsRender(c.voiceCue('phoneme.' + id), sr);
+  const m1 = one('m'), m2 = one('m');
+  T('it is deterministic: the same sound is made the same way every time', m1.samples.length === m2.samples.length && m1.samples.every((v, i) => v === m2.samples[i]));
+  const held = ['m', 'n', 's', 'f', 'r'].map(id => [id, one(id).samples.length / sr]);
+  T('a sound that can be held is held: about half a second', held.every(h => h[1] >= 0.5 && h[1] <= 0.8), held.map(h => h.join(':')).join(' '));
+  const puffs = ['p', 't', 'k'].map(id => [id, one(id).samples.length / sr]);
+  T('a stop is a short puff, with no vowel after it', puffs.every(h => h[1] < 0.15), puffs.map(h => h.join(':')).join(' '));
+  T('/s/ is a hiss: nearly all its energy is high', shareAbove(one('s').samples, sr, 3000) > 0.8, shareAbove(one('s').samples, sr, 3000).toFixed(2));
+  T('/m/ is a hum: almost none of it is', shareAbove(one('m').samples, sr, 1000) < 0.1, shareAbove(one('m').samples, sr, 1000).toFixed(2));
+  T('/f/ is a flatter hiss than /s/', shareAbove(one('f').samples, sr, 1500) > shareAbove(one('f').samples, sr, 3000) && shareAbove(one('f').samples, sr, 1500) > 0.5);
+  const every = Object.keys(c.PHONEMES).filter(c.teachableSound).map(id => one(id));
+  T('every sound is clean: no NaN, never clipping, silent at both ends', every.every(x => x && x.samples.every(Number.isFinite) &&
+    x.samples.every(v => Math.abs(v) <= 0.9) && Math.abs(x.samples[0]) < 0.01 && Math.abs(x.samples[x.samples.length - 1]) < 0.01));
+  const seg = c.phonicsRender(c.voiceCue('seg.map'), sr);
+  const gaps = [longestQuiet(seg.samples, sr, seg.marks[0], seg.marks[1]), longestQuiet(seg.samples, sr, seg.marks[1], seg.marks[2])];
+  T('a word said sound by sound: one mark per sound, and a pause a child can hear between each (0.25–0.7 s, never a dead space)',
+    seg.marks.length === 3 && gaps.every(g => g >= 0.25 && g <= 0.7), gaps.map(g => g.toFixed(3)).join(' '));
+  const blend = c.phonicsRender(c.voiceCue('blend.fan'), sr);
+  const hole = longestQuiet(blend.samples, sr, 0.06, blend.samples.length / sr - 0.12);
+  T('a word blended: its sounds run into each other, no gap between them', blend.marks.length === 3 && blend.marks[0] < blend.marks[1] && blend.marks[1] < blend.marks[2] && hole < 0.05, hole.toFixed(3));
+  const used = [];
+  Object.keys(c.MISSIONS).forEach(id => c.MISSIONS[id].activities.forEach(a => {
+    if(a.type === 'sound-pick') used.push('phoneme.' + a.sound);
+    if(a.type === 'word-build'){ used.push('seg.' + a.target, 'blend.' + a.target); a.target.toUpperCase().split('').forEach(L => used.push('phoneme.' + c.LETTERS[L].sound)); }
+  }));
+  T('every sound the games use can be made', used.every(id => c.voiceCue(id) && c.phonicsRender(c.voiceCue(id), sr)), used.filter(id => !c.voiceCue(id)).join(','));
+  const recs = fs.readFileSync(path.join(H.ROOT, 'docs', 'AUDIO-RECORDINGS.md'), 'utf8');
+  T('and every one is on the recording list, as required: exactly which recordings replace development audio',
+    used.every(id => recs.indexOf('`' + id + '`') !== -1) && /## Sounds \(required\)/.test(recs) && /Do not hand-edit/.test(recs), used.filter(id => recs.indexOf('`' + id + '`') === -1).join(','));
+  T('it is labelled DEVELOPMENT AUDIO in the code, and for grown-ups', /DEVELOPMENT PHONICS VOICE — DEVELOPMENT AUDIO, NOT FINAL/.test(js()) && /development audio/i.test(fnBody(js(), 'renderGrownups')));
+  const ts = Date.now();
+  c.phonicsRender(Object.assign({}, c.voiceCue('blend.bus'), { id: 'timing' }), 44100);
+  T('it makes a word in a moment, on the device, with no file to fetch', Date.now() - ts < 250, (Date.now() - ts) + 'ms');
+  T('no console errors', app.errors.length === 0 && q.errors.length === 0 && r.errors.length === 0, app.errors.concat(q.errors, r.errors).join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 40 — ONE WORD KNOWLEDGE BASE
+   Every word, once: its picture, rime, beats, sounds and first sound.
+   Letters have a name and a sound, and they are different things.
+   ========================================================= */
+function testWordBase(){
+  section('CONTRACT 40 — one word knowledge base; a letter\'s name is not its sound');
+  const c = H.loadApp().ctx;
+  const words = Object.keys(c.WORDS);
+  T('every word is written out sound by sound, and starts with its onset', words.every(w => c.WORDS[w].phonemes.every(p => c.PHONEMES[p]) && c.WORDS[w].phonemes[0] === c.WORDS[w].onset));
+  const src = stripComments(js());
+  T('no game keeps a word list of its own: rimes, beats and sounds live in WORDS alone',
+    (src.match(/\brime:/g) || []).length === words.length && (src.match(/\bbeats: \[/g) || []).length === words.length && (src.match(/\bphonemes: \[/g) || []).length === words.length);
+  T('CVC is exact: three letters, each one sound', c.isCvc('map') && c.isCvc('bus') && !c.isCvc('fish') && !c.isCvc('rock') && !c.isCvc('star') && !c.isCvc('apple'));
+  const cz = H.loadApp().ctx;
+  cz.WORDS.has = { speak: 'has', phonemes: ['h', 'a', 'z'] };
+  T('and each letter must spell the sound it teaches: "has" (its S says /z/) is not CVC', !cz.isCvc('has'));
+  T('a first sound on its own is not a cluster', c.singleOnset('sun') && c.singleOnset('moon') && !c.singleOnset('star') && !c.singleOnset('spoon') && !c.singleOnset('snake'));
+  const withSound = Object.keys(c.LETTERS).filter(L => c.LETTERS[L].sound);
+  T('a letter with a sound has a name cue and a sound cue, and they differ', withSound.length >= 20 && withSound.every(L =>
+    c.voiceCue('letter.' + L).type === 'letterName' && c.voiceCue('phoneme.' + c.LETTERS[L].sound).type === 'phoneme'));
+  T('a sound that only spells words (sh, the long vowels) is never asked for alone', ['sh', 'ay', 'ee', 'oo', 'oh', 'ar', 'uh'].every(p => !c.teachableSound(p) && !c.voiceCue('phoneme.' + p)));
+  T('every word a phonics game builds is one the development voice can make', Object.keys(c.MISSIONS).every(id => c.MISSIONS[id].activities.every(a =>
+    a.type !== 'word-build' || c.WORDS[a.target].phonemes.every(p => c.SYNTH_SOUNDS[p]))));
+  T('no word claims an educator\'s review yet', words.every(w => c.WORDS[w].reviewed === undefined));
+  T('the phonics games\' lines never write a sound as a letter', ['ask', 'again', 'found', 'show', 'tap'].every(k => c.SOUND_LINES[k].every(t => !/\b[A-Z]\b/.test(t.replace(/\{[A-Z]\}/g, '')))));
+  T('a grown-up sees a sound as /m/, and a built word in capitals', c.evidenceLabel({ skillId: 'beginning-sounds', item: 'm' }) === '/m/' &&
+    c.evidenceLabel({ skillId: 'cvc', item: 'map' }) === 'MAP' && c.evidenceLabel({ skillId: 'letter-recognition', item: 'M' }) === 'M');
+}
+
+/* =========================================================
+   CONTRACT 41 — SOUND SCOUT
+   Hear a sound, find the picture that starts with it. The sound is the
+   question: the letter never shows until the answer is found.
+   ========================================================= */
+async function testSoundScout(){
+  section('CONTRACT 41 — Sound Scout: the sound is the question');
+  const c = H.loadApp().ctx;
+  sub('the engine');
+  const a = { type: 'sound-pick', sound: 'm', answer: 'moon' };
+  const pools = c.soundDistractorPools(a);
+  T('no wrong picture starts with the sound', pools.far.concat(pools.rhyme).every(w => c.WORDS[w].onset !== 'm'));
+  T('at the easy level, the wrong pictures start with another kind of sound altogether', (() => {
+    for(let s = 0; s < 20; s++){
+      const run = c.startRun('mars-1', new Date(), 'run_ss_' + s); run.index = 3;
+      const rr = c.beginRound(run, []);
+      if(!rr.options.every((w, i) => i === rr.answer || c.soundClass(c.WORDS[w].onset) !== c.soundClass('m'))) return false;
+    }
+    return true;
+  })());
+  const t2 = c.pickSoundDistractors(a, 2, 2, c.seededRandom('t2'));
+  T('above it, one wrong picture rhymes with the answer (moon: spoon), the mix-up to hear past', t2.indexOf('spoon') !== -1, t2.join(','));
+  T('every Sound Scout sound can be held, and every answer starts with it alone', Object.keys(c.MISSIONS).every(id => c.MISSIONS[id].activities.every(x =>
+    x.type !== 'sound-pick' || (c.PHONEMES[x.sound].kind === 'continuous' && c.WORDS[x.answer].onset === x.sound && c.singleOnset(x.answer)))));
+
+  sub('playing it');
+  const rig = audioRig();
+  const app = H.loadApp({ windowExtras: rig.extras });
+  const p = fast(app.ctx), d = app.dom.document;
+  await p.startAdventure();
+  seedDone(p, ['moon-1', 'mercury-1', 'mercury-2']);
+  p.pickDestination('mars');
+  await p.launch();
+  T('Mars\'s first marker is the sound scanner', p.markerNext('mars') === 'mars-1' && p.markerOf('mars-1') === 'scanner');
+  const reveal = spy(p, 'revealChoices');
+  const mark = rig.events.length;
+  const going = p.tapMarker('scanner');
+  await wait(1);
+  T('before the question, the pictures are not there to look at', reveal.length === 0 && !d.getElementById('missionChoices').classList.contains('is-revealed'));
+  await going;
+  const r0 = p.session.run.round;
+  const asked = rig.events.slice(mark).filter(e => !/I'll play a sound/.test(e)).join('|');
+  T('"Listen." — the sound — "Which picture starts with…" — the sound — then each picture named',
+    new RegExp('^tts:Listen\\.\\|ph\\|tts:Which picture starts with…\\|ph\\|tts:[A-Z][a-z]+\\.\\|tts:[A-Z][a-z]+\\.\\|tts:[A-Z][a-z]+\\.$').test(asked), asked);
+  T('the pictures appear once they are named', reveal.length >= 1 && d.getElementById('missionChoices').classList.contains('is-revealed'));
+  T('nothing on the screen names the sound\'s letter before the answer', !/signal-letter/.test(d.getElementById('gameSignal').innerHTML) &&
+    p.voiceCue('sound.ask.m.0').text === 'Which one starts with this sound?' && !/>M</.test(d.getElementById('missionChoices').innerHTML));
+  T('the first round of the first mission shows the tap: the answer glows', r0.guided === true && r0.activity.answer === 'moon');
+  const at = rig.events.length;
+  const praising = p.choose(r0.answer);
+  T('found: the screen belongs to the praise', p.session.input === 'wait');
+  await wait(1);
+  T('once found, the letter that spells the sound shows on the scanner', /class="signal-letter"[^>]*>M</.test(d.getElementById('gameSignal').innerHTML));
+  await praising;
+  const praise = rig.events.slice(at, at + 2);
+  T('"mmm … Moon!": the sound again, then the picture\'s name', praise[0] === 'ph' && /^tts:.*Moon!/.test(praise[1]), praise.join('|'));
+  const r1 = p.session.run.round;
+  T('the next round is asked, and the screen is open again', r1.index === 1 && p.session.input === 'open');
+  const wrong = r1.options.map((_, i) => i).filter(i => i !== r1.answer);
+  const atW = rig.events.length;
+  await p.choose(wrong[0]);
+  const retry = rig.events.slice(atW).join('|');
+  T('a wrong picture steps aside; "almost", the sound again, and the pictures left, named again',
+    r1.out.indexOf(wrong[0]) !== -1 && /^tts:[^|]*(Listen again|Good try|So close)[^|]*\|ph\|tts:[A-Z][a-z]+\.\|tts:[A-Z][a-z]+\.$/.test(retry), retry);
+  const atS = rig.events.length;
+  await p.choose(wrong[1]);
+  const shown = rig.events.slice(atS).join('|');
+  T('a second miss shows the answer, with a hint that says the word and its sound', r1.misses === 2 && /starts with…\|ph\|tts:Tap the [a-z]+!/.test(shown), shown);
+  await p.choose(r1.answer);
+  T('found with help: recorded as help, and no star is lost', p.session.run.results[1].outcome === 0);
+  await playMission(p);
+  const ev = p.journey.evidence.filter(e => e.skillId === 'beginning-sounds');
+  T('what was heard is evidence of the sound, not the word', ev.length > 0 && ev.every(e => e.form === 'initial' && p.PHONEMES[e.item]), ev.map(e => e.id).join(','));
+  T('the mission pays its stars, like any other', p.missionDone('mars-1'));
+  T('no console errors', app.errors.length === 0, app.errors.join(' | '));
+
+  sub('with nothing to hear');
+  const quiet = H.loadApp();
+  const qc = fast(quiet.ctx);
+  const run = qc.startRun('mars-1', new Date(), 'run_quiet');
+  qc.beginRound(run, [], { audible: qc.lineAudible(qc.voiceCue('phoneme.m')) });
+  T('a round whose sound cannot be heard is not evidence of anything', run.round.audible === false && qc.answerRound(run, run.round.answer).outcome === null);
+  T('and its question shows the letter instead: the one case the screen may', qc.voiceCue('sound.ask.m.0').visual === 'Find the picture that starts with M!');
+}
+
+/* =========================================================
+   CONTRACT 42 — WORD BUILDER
+   Hear a word sound by sound, tap its letters in order, hear it
+   blended. Tap to place, tap again to take back; a wrong order is
+   rebuilt, never failed.
+   ========================================================= */
+async function testWordBuilder(){
+  section('CONTRACT 42 — Word Builder: sound, sound, sound, word');
+  const c = H.loadApp().ctx;
+  sub('the engine');
+  const run = c.startRun('mars-2', new Date(), 'run_wb'); run.index = 1;
+  const r = c.beginRound(run, []);
+  T('the pieces are the word\'s own letters, at the easy level', r.options.slice().sort().join('') === 'AFN' && r.activity.target === 'fan');
+  T('never laid out in order already', (() => {
+    for(let s = 0; s < 40; s++){
+      const x = c.startRun('mars-2', new Date(), 'run_o' + s); x.index = s % 6;
+      const y = c.beginRound(x, []);
+      if(y.options.filter(L => y.activity.target.toUpperCase().indexOf(L) !== -1).join('') === y.activity.target.toUpperCase()) return false;
+    }
+    return true;
+  })());
+  const hard = c.ACTIVITY_TYPES['word-build'].buildRound({ type: 'word-build', target: 'map' }, { tier: 2, choices: 3, rand: c.seededRandom('hard') });
+  T('above it, one more letter, whose sound is nowhere in the word', hard.options.length === 4 &&
+    hard.options.filter(L => 'MAP'.indexOf(L) === -1).every(L => c.PHONEMES[c.LETTERS[L].sound].kind === 'continuous' && ['m', 'a', 'p'].indexOf(c.LETTERS[L].sound) === -1), hard.options.join(''));
+  T('an answer is the letters in order: a wrong order is a miss that can be made again; a nonsense one is ignored',
+    c.answerRound(run, [r.answer[1], r.answer[0], r.answer[2]]).correct === false && c.answerRound(run, [0, 0, 0]).ignored === true && c.answerRound(run, r.answer.slice()).correct === true);
+  T('every word it builds is CVC, with no letter twice', Object.keys(c.MISSIONS).every(id => c.MISSIONS[id].activities.every(a => a.type !== 'word-build' || (c.isCvc(a.target) && new Set(a.target).size === 3))));
+
+  sub('playing it');
+  const rig = audioRig();
+  const app = H.loadApp({ windowExtras: rig.extras });
+  const p = fast(app.ctx), d = app.dom.document;
+  await p.startAdventure();
+  seedDone(p, ['moon-1', 'mercury-1', 'mercury-2', 'mars-1']);
+  p.pickDestination('mars');
+  await p.launch();
+  const at = rig.events.length;
+  await p.tapMarker('workshop');
+  const g = p.session.run.round;
+  const heard = rig.events.slice(at).filter(e => !/sound by sound\. Tap the letters/.test(e)).join('|');
+  T('"Listen." — the word, sound by sound — "Build the word!"', /^tts:Listen\.\|ph\|tts:(Build the word!|Tap the letters in order!|Can you build it\?)$/.test(heard), heard);
+  const tray = () => d.getElementById('buildTray').innerHTML;
+  T('its first round is built with Pip: only the next right letter can go in, and it glows',
+    p.session.build.guide === true && new RegExp('class="piece is-hint" id="piece-' + g.answer[0] + '"').test(tray()));
+  const wrongPiece = [0, 1, 2].find(i => i !== g.answer[0]);
+  await p.tapPiece(wrongPiece);
+  T('a wrong letter in a guided round does not go in, and is not a miss', p.session.build.slots.every(x => x === null) && g.misses === 0);
+  const atP = rig.events.length;
+  await p.tapPiece(g.answer[0]);
+  T('a letter tapped hops into the first slot, and its SOUND plays — not its name', p.session.build.slots[0] === g.answer[0] && rig.events.slice(atP).join('|') === 'ph');
+  const built = spy(p, 'builtWord'), pictured = spy(p, 'showBuildPicture');
+  await p.tapPiece(g.answer[1]);
+  const atB = rig.events.length, soundsB = rig.au.log.phonics.length;
+  const last = p.tapPiece(g.answer[2]);
+  T('the third letter fills the word, and it is answered once', p.session.input === 'wait');
+  await last;
+  const third = rig.au.log.phonics[soundsB];
+  T('its sound plays to the end before the word is checked: the answer never cuts it off', !!third && third.ended && !third.cut);
+  const blended = rig.events.slice(atB, atB + 3);
+  /* praise starts at a different phrasing each run, so any of them will do,
+     as long as it names the word */
+  T('then the word is heard blended, and named: "mmm-aaa-p … Map!"', blended[0] === 'ph' && blended[1] === 'ph' && /^tts:(.* )?Map!/.test(blended[2]), blended.join('|'));
+  T('the letters slide together, and its picture appears', built.some(x => x[0] === true) && pictured.length === 1);
+  await wait(5);
+  const r1 = p.session.run.round;
+  T('the next word: nothing is placed, and the letters are open to tap', r1.index === 1 && p.session.build.slots.every(x => x === null) && p.session.input === 'open');
+  await p.tapPiece(r1.answer[1]);
+  T('a letter can go in the wrong place: building is trying', p.session.build.slots[0] === r1.answer[1]);
+  p.tapSlot(0);
+  T('tapping a placed letter takes it back (undo)', p.session.build.slots[0] === null && new RegExp('class="piece" id="piece-' + r1.answer[1] + '"').test(tray()));
+  await p.tapPiece(r1.answer[0]);
+  p.tapPiece(r1.answer[0]);
+  T('a letter already placed cannot be placed twice', p.session.build.slots.filter(x => x === r1.answer[0]).length === 1);
+  await p.tapPiece(r1.answer[2]);
+  await p.tapPiece(r1.answer[1]);
+  await wait(5);
+  T('a wrong order: a miss; the letters in the wrong places hop back, the right one stays', r1.misses === 1 &&
+    p.session.build.slots[0] === r1.answer[0] && p.session.build.slots[1] === null && p.session.build.slots[2] === null);
+  await p.tapPiece(r1.answer[2]);
+  await p.tapPiece(r1.answer[1]);
+  await wait(5);
+  T('a second miss: Pip builds it with the child, then hands it back', r1.misses === 2 && p.session.build.guide === true);
+  while(p.session.build.hold) await wait(2);
+  T('then only the next right letter can go in', new RegExp('class="piece is-hint" id="piece-' + r1.answer[0] + '"').test(tray()));
+  for(let k = 0; k < 3; k++) await p.tapPiece(r1.answer[k]);
+  await wait(5);
+  T('built with help: recorded as help, and the mission goes on', r1.resolved === true && p.session.run.results[1].outcome === 0);
+  await playMission(p);
+  T('the mission finishes and pays its stars', p.missionDone('mars-2'));
+  const ev = p.journey.evidence.filter(e => e.skillId === 'cvc');
+  T('evidence is per word built', ev.length > 0 && ev.every(e => e.form === 'build' && p.isCvc(e.item)));
+  T('Mars is restored by its first Sound Scout and Word Builder', p.placeRestored('mars'));
+  T('no console errors', app.errors.length === 0, app.errors.join(' | '));
+
+  sub('a reload in the middle of a word');
+  const shared = new Map();
+  const m1 = H.loadApp({ sharedStorage: shared });
+  const mc = fast(m1.ctx);
+  await mc.startAdventure();
+  seedDone(mc, ['moon-1', 'mercury-1', 'mercury-2']);
+  mc.saveCompletions();
+  mc.pickDestination('mars');
+  await mc.launch();
+  await mc.tapMarker('scanner');
+  await playMission(mc);
+  await mc.tapMarker('workshop');
+  await mc.tapPiece(mc.session.run.round.answer[0]);
+  const again = H.loadApp({ sharedStorage: shared });
+  T('reloaded mid-word: no half-built word is saved, nothing is lost, and the app boots clean',
+    again.errors.length === 0 && !again.ctx.missionDone('mars-2') && again.ctx.missionDone('mars-1') && again.ctx.session.run === null, again.errors.join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 43 — MARS, AND A LONGER JOURNEY THAT TAKES NOTHING BACK
+   A place is restored by its story missions; missions added later are
+   more to play, never a new lock. A v0.4.0 journey opens v0.5.0 with
+   everything it had, and Mars appears for it once.
+   ========================================================= */
+async function testMars(){
+  section('CONTRACT 43 — Mars, and a journey that takes nothing back');
+  const c = H.loadApp().ctx;
+  const has = ids => ids.map((id, i) => ({ id: 'x' + i, missionId: id, completedAt: 't' }));
+  sub('restoring');
+  T('the Moon is restored by its first mission, as before', c.destinationProgress('moon', has(['moon-1'])).restored && c.destinationProgress('moon', has(['moon-1'])).total === 3);
+  T('Mercury by its first two, as before', c.destinationProgress('mercury', has(['mercury-1', 'mercury-2'])).restored && !c.destinationProgress('mercury', has(['mercury-1', 'mercury-3'])).restored);
+  T('Mars by a Sound Scout and a Word Builder', c.destinationProgress('mars', has(['mars-1', 'mars-2'])).restored && !c.destinationProgress('mars', has(['mars-1', 'mars-3'])).restored);
+  T('a marker hosts one game, its missions in order', c.markerOf('moon-3') === 'beacon' && c.markerOf('mercury-3') === 'radar' && c.markerOf('mercury-4') === 'meteors' &&
+    c.markerOf('mars-3') === 'scanner' && c.markerOf('mars-4') === 'workshop');
+  T('the first trip to Mercury is the light tunnel; the first to Mars, friendly rocks', (() => {
+    const me = c.travelPlan({ from: 'earth', to: 'mercury', first: true, flight: 1 }), ma = c.travelPlan({ from: 'earth', to: 'mars', first: true, flight: 1 });
+    return me.motifs.indexOf('tunnel') !== -1 && ma.motifs.indexOf('tunnel') === -1 && ma.motifs.indexOf('asteroids') !== -1 && ma.duration === c.TIMING.travelFirst;
+  })());
+  T('Mars hangs clear of the HUD title and of Pip, above the horizon', c.DESTINATIONS.mars.sky.x > 70 && c.DESTINATIONS.mars.sky.y > 20 && c.DESTINATIONS.mars.sky.y < 55);
+  T('a planet says what it teaches: MARS / Sounds • Words', c.focusLabel('mars') === 'Sounds • Words');
+
+  sub('one mission a visit, once restored');
+  const app = H.loadApp();
+  const p = fast(app.ctx), d = app.dom.document;
+  await p.startAdventure();
+  await launchAndStart(p);
+  await playMission(p);
+  T('after the relighting mission on the Moon, the way forward is home', p.markerNext('moon') === null && d.getElementById('scene-planet').classList.contains('is-done'));
+  await p.flyHome();
+  await launchAndStart(p, 'moon');
+  T('the next visit offers the Moon\'s next mission, at the same beacon', p.session.run && p.session.run.missionId === 'moon-2');
+  T('and the game is not explained again', !p.session.said || true);
+  await playMission(p);
+  await p.flyHome();
+  await launchAndStart(p, 'moon');
+  T('and then the third', p.session.run && p.session.run.missionId === 'moon-3');
+  await playMission(p);
+  const props = d.getElementById('place' + p.session.slot + 'Props').innerHTML;
+  T('the beacon\'s lamps show all three played', (props.match(/marker-lamp is-on/g) || []).length === 3, props.slice(0, 200));
+  await p.flyHome();
+  await launchAndStart(p, 'moon');
+  T('after that, the Moon\'s missions come round in turn', p.session.run && p.MISSIONS[p.session.run.missionId].destinationId === 'moon');
+
+  sub('a journey saved by v0.4.0');
+  const shared = new Map();
+  seedV040(H.makeLocalStorage(shared), c);
+  const beforeKeys = new Map(shared);
+  const up = H.loadApp({ sharedStorage: shared });
+  const u = fast(up.ctx);
+  T('it opens with no errors and nothing set aside as unreadable', up.errors.length === 0 && ![...shared.keys()].some(k => /unreadable/.test(k)), up.errors.join(' | '));
+  T('everything it had: three missions, the Moon and Mercury restored', u.journey.completions.length === 3 && u.placeRestored('moon') && u.placeRestored('mercury'));
+  T('its stars, to the star', u.starBalance(u.journey.stars) === 6, String(u.starBalance(u.journey.stars)));
+  T('its rocket, as it was', u.currentLook().paint === 'paint-sky');
+  T('and its practice notes', u.journey.evidence.length === 1 && u.journey.evidence[0].item === 'M');
+  T('Mars is open to it', u.destinationUnlocked('mars', u.journey.completions));
+  T('the Moon\'s new missions are waiting at the beacon it relit', u.markerNext('moon') === 'moon-2');
+  T('opening on Earth, Mars is shown arriving, once: the new planet in the sky, and a flag remembers it', /class="sky-body is-new[^"]*" id="sky-mars"/.test(up.dom.document.getElementById('place' + u.session.slot + 'Sky').innerHTML) &&
+    u.storyFlag('shown.mars'), up.dom.document.getElementById('place' + u.session.slot + 'Sky').innerHTML.slice(0, 300));
+  const changed = [...shared.keys()].filter(k => shared.get(k) !== beforeKeys.get(k));
+  T('and only the profile learned that it was shown: nothing else was rewritten', changed.length === 1 && changed[0] === u.STORAGE_NAMESPACE + u.KEYS.profile, changed.join(','));
+  const up2 = H.loadApp({ sharedStorage: shared });
+  T('reloaded, it is not shown again', !/is-new/.test(up2.dom.document.getElementById('place' + up2.ctx.session.slot + 'Sky').innerHTML));
+  const fresh = H.loadApp();
+  const f = fast(fresh.ctx);
+  await f.startAdventure();
+  T('a new explorer is never shown a planet it has not opened', f.catchUpReveal() === null && !f.storyFlag('shown.mars'));
+  const e = H.loadApp();
+  const ec = fast(e.ctx);
+  await ec.startAdventure();
+  seedDone(ec, ['moon-1', 'mercury-1']);
+  ec.pickDestination('mercury');
+  await ec.launch();
+  await ec.tapMarker('meteors');
+  await playMission(ec);
+  T('a child who opens Mars by playing sees it revealed there, and is not shown it again on Earth', ec.storyFlag('shown.mars'));
+  await ec.flyHome();
+  T('home: no second reveal', ec.catchUpReveal() === null);
+}
+
+/* =========================================================
+   CONTRACT 44 — REVIEW, BY RULE
+   Something the child found hard comes back — chosen from their answers
+   by a rule a grown-up could follow on paper, never at random.
+   ========================================================= */
+function testReview(){
+  section('CONTRACT 44 — review: what was hard comes back, by rule');
+  const c = H.loadApp().ctx;
+  const ev = (skill, item, form, recent, last) => ({ id: c.evidenceId(skill, item, form), skillId: skill, item: item, form: form, seen: recent.length,
+    firstTry: recent.filter(x => x === 1).length, recent: recent, lastPracticed: last });
+  const letters = ['M', 'S', 'O', 'T'];
+  T('with nothing shown yet, a review asks what the mission wrote', c.reviewPick('find-letter', letters, [], []) === null &&
+    c.reviewActivity({ type: 'find-letter', target: 'M', form: 'upper', review: letters }, [], { asked: [] }).target === 'M');
+  const e1 = [ev('letter-recognition', 'M', 'upper', [1, 1], '2026-09-01'), ev('letter-recognition', 'S', 'upper', [0, 1, 0], '2026-09-02'), ev('letter-recognition', 'O', 'upper', [0, 1], '2026-09-03')];
+  T('the letter that most needed help comes back', c.reviewPick('find-letter', letters, e1, []) === 'S');
+  T('the same answers always pick the same letter, in any order', c.reviewPick('find-letter', letters, e1.slice().reverse(), []) === 'S');
+  T('never one already asked in this mission', c.reviewPick('find-letter', letters, e1, ['S']) === 'O');
+  const e2 = [ev('letter-recognition', 'M', 'upper', [1, 1], '2026-09-05'), ev('letter-recognition', 'T', 'upper', [1, 1], '2026-09-01')];
+  T('with nothing hard, the one practised longest ago', c.reviewPick('find-letter', letters, e2, []) === 'T');
+  const hardM = [ev('letter-recognition', 'M', 'upper', [0, 0, 1], '2026-09-04')];
+  const sound = c.reviewActivity({ type: 'sound-pick', sound: 's', answer: 'sun', review: ['s', 'm', 'f', 'n', 'r'] }, hardM, { asked: [] });
+  T('M found only with help in Letter Explorer brings /m/ back in Sound Scout', sound.sound === 'm' && c.WORDS[sound.answer].onset === 'm' && c.singleOnset(sound.answer), JSON.stringify(sound));
+  T('with a picture not already used in the mission', c.reviewActivity({ type: 'sound-pick', sound: 's', answer: 'sun', review: ['m'] }, hardM, { asked: ['moon'] }).answer !== 'moon');
+  const words = [ev('cvc', 'cat', 'build', [0, 1], '2026-09-04'), ev('cvc', 'map', 'build', [1], '2026-09-04')];
+  T('a word that needed building help comes back in Word Builder', c.reviewActivity({ type: 'word-build', target: 'map', review: ['map', 'fan', 'hat', 'cat', 'cap', 'pan'] }, words, { asked: [] }).target === 'cat');
+  const run = c.startRun('moon-3', new Date(), 'run_rev'); run.index = 4;
+  c.beginRound(run, e1);
+  T('a review round is asked, and answered, like any other', run.round.activity.target === 'S' && c.answerRound(run, run.round.answer).correct);
+  const m = c.MISSIONS['mars-3'];
+  const saved = JSON.stringify(m.activities[4]);
+  m.activities[4].review = ['m', 'p'];
+  T('a review that could ask something the game cannot (a stop, alone) is caught', c.validateContent().some(x => /may review p/.test(x)));
+  m.activities[4] = JSON.parse(saved);
+  T('and the content is sound again', c.validateContent().length === 0, c.validateContent().join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 45 — ONE FAMILY OF SOUNDS
+   Short, soft, clean and distinct; one scale; no music; every moment
+   the brief names has its sound, and the effects switch silences all.
+   ========================================================= */
+async function testSoundDesign(){
+  section('CONTRACT 45 — one family of sounds, and no music');
+  const au = fakeAudio();
+  const app = H.loadApp({ windowExtras: au.extras });
+  const c = fast(app.ctx);
+  c.unlockAudio();
+  const moments = ['ignite', 'travel', 'touchdown', 'correct', 'almost', 'star', 'restore', 'station', 'equip'];
+  T('every moment has its sound: ignition, travel, touchdown, correct, a gentle "almost", a star, a restored world, the station, something worn',
+    moments.every(n => c.Sfx.has(n)), moments.filter(n => !c.Sfx.has(n)).join(','));
+  T('and Word Builder\'s: a letter placed, taken back, a word built', ['place', 'lift', 'build'].every(n => c.Sfx.has(n)));
+  const scale = Object.keys(c.SFX_NOTES).map(k => c.SFX_NOTES[k]);
+  c.Sfx.names().forEach(n => c.Sfx.play(n));
+  const tones = au.log.oscillators;
+  const inFamily = t => t.f < 400 || scale.some(f => Math.abs(f - t.f) < 1) || t.f === 520 || t.f === 660;
+  T('every note is from one gentle scale, or a low rumble or thud beneath it', tones.length > 20 && tones.every(inFamily), tones.filter(t => !inFamily(t)).map(t => t.f).join(','));
+  T('and none lasts much over a second', tones.every(t => t.dur <= 1.2), Math.max.apply(null, tones.map(t => t.dur)).toFixed(2));
+  T('soft and round: sine and triangle only', tones.every(t => t.type === 'sine' || t.type === 'triangle'));
+  T('no music: nothing loops, and nothing plays on a repeating timer', !/\.loop\s*=\s*true/.test(js()) && !/setInterval/.test(stripComments(fnBody(js(), 'play'))));
+  const count = au.log.oscillators.length;
+  c.soundPrefs.effects = false;
+  c.Sfx.names().forEach(n => c.Sfx.play(n));
+  T('with sound effects off, nothing plays', au.log.oscillators.length === count);
+  c.soundPrefs.effects = true;
+  T('ignition at launch, air as space opens, touchdown on landing, the station\'s airlock on arriving there',
+    /Sfx\.play\('ignite'\)/.test(fnBody(js(), 'launch')) && /Sfx\.play\('travel'\)/.test(fnBody(js(), 'travelTo')) &&
+    /Sfx\.play\(session\.place === 'station' \? 'station' : 'touchdown'\)/.test(fnBody(js(), 'settleInto')));
+  T('a restored world has its own sound; wearing something, its own', /Sfx\.play\('restore'\)/.test(fnBody(js(), 'celebrate')) && /Sfx\.play\('equip'\)/.test(fnBody(js(), 'dockAction')));
+  T('no console errors', app.errors.length === 0, app.errors.join(' | '));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -3403,5 +4090,6 @@ module.exports = {
   testContent, testLearningEngine, testStarLedger, testCosmeticIsolation,
   testPersistence, testAudio, testAssets, testPrivacy, testChildJourney, testMotion,
   testDialogue, testWorldStage, testNewGames,
-  testHud, testTravel, testInput, testPlayfield, testStation
+  testHud, testTravel, testInput, testPlayfield, testStation,
+  testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign
 };

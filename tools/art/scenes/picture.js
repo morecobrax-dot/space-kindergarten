@@ -405,6 +405,12 @@ OBJECTS.tomato = {
 function build(variant){
   const o = OBJECTS[variant];
   if(!o) throw new Error('picture: unknown variant ' + variant);
+  return buildObject(o);
+}
+/* Any object in this family, under this camera: later picture sets
+   (picture-p3.js) keep their objects in their own files
+   and build them here, so every word picture shares one camera. */
+function buildObject(o){
   const pose = makePose(o.pose);
   const s = o.pose.s || 1;
   return {
@@ -425,4 +431,6 @@ function build(variant){
 function post(buf, W, H, CH, variant){
   if(variant === 'cake') C.addGlow(buf, W, H, CH, W * 0.02, 0.35);
 }
-module.exports = { build: build, post: post };
+module.exports = { build: build, post: post, buildObject: buildObject,
+                   helpers: { makePose: makePose, basis: basis, vesica2: vesica2, cutHollowSphere: cutHollowSphere },
+                   camera: { W: W, H: H, D: D, ELEV: ELEV, FRAME: FRAME } };

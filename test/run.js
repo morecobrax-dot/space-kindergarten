@@ -62,7 +62,14 @@ const SUITES = [
   C.testTravel,
   C.testInput,
   C.testPlayfield,
-  C.testStation
+  C.testStation,
+  C.testAudioSystem,
+  C.testWordBase,
+  C.testSoundScout,
+  C.testWordBuilder,
+  C.testMars,
+  C.testReview,
+  C.testSoundDesign
 ];
 
 async function main(){

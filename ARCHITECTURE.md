@@ -107,24 +107,32 @@ Each layer reads only the ones above it.
 | Layer | What it is | Rule |
 |---|---|---|
 | **ASSETS** | `ASSET_REGISTRY`: every picture, its source, licence and state | The only place an asset path is written. A contract enforces it. |
-| **CONTENT** | `SKILLS`, `LETTERS`, `WORDS`, `DESTINATIONS`, `MISSIONS`, `TRAVEL_ART`, `COSMETIC_SLOTS`, `COSMETICS`, `VOICE_CUES` | Data only. Checked by `validateContent()` at boot and in the contracts. |
-| **ENGINE** | Rounds, difficulty, the help ladder, evidence, progress, the star ledger, looks, what a place teaches | Pure functions: no DOM, no storage, seeded randomness. |
+| **CONTENT** | `SKILLS`, `LETTERS`, `PHONEMES`, `WORDS` (the one word knowledge base), `DESTINATIONS`, `MISSIONS`, `TRAVEL_ART`, `COSMETIC_SLOTS`, `COSMETICS`, `VOICE_CUES` and the line templates | Data only. Checked by `validateContent()` at boot and in the contracts. |
+| **ENGINE** | Rounds, difficulty, the help ladder, evidence, review picks, progress and restoring, the star ledger, looks, what a place teaches | Pure functions: no DOM, no storage, seeded randomness. |
 | **JOURNEY** | The child's saved state (`journey`) | Five keys, each written only by its owner. |
-| **AUDIO** | `Voice`, `Sfx`, `TIMING`, `DIALOGUE` | A recording if one exists, otherwise the device voice (temporary), otherwise a caption. Each kind of line sits in time by `DIALOGUE`. |
+| **AUDIO** | `Voice`, `AUDIO_TYPES`, `audioRoute()`, `AudioOut`, `DevVoice` and the synthesiser, `MediaVoice`, `Sfx`, `TIMING` | Every line is a typed cue: a recording if one exists; a phonics cue then the development phonics voice, anything else the device voice (temporary); otherwise a caption. A phonics cue never reaches the device voice. Each type sits in time by `AUDIO_TYPES`. [docs/AUDIO.md](docs/AUDIO.md) |
 | **SCENES** | The HUD; the world stage, flights and the resting-stage check; welcome, Earth, travel, a planet, a mission, the space station; one view per activity type; the play-field fit | Controllers return promises, so a contract can walk the journey. |
 | **GROWN-UPS** | Hold gate, progress, sound, motion, data, about | Behind a 3-second hold, with erasing behind a confirmation too. |
 
 ### Content model
 
 ```
-Skill        { label, short, status: 'active' | 'planned',   seven named, three active;
-               firstTry }                                    `short` is a child's word
-Word         { speak, picture, rime, onset, beats[] }         rhymes and beats
+Skill        { label, short, status: 'active' | 'planned',   seven named, five active;
+               firstTry, shows }                             `short` is a child's word
+Letter       { speak (its NAME), sound (its SOUND,           a name and a sound are
+               a Phoneme id), family, lookalikes, ambiguous? } different things
+Phoneme      { ipa, kind: 'continuous'|'stop'|'vowel',       the sounds; `spelling` ones
+               example, spelling? }                          are never asked for alone
+Word         { speak, picture, rime, onset, beats[],         THE word knowledge base:
+               phonemes[], level?, reviewed? }               every game reads it; CVC is
+                                                             derived (isCvc())
 Destination  { id, kind: 'home' | 'destination' | 'station'  the STORY layer
                    | 'planned', name, label, tagline?,
                asset, restoredAsset, horizon, sky{x,y,size},
-               primarySkill, reviewSkills, missions[], unlock{after},
-               markers{ missionId: { asset, litAsset, at, height, foot, call } },
+               primarySkill, reviewSkills, missions[], restore[],
+               unlock{after}, firstTrip?, newIn?,
+               markers{ key: { missions[], asset, litAsset,        a marker is one game; its
+                               at, height, foot, call } },         missions come in order
                story{ lines } }
   station    { room, outside, bay, turntable, window{earth} } the Rocket Dock, as a place
 Mission      { id, destinationId, skillId, title, task,      the LEARNING layer;
@@ -133,13 +141,15 @@ Mission      { id, destinationId, skillId, title, task,      the LEARNING layer;
 CosmeticSlot { id: 'paint' | 'gear' | 'theme', label, speak }
 Cosmetic     { id, slot, name, cost, starter?,               one of each slot is worn;
                tint? | art? | pattern?, focus? }             focus: where a gear chip zooms
-Activity     { type, target, answer?, form?, guided? }       authored targets
-ActivityType { skillId, repeatable?, validate, evidenceKey,  ACTIVITY_TYPES registry
-               promptCue, buildRound }
+Activity     { type, target | sound, answer?, form?,          authored targets; `review`
+               guided?, review[]? }                          lists what a review may ask
+ActivityType { skillId, repeatable?, validate, evidenceKey,  ACTIVITY_TYPES registry;
+               promptCue, buildRound, check?, valid? }       check/valid: a many-tap answer
 GameView     { draw, ask, guide, again, praise, correct,     GAME_VIEWS: one per type,
                wrong, retry, show, progressWord }            in SCENES
-VoiceCue     { text (on screen), speak (script), file }      `voiceCue(id)` builds
-                                                             value-carrying lines
+VoiceCue     { id, type, text (on screen, or null),        `voiceCue(id)` builds
+               speak (script), locale, file, sounds? }       value-carrying lines;
+                                                             `sounds` for phonics cues
 ```
 
 **Adding a skill** means adding one `ACTIVITY_TYPES` entry, content, and one
@@ -148,9 +158,24 @@ the help ladder. `choose()`, the ladder, evidence, praise rotation and the
 reprompts are shared; no scene is rewritten.
 
 **Adding a destination** means adding a `DESTINATIONS` entry with its two
-sky pictures, a horizon, a marker per mission and its story lines, and
-appending it to `JOURNEY_ORDER`. The world stage draws it from that data:
-no scene names a place.
+sky pictures, a horizon, a marker per game (each listing its missions), the
+story missions that restore it, and its story lines, and appending it to
+`JOURNEY_ORDER`. The world stage draws it from that data: no scene names a
+place. A destination added after children may already have opened its
+route says so (`newIn`), and Earth shows it arriving once
+(`catchUpReveal()`).
+
+**Adding missions to a place** never takes anything back: a place is
+restored by its `restore` missions, so a new mission is more to play, not a
+new lock. Until a place is restored, its story missions follow one another
+in the same visit; once it is, it offers one mission a visit (unplayed ones
+first, then each in turn: `markerNext()`).
+
+**Review** (`reviewActivity()`, pure): an activity with a `review` list asks,
+when its round begins, the candidate whose recent answers needed help most
+often, then the one practised longest ago, never one already asked in the
+run. Evidence counts across games: a letter needing help brings back its
+sound in Sound Scout (`reviewLinks()`).
 
 ### The HUD
 
@@ -206,8 +231,9 @@ One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
   the trip into five phases: ignite, rise, cruise, approach, touchdown.
   Motifs: `clouds-out` (leaving Earth), `clouds-in` (coming home), `cruise`
   (streaming stars and rushing specks), `shooting` (every other cruise),
-  `asteroids` (one trip in three, never a first arrival), `tunnel` (the
-  first trip to a world beyond the first stop), `station-in` and
+  `asteroids` (one trip in three, never a first arrival), the first trip to
+  a world beyond the first stop (its `firstTrip`: the `tunnel` for Mercury,
+  a pass through friendly `asteroids` for Mars), `station-in` and
   `station-out`.
 - **The move** (`travelTo()` + `flightMoves()`): the controls clear, the
   destination is drawn into the other slot and held out of sight, the
@@ -235,6 +261,23 @@ One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
   the picture, the stone and the meteors to fit it, stacked or, on a short
   wide screen, in a row. `fitPlayfield()` measures and applies it when a
   round is drawn and when the screen changes shape.
+- **Word Builder** answers with several taps: `session.build` holds which
+  letter is in each slot; a tapped letter goes into the next empty slot (and
+  plays its sound), a placed one tapped again comes back, and a full word is
+  answered through `choose()` like any choice (`ACTIVITY_TYPES.check`).
+
+### Audio
+
+`Voice` is the one owner of speech and phonics audio: one cue at a time, in
+order, each resolved by `audioRoute()` (a recording, the development
+phonics voice for a sound, the device voice for anything else, a caption).
+The development phonics voice (`synthPhonics()`, `phonicsRender()`,
+`DevVoice`) is a small, deterministic formant synthesiser, played through
+the Web Audio output the first tap wakes (`AudioOut`), which `Sfx` shares.
+Recordings will play through one media element woken on the first tap
+(`MediaVoice`), only once one exists. The device voice speaks sentence by
+sentence with punctuation pauses (`speechChunks()`). Everything, with the
+recording list, is in [docs/AUDIO.md](docs/AUDIO.md).
 
 ### The space station
 
@@ -248,10 +291,10 @@ only the stage rocket (`previewLook()`); the action unlocks or wears it.
 
 | Key | Shape | Written by |
 |---|---|---|
-| `data.profile` | `{ id, createdAt, updatedAt, story: { 'arrived.moon', 'arrived.mercury', 'heard.dockHint' } }` | first tap; story moments |
+| `data.profile` | `{ id, createdAt, updatedAt, story: { 'arrived.<place>', 'shown.<place>', 'heard.dockHint' } }` | first tap; story moments |
 | `data.completions` | `[{ id: runId, missionId, destinationId, skillId, startedAt, completedAt, rounds, firstTry, helped, unscored }]` | end of a mission |
 | `data.stars` | `[{ id: 'earn.<runId>' \| 'spend.<cosmeticId>', kind, amount, runId \| cosmeticId, at }]` | end of a mission (earn); the Dock (spend) |
-| `data.evidence` | `[{ id: '<skill>.<item>.<form>', item, form, seen, firstTry, recent[≤8], lastPracticed }]` | after each resolved round |
+| `data.evidence` | `[{ id: '<skill>.<item>.<form>', item, form, seen, firstTry, recent[≤8], lastPracticed }]`: a letter (`letter-recognition.M.upper`), a word (`rhyming.cake.rhyme`), a sound (`beginning-sounds.m.initial`), a built word (`cvc.map.build`) | after each resolved round |
 | `data.rocket` | `{ paint, gear?, theme?, updatedAt }` (a missing slot reads as its free starter, so v0.3.0 records need no migration) | the space station |
 | `ui.sound`, `ui.motion` | device preferences | grown-ups area |
 
@@ -259,7 +302,7 @@ only the stage rocket (`previewLook()`); the action unlocks or wears it.
 
 - the star balance
 - which cosmetics are owned
-- whether a destination is restored, and whether it is open
+- whether a destination is restored (by its story missions), and whether it is open
 - the next mission, and which marker pulses
 - an item's difficulty level (recomputed from `recent`)
 
@@ -285,10 +328,13 @@ only the stage rocket (`previewLook()`); the action unlocks or wears it.
   the reward stars (all landed within about 2s).
 - **Ambient:** a shooting star about every 13–23s at rest.
 
-`DIALOGUE` is the other table: for each kind of line (story, instruction,
-question, praise, feedback, hint, reaction) its breath before and after,
-its minimum hold (praise holds 0.95s), and whether a tap may cut it.
-`TIMING.dialogueScale` scales all of it; the contracts set 0.
+`AUDIO_TYPES` is the other table: for each type of cue (story, instruction,
+question, praise, correction, hint, reaction, word, letter name, phoneme,
+segmented and blended word; sound effects are `Sfx`'s) its breath before
+and after, its minimum hold (praise holds 0.95s), whether a tap may cut it,
+and whether the device voice may say it. `TIMING.dialogueScale` scales all
+of it; the contracts set 0 (and then say each line whole, since there is no
+pause to leave between its sentences).
 - **Beats:** a 1.5s pause ends a count; taps closer than 0.09s are one.
 - **Prompts:** re-asking after 10s idle, at most twice.
 - **Gate:** 3s.
@@ -302,12 +348,16 @@ The contracts collapse these to zero to run the journey in milliseconds.
 
 - **Contracts 1–19** are the foundation's own, retargeted where they used to
   exercise the starter demo.
-- **Contracts 20–38** cover the product. 32 holds the world stage (one
+- **Contracts 20–45** cover the product. 32 holds the world stage (one
   stage, places from data, one primary action, one mission at a time); 33
   holds Rhyme Radar and Syllable Meteors; 34 the HUD, lesson titles and
   choosing a planet; 35 travel plans, the resting stage and ambient
   shooting stars; 36 who owns a tap; 37 the play field on every screen;
-  38 the space station and what a rocket wears.
+  38 the space station and what a rocket wears; 39 the one audio owner,
+  typed cues and the development phonics voice; 40 the word knowledge
+  base, and a letter's name against its sound; 41 Sound Scout; 42 Word
+  Builder; 43 Mars, restoring by story missions and a v0.4.0 journey
+  opening; 44 review by rule; 45 the sound effects family.
 
 The journey contract (28) plays welcome → Earth → the Moon → the beacon →
 the mission → the world answering → home → Dock → reload through the same
@@ -321,15 +371,20 @@ See the QA notes in `docs/PRODUCT.md`.
 | You are adding | Put it |
 |---|---|
 | A picture | A file in `assets/`, one `ASSET_REGISTRY` entry, then `npm run config:sync` |
-| A recording | A registry entry, then its path in `VOICE_RECORDINGS` under the line's id |
+| A recording | A registry entry, then its path in `VOICE_RECORDINGS` under the cue's id ([docs/AUDIO-RECORDINGS.md](docs/AUDIO-RECORDINGS.md) lists every one) |
+| A word | One `WORDS` entry (picture, rime, beats, phonemes); every game can then use it |
+| A sound a game asks for | A `PHONEMES` entry, a `LETTERS[].sound` if a letter spells it, and its synthesis in `SYNTH_SOUNDS` until it is recorded |
+| A review round | A `review` list on the activity: what it may ask, the default first |
+| A sound effect | A recipe in `Sfx`, from `SFX_NOTES`, short and soft |
 | A mission | `MISSIONS` plus the destination's `missions` list; `validateContent()` checks it |
 | A new kind of activity | An `ACTIVITY_TYPES` entry, content, a `GAME_VIEWS` entry, and its shapes in `playfieldSizes()` |
 | A lesson title or task | The mission's `title` and `task`; the HUD shows them |
 | Something to wear | A `COSMETICS` line in its slot: a `--paint-*` token, a gear picture in the rocket's frame, or a theme pattern in the CSS |
 | A travel motif | A rule in `travelPlan()`, its pieces in `travelFx()`, its moves in `flightMoves()`, and a contract 35 check |
 | A rule for the resting stage | A line in `stageRestingProblems()`, and what `repairStage()` must reset |
-| A pause in Pip's speech | The line's kind in `DIALOGUE`, never a timeout in a scene |
-| A destination | A `DESTINATIONS` entry (sky pictures, horizon, markers, story) and `JOURNEY_ORDER`; its renders in `tools/art/jobs.js` |
+| A pause in Pip's speech | The cue's type in `AUDIO_TYPES`, never a timeout in a scene |
+| A destination | A `DESTINATIONS` entry (sky pictures, horizon, a marker per game, `restore`, story) and `JOURNEY_ORDER`; its renders in `tools/art/jobs.js` |
+| A mission for an existing game | `MISSIONS`, the destination's `missions`, and its marker's `missions`; never its `restore`, once children have played |
 | Persistent state | A key in `KEYS`, under `data.` or `ui.`, with a single owner |
 | A data shape change | Bump `DATA_SCHEMA_VERSION` and add a migration |
 | A colour | A token, in layer 1, 2 or 4 |

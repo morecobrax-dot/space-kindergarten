@@ -13,7 +13,7 @@ direction, not material; see `references/README.md`.
 <!-- ASSET-TABLE-BEGIN
  — derived from ASSET_REGISTRY by `npm run config:sync`. Do not hand-edit. -->
 
-**53 registered assets: 53 DRAFT.**
+**78 registered assets: 78 DRAFT.**
 
 | Id | Path | State | Format | Size | Purpose | Source | Licence |
 |---|---|---|---|---|---|---|---|
@@ -23,6 +23,7 @@ direction, not material; see `references/README.md`.
 | `horizon.earth` | `assets/horizons/earth.webp` | DRAFT | webp | 2400×780 | Home: the curve of Earth, with the launch pad the rocket stands on | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `horizon.moon` | `assets/horizons/moon.webp` | DRAFT | webp | 2400×780 | The Moon underfoot, where its mission happens | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `horizon.mercury` | `assets/horizons/mercury.webp` | DRAFT | webp | 2400×780 | Mercury underfoot: warm stone and soft dimples | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `horizon.mars` | `assets/horizons/mars.webp` | DRAFT | webp | 2400×780 | Mars underfoot: a red clay playground, soft craters and friendly rocks | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `place.stationOutside` | `assets/places/station-outside.webp` | DRAFT | webp | 1024×1024 | The space station seen from space, its docking bay open, as the rocket flies in | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `place.stationInside` | `assets/places/station-inside.webp` | DRAFT | webp | 2400×1600 | The station's garage: the turntable the rocket stands on, and a clear window onto space | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `planet.earth` | `assets/planets/earth.webp` | DRAFT | webp | 600×600 | Home, far behind, in every destination's sky | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
@@ -30,12 +31,19 @@ direction, not material; see `references/README.md`.
 | `planet.moonLit` | `assets/planets/moon-lit.webp` | DRAFT | webp | 640×640 | The Moon once restored: its beacon lit, warm light in the craters | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `planet.mercury` | `assets/planets/mercury.webp` | DRAFT | webp | 560×560 | Mercury in the sky, waiting | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `planet.mercuryLit` | `assets/planets/mercury-lit.webp` | DRAFT | webp | 560×560 | Mercury once restored: warm light in its dimples | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `planet.mars` | `assets/planets/mars.webp` | DRAFT | webp | 560×560 | Mars in the sky, waiting | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `planet.marsLit` | `assets/planets/mars-lit.webp` | DRAFT | webp | 560×560 | Mars once restored: warm light in its craters | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.beacon` | `assets/props/beacon.webp` | DRAFT | webp | 512×896 | The Moon's beacon before its mission is complete: the Moon's marker | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.beaconLit` | `assets/props/beacon-lit.webp` | DRAFT | webp | 512×896 | The Moon's beacon, lit by a finished mission | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.radar` | `assets/props/radar.webp` | DRAFT | webp | 480×480 | Mercury's radar dish, its signal fuzzy: the Rhyme Radar marker | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.radarOn` | `assets/props/radar-on.webp` | DRAFT | webp | 480×480 | The radar dish fixed, its tip glowing | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.meteorField` | `assets/props/meteor-field.webp` | DRAFT | webp | 480×360 | Mercury's meteor rocks, cold: the Syllable Meteors marker | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.meteorFieldOn` | `assets/props/meteor-field-on.webp` | DRAFT | webp | 480×360 | The meteor rocks glowing warm | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `prop.scanner` | `assets/props/scanner.webp` | DRAFT | webp | 480×480 | Mars's sound scanner, quiet: the Sound Scout marker | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `prop.scannerOn` | `assets/props/scanner-on.webp` | DRAFT | webp | 480×480 | The sound scanner working, its cone aglow | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `prop.workshop` | `assets/props/workshop.webp` | DRAFT | webp | 480×400 | Mars's word machine, its three sockets dark: the Word Builder marker | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `prop.workshopOn` | `assets/props/workshop-on.webp` | DRAFT | webp | 480×400 | The word machine working, its sockets glowing | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `prop.pedestal` | `assets/props/pedestal.webp` | DRAFT | webp | 384×200 | A low Mars rock a picture stands on, in Sound Scout | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.letterStone` | `assets/props/letter-stone.webp` | DRAFT | webp | 400×440 | A Moon stone carrying a letter plate, in Letter Explorer | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.beatStone` | `assets/props/beat-stone.webp` | DRAFT | webp | 512×400 | The big stone a child taps once for each beat | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `prop.meteor` | `assets/props/meteor.webp` | DRAFT | webp | 192×192 | A beat still to tap | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
@@ -58,6 +66,23 @@ direction, not material; see `references/README.md`.
 | `picture.spoon` | `assets/pictures/spoon.webp` | DRAFT | webp | 384×384 | A picture for the word "spoon" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `picture.tomato` | `assets/pictures/tomato.webp` | DRAFT | webp | 384×384 | A picture for the word "tomato" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `picture.tree` | `assets/pictures/tree.webp` | DRAFT | webp | 384×384 | A picture for the word "tree" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.map` | `assets/pictures/map.webp` | DRAFT | webp | 384×384 | A picture for the word "map" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.fan` | `assets/pictures/fan.webp` | DRAFT | webp | 384×384 | A picture for the word "fan" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.hat` | `assets/pictures/hat.webp` | DRAFT | webp | 384×384 | A picture for the word "hat" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.cat` | `assets/pictures/cat.webp` | DRAFT | webp | 384×384 | A picture for the word "cat" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.cap` | `assets/pictures/cap.webp` | DRAFT | webp | 384×384 | A picture for the word "cap" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.pan` | `assets/pictures/pan.webp` | DRAFT | webp | 384×384 | A picture for the word "pan" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.sun` | `assets/pictures/sun.webp` | DRAFT | webp | 384×384 | A picture for the word "sun" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.nut` | `assets/pictures/nut.webp` | DRAFT | webp | 384×384 | A picture for the word "nut" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.rug` | `assets/pictures/rug.webp` | DRAFT | webp | 384×384 | A picture for the word "rug" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.cup` | `assets/pictures/cup.webp` | DRAFT | webp | 384×384 | A picture for the word "cup" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.bus` | `assets/pictures/bus.webp` | DRAFT | webp | 384×384 | A picture for the word "bus" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.bug` | `assets/pictures/bug.webp` | DRAFT | webp | 384×384 | A picture for the word "bug" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.net` | `assets/pictures/net.webp` | DRAFT | webp | 384×384 | A picture for the word "net" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.fish` | `assets/pictures/fish.webp` | DRAFT | webp | 384×384 | A picture for the word "fish" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.pumpkin` | `assets/pictures/pumpkin.webp` | DRAFT | webp | 384×384 | A picture for the word "pumpkin" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.umbrella` | `assets/pictures/umbrella.webp` | DRAFT | webp | 384×384 | A picture for the word "umbrella" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.cupcake` | `assets/pictures/cupcake.webp` | DRAFT | webp | 384×384 | A picture for the word "cupcake" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.body` | `assets/rocket/rocket.webp` | DRAFT | webp | 640×800 | The rocket, with its painted parts in white clay; also the picture for "rocket" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.paintMask` | `assets/rocket/rocket-paint.webp` | DRAFT | webp | 640×800 | Where paint goes on the rocket: every paint colour is multiplied through it | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.flame` | `assets/rocket/flame.webp` | DRAFT | webp | 256×384 | Engine flame while flying | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |

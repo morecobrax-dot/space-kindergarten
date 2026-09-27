@@ -95,7 +95,7 @@ Every destination is shown the same two ways, so a planet added later
 belongs to the same universe:
 
 - **From afar** (`asset`, `restoredAsset`): the sphere centred, filling 84%
-  of a square canvas (640 px for the Moon, 560 for Mercury), in two states:
+  of a square canvas (640 px for the Moon, 560 for Mercury and Mars), in two states:
   - **Waiting:** cooler and quieter, its landmark unlit.
   - **Restored:** the same model, with a warm accent light at its landmark,
     faint warmth in its hollows and a warm halo. The app crossfades from one
@@ -114,8 +114,9 @@ on the ground.
 
 A restored world is a **brighter** world: warm light pools around what the
 child fixed (`--world-warmth`). Warm light always comes from something
-meaningful: the beacon's lamp, the radar's tip, the meteor rocks, the
-rocket's flame, the reward stars, and the Sun's spill over Mercury's sky.
+meaningful: the beacon's lamp, the radar's tip, the meteor rocks, Mars's
+sound scanner and word machine, the rocket's flame, the reward stars, and
+the Sun's spill over Mercury's and Mars's skies.
 
 | World | Clay colours | Signature feature | State |
 |---|---|---|---|
@@ -123,7 +124,7 @@ rocket's flame, the reward stars, and the Sun's spill over Mercury's sky.
 | Moon | lavender-grey, violet shadows, warm beacon light | fingertip craters with raised lips | built |
 | Mercury | warm stone, amber; the Sun's warm spill | overlapping shallow dimples | built |
 | Venus | peach, coral, warm yellow | soft swirled cloud bands, sculpted in relief | planned |
-| Mars | rust, orange, red | pinched ridges and one big volcano mound | planned |
+| Mars | warm coral-rust, deep-red accents, a sunset-orange edge glow | soft rolled craters, huddles of round rust stones, a cream polar cap from afar: a red clay playground, never a hostile one | built |
 | Jupiter | cream, orange, warm brown | rolled clay bands and one thumbprint storm | planned |
 | Saturn | gold, peach, lavender | a thick clay ring, matte, with pressed grooves | planned |
 | Uranus | aqua, cyan | smooth, softly banded, a gentle tilt | planned |

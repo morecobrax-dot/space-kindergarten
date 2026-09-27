@@ -22,6 +22,7 @@ const path = require('path');
 const H = require('../test/harness.js');
 
 const ASSET_MANIFEST_PATH = path.join(H.ROOT, 'docs', 'ASSET-MANIFEST.md');
+const RECORDINGS_PATH = path.join(H.ROOT, 'docs', 'AUDIO-RECORDINGS.md');
 
 /* The shell every install needs, ahead of the registered artwork. */
 const SHELL = ['./', './index.html', './manifest.webmanifest'];
@@ -76,6 +77,7 @@ function loadConfig(){
   return {
     cfg,
     registry,
+    ctx: app.ctx,
     version: app.ctx.APP_VERSION,
     cacheName: app.ctx.CACHE_NAMESPACE,
     storagePrefix: app.ctx.STORAGE_NAMESPACE
@@ -104,6 +106,60 @@ function assetTable(c){
     '| Id | Path | State | Format | Size | Purpose | Source | Licence |',
     '|---|---|---|---|---|---|---|---|'
   ].concat(rows).join('\n');
+}
+
+/* The recording script, from the content: every sound, word said sound
+   by sound and blended word the games use (development audio today, so
+   these are required), then every authored narration line. */
+function recordingsDoc(c){
+  const x = c.ctx;
+  const sounds = {}, words = {};
+  const use = (map, key, game) => { map[key] = map[key] || []; if(map[key].indexOf(game) === -1) map[key].push(game); };
+  Object.keys(x.MISSIONS).forEach(id => x.MISSIONS[id].activities.forEach(a => {
+    if(a.type === 'sound-pick') [a.sound].concat(a.review || []).forEach(p => use(sounds, p, 'Sound Scout'));
+    if(a.type === 'word-build') [a.target].concat(a.review || []).forEach(w => {
+      use(words, w, 'Word Builder');
+      x.WORDS[w].phonemes.forEach(p => use(sounds, p, 'Word Builder'));
+    });
+  }));
+  const soundRows = Object.keys(sounds).sort().map(p => {
+    const cue = x.voiceCue('phoneme.' + p);
+    return '| `phoneme.' + p + '` | /' + mdCell(x.PHONEMES[p].ipa) + '/ | ' + mdCell(x.PHONEMES[p].example) + ' | ' + mdCell(cue.speak) + ' | ' + sounds[p].join(', ') + ' |';
+  });
+  const wordRows = [];
+  Object.keys(words).sort().forEach(w => ['seg', 'blend'].forEach(k => {
+    wordRows.push('| ' + w + ' | `' + k + '.' + w + '` | ' + mdCell(x.voiceCue(k + '.' + w).speak) + ' |');
+  }));
+  const lines = Object.keys(x.VOICE_CUES).map(id => '| `' + id + '` | ' + x.VOICE_CUES[id].type + ' | ' + mdCell(x.VOICE_CUES[id].speak) + ' |');
+  return [
+    ' — derived from the content by `npm run config:sync`. Do not hand-edit. -->',
+    '',
+    '**' + (soundRows.length + wordRows.length) + ' recordings replace development audio (' + soundRows.length + ' sounds, ' + wordRows.length +
+      ' words said sound by sound or blended); ' + lines.length + ' authored lines replace the device voice.**',
+    '',
+    '## Sounds (required)',
+    '',
+    'Each on its own, with no vowel after it: /m/ is "mmm", never "muh"; /p/ is one puff, never "puh".',
+    '',
+    '| Cue | Sound | As in | Script | Used by |',
+    '|---|---|---|---|---|'
+  ].concat(soundRows, [
+    '',
+    '## Words, sound by sound and blended (required)',
+    '',
+    '| Word | Cue | Script |',
+    '|---|---|---|'
+  ], wordRows, [
+    '',
+    '## Narration (the device voice until recorded)',
+    '',
+    'Also recorded: the lines built from templates — each letter\'s questions and praise (`LETTER_LINES`), each rhyme pair\'s ' +
+      '(`RHYME_LINES`), each word\'s beats (`BEAT_LINES`), and each Sound Scout and Word Builder word\'s (`SOUND_LINES`, `BUILD_LINES`). ' +
+      'Their cue ids are listed in index.html beside `voiceCue()`, `wordCue()` and `phonicsCue()`.',
+    '',
+    '| Cue | Type | Script |',
+    '|---|---|---|'
+  ], lines).join('\n');
 }
 
 /* ---------- what each static file should contain ---------- */
@@ -154,6 +210,14 @@ function targets(c){
       label: 'docs/ASSET-MANIFEST.md',
       region: ['<!-- ASSET-TABLE-BEGIN', '<!-- ASSET-TABLE-END'],
       build: () => assetTable(c)
+    },
+    {
+      /* What a voice actor records, and why: derived, so it lists exactly
+         the sounds and lines the content uses. */
+      file: RECORDINGS_PATH,
+      label: 'docs/AUDIO-RECORDINGS.md',
+      region: ['<!-- AUDIO-RECORDINGS-BEGIN', '<!-- AUDIO-RECORDINGS-END'],
+      build: () => recordingsDoc(c)
     },
     {
       file: H.MANIFEST_PATH,

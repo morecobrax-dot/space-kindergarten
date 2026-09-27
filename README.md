@@ -4,17 +4,23 @@ A space-adventure learning game for kindergarten children, aged about five to
 six, on iPad. A child starts on Earth, launches a rocket through one
 continuous clay world, lands on the Moon, finds letters to relight its
 beacon, flies on to Mercury to fix its fuzzy signal with rhymes and beats,
+then to Mars to wake its sound scanner with first sounds and short words,
 earns stars, and flies up to a space station to dress up the rocket with
 paint, gear and themes. Learning comes first; the adventure is what makes it
 fun.
 
-**Status: Phase 2.2.** The world is the navigation: one stage, planets as
-places, and flights that are one camera journey (lift-off, clouds, the
-cruise through space, the approach and touchdown). One HUD says where you
-are or what you are playing. Three missions are built: Letter Explorer on
-the Moon (six uppercase letter-recognition rounds), and on Mercury, Rhyme
-Radar (five rounds) and Syllable Meteors (six rounds). The rhyming and beats
-content is development content, awaiting review.
+**Status: Phase 3 (v0.5.0).** The world is the navigation: one stage,
+planets as places, and flights that are one camera journey. Eleven missions
+across five games are built:
+
+- Letter Explorer ×3 on the Moon
+- Rhyme Radar ×2 and Syllable Meteors ×2 on Mercury
+- Sound Scout (beginning sounds) ×2 and Word Builder (CVC words) ×2 on Mars
+
+The rhyming, beats, sounds and words are development content, awaiting
+review. Letter sounds and blended words are **development audio**: a small
+synthesiser made for this app, never the device voice, until recordings
+replace them ([docs/AUDIO.md](docs/AUDIO.md)).
 
 The artwork is a set of draft clay renders made in this repository by
 `tools/art`. Spoken instructions use the device's own speech voice as a
@@ -67,13 +73,15 @@ That one command runs the contracts, checks the derived files against
 
 ```bash
 npm test              # contracts only
-npm run config:sync   # rewrite derived files (head, manifest, sw.js, package.json, asset manifest)
+npm run config:sync   # rewrite derived files (head, manifest, sw.js, package.json, asset manifest, recording list)
+npm run economy       # how stars and the rocket's things pace against the missions
 ```
 
 ## Documentation
 
 - [docs/PRODUCT.md](docs/PRODUCT.md): what the product is, what is built, and what is placeholder
 - [docs/LEARNING-DESIGN.md](docs/LEARNING-DESIGN.md): how the learning works and why
+- [docs/AUDIO.md](docs/AUDIO.md): the audio system, phonics safety, Pip's voice and the sound effects; [docs/AUDIO-RECORDINGS.md](docs/AUDIO-RECORDINGS.md): every recording to make (generated)
 - [docs/ART-DIRECTION.md](docs/ART-DIRECTION.md): the visual target, the world stage and planet system, the palette, and Pip
 - [docs/ASSET-BRIEFS.md](docs/ASSET-BRIEFS.md): what final art for each picture must match, and every anchor
 - [docs/IPAD-QA-PHASE-2.2.md](docs/IPAD-QA-PHASE-2.2.md): the checklist for testing Phase 2.2 on a real iPad ([Phase 2](docs/IPAD-QA-PHASE-2.md) before it)

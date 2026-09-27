@@ -25,9 +25,10 @@ experience and keep the complexity behind the scenes.
 ## The story
 
 The child is a new space explorer, and Earth is home base. Across the solar
-system, things have gone quiet: the Moon's beacon is dim, and Mercury's
-signal is fuzzy. The explorer flies from world to world, finding letters,
-rhymes and beats to set them right. Every restored place brightens, and
+system, things have gone quiet: the Moon's beacon is dim, Mercury's signal
+is fuzzy, and Mars's sound scanner cannot hear. The explorer flies from
+world to world, finding letters, rhymes, beats, sounds and words to set them
+right. Every restored place brightens, and
 opens the route to the next.
 
 The story is hopeful, curious and warm. It has no villain, no danger and no
@@ -46,6 +47,32 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 **The world is the navigation.** There are no menus: places are the
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
+
+## Phase 3: what is built (v0.5.0)
+
+Phase 3 built a permanent voice and educational-audio foundation, then two
+reading games that depend on it, on a new planet. It also added missions
+across the journey so the app is no longer a three-mission demo. The flow
+now runs Moon (letters) → Mercury (rhymes, beats) → Mars (sounds, words), and
+every place has more to play once it is restored.
+
+| Area | Built |
+|---|---|
+| One audio owner | Every spoken line is a typed cue (story, instruction, question, praise, correction, hint, word, letter name, phoneme, word said sound by sound, blended word; sound effects are their own family). A cue resolves in one place (`audioRoute()`): a recording, then the development phonics voice or the device voice, then the caption. Only one sound plays at a time, in order. [AUDIO.md](AUDIO.md) |
+| Phonics safety | A letter's sound, a word said sound by sound and a blended word are never given to the device voice (it says /m/ as "muh"). A letter's NAME and its SOUND are different cues and different data |
+| Development phonics voice | A small formant synthesiser made for this app. It plays letter sounds, segmented words and blends with no vowel after a sound. It is deterministic, needs no files, and is **labelled development audio everywhere**. [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md) lists the 35 recordings that replace it |
+| Pacing | Each cue type has its pause before and after, a minimum hold and whether a tap may cut it. The device voice speaks sentence by sentence with punctuation pauses. A question never follows a story at once, and there are no dead spaces |
+| Pip's voice | Warm, curious, encouraging, clear, playful, calm; speaks only when it helps. Written down in [AUDIO.md](AUDIO.md#pips-voice) |
+| Sound design | One soft family in one scale: ignition, travel, touchdown, correct, gentle correction, star, restoration, the station, equip, and Word Builder's place/lift/build. No music |
+| Mars | A red clay playground, after Mercury. Its first trip passes friendly rocks. Its two markers are a sound scanner and a word machine. Restored by a Sound Scout and a Word Builder |
+| Sound Scout | Hear a sound (/m/ /s/ /f/ /n/ /r/), find the picture that starts with it. The pictures rise onto rocks as they are named, and the letter shows only after the answer |
+| Word Builder | Hear a CVC word sound by sound, tap its letters into three slots (a letter plays its SOUND), tap one back to undo, hear it blended, see its picture. The help ladder is a gentle correction, then building it together |
+| One word knowledge base | Every word once, in `WORDS`: picture, rime, beats, sounds (phonemes), first sound, level, review status. `PHONEMES` names the sounds, and `LETTERS` gives each letter a name and a sound |
+| More missions | Letter Explorer ×3 (Moon), Rhyme Radar ×2 and Syllable Meteors ×2 (Mercury), Sound Scout ×2 and Word Builder ×2 (Mars): 11 missions, 64 rounds |
+| Markers host games | One marker per game on each world; its missions come one after another, with a small lamp for each played. A place is restored by its story missions, so new missions never lock anything a child has done |
+| Review by rule | A few rounds bring back what the child found hardest, chosen from their answers by a rule a grown-up could follow on paper. It works across games: a letter needing help comes back as its sound |
+| Upgrades | A v0.4.0 journey opens with everything it had. Mars appears for it once, arriving in Earth's sky |
+| Pictures | 17 new clay word pictures, and Mars (horizon, planet, scanner, word machine, rock pedestal), all rendered by `tools/art` |
 
 ## Phase 2.2: what is built
 
@@ -72,7 +99,7 @@ rocket → fly home → reload, with everything persisted.
 | Responsive safety | Sized by the viewport actually visible; the HUD scales its marks (never its targets) on short screens; the game's play field fits its box on every screen, picture beside the game on a short phone |
 | Rapid taps | An answer being praised owns the screen; a wrong answer holds taps for 0.45s; the same in every game |
 | The resting stage | Written-down rules checked after every flight, at boot and on return; a broken rest is redrawn from state and counted in the grown-ups area |
-| Dialogue timing | One table (`DIALOGUE`): a breath before and after each kind of line, praise's minimum hold, and whether a tap may cut it |
+| Dialogue timing | One table (`DIALOGUE`; since Phase 3, `AUDIO_TYPES`): a breath before and after each kind of line, praise's minimum hold, and whether a tap may cut it |
 
 ## Phase 2: what was built
 
@@ -97,14 +124,16 @@ rocket → fly home → reload, with everything persisted.
 
 These are not built yet:
 
-- beginning sounds, CVC words, sight words and handwriting
-- more missions, and a bigger word bank
+- sight words and handwriting (beginning sounds and CVC words are built:
+  Phase 3)
+- short i, o and e CVC words, consonant blends and digraphs (sh, ch, th),
+  and a bigger word bank
+- recordings: every sound, word and line is still the development phonics
+  voice or the device voice (see "placeholder" below)
 - the other planets (declared as `planned`, never drawn)
 - a review mission
 - lowercase letters or a school font
-- handwriting
 - student profiles
-- recorded narration
 - final (signed-off) artwork: the current pictures are draft renders
 - more rocket looks: the dinosaur and space-puppy themes, and more gear
   (Phase 2.2 proved the model with 8 paints, 5 gear and 3 themes). The two
@@ -142,6 +171,12 @@ These are never planned:
 - **The voice:** the device's built-in speech synthesiser, labelled as a
   temporary stand-in in the grown-ups area and in code. Every line already has
   a script (`VOICE_CUES`) ready for a voice actor.
+- **Letter sounds, words said sound by sound, and blended words** are
+  DEVELOPMENT AUDIO: a formant synthesiser in the app, never the device voice,
+  labelled in the code, the grown-ups area and [AUDIO.md](AUDIO.md). The 35
+  recordings that replace them are listed in
+  [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md). Nobody has judged these sounds
+  on an iPad yet.
 - **Sound effects:** synthesised with Web Audio, soft and short. Final sound
   design is still to come.
 - **The working title,** "Space Kindergarten". The permanent internal id is
@@ -164,6 +199,56 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Phase 3 QA record (2026-09-27)
+
+**Tested in Chromium (headless Edge and the in-app browser on Windows) with
+emulated iPad and phone viewports, and in the test harness. Nothing was
+tested on a physical iPad: device QA is deferred to the next major device
+gate. No person has yet judged any sound in this phase on a device.**
+
+| Check | How | Result |
+|---|---|---|
+| The whole journey | Headless Edge, scripted through the app's own functions, at 1180×820 (2×) and 1024×768: Earth → the Moon → Letter Explorer → the light tunnel to Mercury → Rhyme Radar (the new words) → Syllable Meteors, which reveals Mars → home, Mars next → the first trip to Mars (the asteroid pass) → Mars → Sound Scout (listening, the pictures, found, a wrong pick) → Word Builder (with Pip, two letters in, built, a wrong order) → Mars restored → home, Mars lit → a Reduce Motion trip → grown-ups. At 1366×1024, 844×390 and 667×375: Earth with Mars, Mars, Sound Scout and Word Builder | No page errors, no resting-stage problem and no display repair at any size. Every game fits its box, under the HUD and above the ground |
+| Real clicks | The in-app browser at 1180×820: the scanner tapped, Sound Scout answered, and Word Builder's guided round built letter by letter with clicks | As designed: a wrong letter wiggles and stays out, the right one goes into the first empty slot, the hint moves on, and the built word ("Map!") shows its picture |
+| Offline | Headless Edge: loaded once online, then the network cut and the server stopped, reloaded and played Earth → a flight → Mars → Sound Scout → Word Builder (a word built) → the space station | The v0.5.0 cache holds 81 entries (the shell and all 78 pictures). No missing picture anywhere; the development voice made its sounds with no network; no errors; the stage at rest |
+| A real v0.4.0 → v0.5.0 update | Headless Edge: the v0.4.0 build (`712dcca`) served and played with a quick stand-in speech engine, so every round was heard and scored: the Moon (the letter S found only after a miss), Mercury, and stars spent on the sky paint and the antenna. Its own code wrote the records, and its service worker cached 56 files. Then v0.5.0 was served on the same origin and the page reloaded, as a device does after a deploy; then reloaded again, and played on. Contract 43 does the same in the harness | Everything kept: 3 missions, 3 stars, the paint and the antenna, and all 13 practice records unchanged. The Moon and Mercury stay restored; Mars is open and arrives in the sky once, never again after a reload; Launch goes to Mars and the Moon offers `moon-2`. Review brings the missed letter back: S in `moon-3`, and its sound /s/ in `mars-3`. The new worker took over and replaced the old cache (v0.5.0, 81 entries). Playing on restored Mars and paid 3 stars a mission. Nothing unreadable, no errors |
+| Contracts | `npm run verify` | 1166 passed, 0 failed; config verify ok |
+| Audio states | Contracts 39 and 45, with a fake device voice, a fake media element and a fake Web Audio that record every sound in order | Never two sounds at once; lines in the order asked; a new line stops a sound still playing; a phonics cue never reaches the device voice, even with it available or a recording failing; punctuation pauses; no quiet longer than 700 ms; the sound effects stay in one scale |
+| Rapid and odd input | Contract 36 (shared by every game: a tap during an explanation skips it, taps during praise wait, a bouncing finger is one tap), and contracts 41 and 42 for the new games: taps while an answer is praised, a letter tapped twice, undo, a wrong order, a reload mid-word | Taps are owned by what is on screen; nothing is lost or half-saved |
+| Mutation check | 46 defects planted one at a time: 39 in the new rules (the audio owner and phonics routing, pacing, the development voice, the word base, Sound Scout, Word Builder, restoring and reveals, review, the sound family, grown-ups), then 7 aimed at the brief's high-risk list (tap-to-place order, a letter placed twice, a failed recording, Mars's unlock, cutting praise short, the last sound before the check, leaving mid-line) | First run: 40 of 46 caught. Of the 6 missed, 3 exposed weak tests: a pause measured against the synthesizer's own gap, the letter-by-letter half of `isCvc()` never exercised, and a word checked while its last letter's sound was cut off. All 3 were strengthened and now catch them. 2 were equivalent: no behavior can differ. 1 was a recording-player guard that could never fire, so it was removed. Every defect that can change behavior is caught: 43 of 43. The run also exposed a flaky contract that assumed one praise phrasing; it is fixed |
+| Economy | `npm run economy`: 3 stars a mission, 15 things to unlock costing 82 stars | 5 missions: 15 stars, 4 things (buying the cheapest first) or 1 theme (saving for one). 10 missions: 30 stars, 7 things, or all three themes and one more. 20 missions: 60 stars, 12 of 15 things. Everything after 28 missions; the whole journey once (11 missions) earns 33. Kept at 3 stars a mission: something new every mission or two, and never everything at once |
+
+**Found and fixed in Phase 3 QA:**
+
+1. **A capital letter was missing after praise** ("Great listening! moon!").
+   The line builder now capitalizes a word that starts a sentence; the
+   older rhyme lines had the same flaw.
+2. **A line of two sentences could be cut short.** The safety timer, which
+   ends a line whose voice never reports back, did not count the pauses
+   between sentences.
+3. **An upgraded journey that opened on Earth never saw Mars arrive:** the
+   catch-up reveal ran only on coming home. It now runs at start-up too.
+4. **Word Builder's picture circle sat empty and faded** until the word was
+   built. It now holds the word machine until the picture replaces it.
+5. **Sound Scout's rocks took their height from their image,** so the
+   pictures could jump as it loaded. The rocks now have a set height.
+
+**Not physically tested on an iPad** (deferred to the next device gate):
+
+- every sound: the development phonics voice (letter sounds, words said
+  sound by sound, blends), the device voice's new pacing and the new sound
+  effects. None has been heard on an iPad or judged by a person
+- the sounds in Silent Mode: iOS mutes Web Audio there, which would silence
+  the development voice while the device voice still speaks
+  ([AUDIO.md](AUDIO.md))
+- the recording path: there are no recordings yet
+- Sound Scout and Word Builder under a real finger; the Mars art and the
+  new pictures at iPad size
+- the v0.4.0 → v0.5.0 update on a device that already has progress; the
+  Home Screen install and offline after install
+- the Phase 2.2 device batches 2–5 (travel, the games, the station, stress
+  and PWA), which were never completed
 
 ## Phase 2.2 QA record (2026-09-27)
 

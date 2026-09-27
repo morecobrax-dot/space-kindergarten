@@ -172,7 +172,9 @@ Phase 1. Each one has a reason; keep it with the rule.
     up, any help down, and a level recomputed from stored answers. No model,
     no LLM, nothing a grown-up could not follow on paper.
 33. **No phonics on the device voice.** Letter *names* are acceptable on the
-    temporary synthesiser; letter *sounds*, blending and CVC need recordings.
+    temporary synthesiser; letter *sounds*, words said sound by sound and
+    blended words are never given to it (it says /m/ as "muh"). They are
+    recordings, or until then the development phonics voice (rule 69).
 34. **Never claim educational authority.** Record sources in
     `docs/CONTENT-SOURCES.md` and add every authored item to
     `docs/CONTENT-REVIEW.md`.
@@ -312,9 +314,9 @@ a shell that felt like web pages.
     wrong answer holds taps for `TIMING.wrongHold`. A feedback tap never
     calls `Voice.stop()`, and `Voice.skip()` refuses to cut praise. On a
     real iPad, fast taps in Letter Explorer cut the praise off.
-65. **Dialogue timing belongs to `DIALOGUE`.** A pause before or after a
-    line, its minimum hold, and whether a tap may cut it follow the line's
-    kind (`lineKind()`), not a timeout written into a scene.
+65. **Dialogue timing belongs to `AUDIO_TYPES`.** A pause before or after a
+    line, its minimum hold, and whether a tap may cut it follow the cue's
+    type (`cueType()`), not a timeout written into a scene.
 66. **Arrivals settle before taps.** After touchdown, `settleInto()` plays
     the dust, Pip and the HUD, and only then clears `session.busy`. A
     marker tapped during the settle is not a start.
@@ -324,3 +326,44 @@ a shell that felt like web pages.
     mask. Every slot has a free starter, so a saved look is never empty,
     and a record saved before a slot existed reads as its starter: no
     migration. The space station writes stars and rocket only.
+
+## One voice, and sounds a child can trust
+
+These came from Phase 3, which built the audio foundation and the first
+reading games on it (docs/AUDIO.md).
+
+68. **One audio owner.** Every spoken line is a typed cue (`AUDIO_TYPES`),
+    played by `Voice` one at a time and resolved in one place,
+    `audioRoute()`. Never call `speechSynthesis` or play a sound outside
+    it; a contract checks that the speech API appears nowhere else.
+69. **A phonics cue never reaches the device voice.** A phoneme, a word said
+    sound by sound and a blended word resolve to a recording, then the
+    development phonics voice, then the caption — never the device voice,
+    even when a recording fails. Contract 39 proves it with the device voice
+    available.
+70. **Development audio says so, everywhere.** The development phonics voice
+    is labelled in the code, the grown-ups area and docs/AUDIO.md, and is
+    never called final. docs/AUDIO-RECORDINGS.md is derived by
+    `npm run config:sync` and lists every recording that replaces it: never
+    hand-edit it.
+71. **A letter's name and its sound are different things.** The name is
+    `LETTERS[L].speak` (cue `letter.L`); the sound is `LETTERS[L].sound`, a
+    `PHONEMES` id (cue `phoneme.x`). Word Builder plays a letter's sound,
+    never its name, and blending is taught as sounds.
+72. **One word knowledge base.** Every word lives once in `WORDS` (picture,
+    rime, beats, phonemes, level). A game never keeps its own word list, and
+    CVC is derived (`isCvc()`), never flagged by hand.
+73. **Nothing added takes anything back.** A place is restored by its story
+    missions (`restore`); a mission added later is more to play, never a new
+    lock on what a child has done. A marker hosts one game and lists its
+    missions in order. A place added after children may already have opened
+    its route says so (`newIn`) and is shown arriving once.
+74. **Review is a rule, not a guess.** A review round lists its candidates in
+    the content; `reviewPick()` asks the one that needed help most, then the
+    one practised longest ago, never at random.
+75. **The sound is the question.** In Sound Scout the screen never shows the
+    letter that spells the sound until the picture is found — or when
+    nothing can be heard, and then the answer is not evidence.
+76. **Sound effects are one family.** Every note from `SFX_NOTES`, sine or
+    triangle, short and soft; no jackpot runs and no music. A new moment is
+    a recipe in `Sfx`, and contract 45 checks the family.

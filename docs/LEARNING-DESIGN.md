@@ -36,8 +36,9 @@ awaiting review.
 
 ## Two layers: story and learning
 
-The **story layer** is the solar system: Earth, then the Moon, then Mercury,
-then planets later. The **learning layer** is the skills. They cooperate but
+The **story layer** is the solar system: Earth, then the Moon, Mercury and
+Mars, then planets later. It is a story map, not a curriculum: Mars comes
+after Mercury because it is the next adventure, and Venus is not built yet. The **learning layer** is the skills. They cooperate but
 are not the same thing:
 
 - A destination has a `primarySkill` and `reviewSkills`.
@@ -52,7 +53,9 @@ recurring "Explorer Writing Labs".
 
 The world is the navigation. Launch flies to a place; the place has
 **markers** standing on its ground — the Moon's beacon, Mercury's radar dish
-and meteor rocks — and each marker is a mission.
+and meteor rocks, Mars's sound scanner and word machine. Each marker is one
+game, and its missions come there one after another, with a small lamp under
+it for each one played.
 
 1. **Arrive.** Pip tells the place's story and points at the marker to tap.
 2. **One mission at a time.** Only the next marker pulses; tapping another
@@ -65,19 +68,25 @@ and meteor rocks — and each marker is a mission.
    restored — the next route appears in its sky and the way home turns
    yellow.
 
-A restored place can always be visited again, and its missions come round in
-turn.
+A place is **restored** by its story missions (the Moon by `moon-1`, Mercury
+by its first Rhyme Radar and Syllable Meteors, Mars by its first Sound Scout
+and Word Builder). Missions added to a place later are more to play there,
+never a new lock: a child who restored the Moon before it had three missions
+still has it restored. Until a place is restored, its story missions follow
+one another in the same visit. Once it is restored, it offers one mission a
+visit: any not yet played first, then each in turn. After that the way
+forward is home.
 
 ### The route (a plan, apart from what is built)
 
 | Destination | Primary skill | State |
 |---|---|---|
-| Moon | Letter recognition | **Built:** `moon-1`, the Letter Explorer |
-| Mercury | Rhyming, then counting syllables | **Built:** `mercury-1` Rhyme Radar, `mercury-2` Syllable Meteors. Opens when the Moon shines |
+| Moon | Letter recognition | **Built:** `moon-1` to `moon-3`, Letter Explorer |
+| Mercury | Rhyming, then counting syllables | **Built:** `mercury-1` and `mercury-3` Rhyme Radar, `mercury-2` and `mercury-4` Syllable Meteors. Opens when the Moon shines |
+| Mars | Beginning sounds, then CVC words | **Built:** `mars-1` and `mars-3` Sound Scout, `mars-2` and `mars-4` Word Builder. Opens when Mercury's signal is clear |
 | Venus | Letter recognition (lowercase, matching cases) | planned |
-| Mars | Beginning sounds | planned |
-| Jupiter | Beginning sounds, early blending | planned |
-| Saturn | CVC words | planned |
+| Jupiter | More CVC words (short i, o, e), then consonant blends | planned |
+| Saturn | Digraphs (sh, ch, th) | planned |
 | Uranus | Sight words (only once a list is chosen and sourced) | planned |
 | Neptune | Mixed review, with Explorer Writing Labs | planned |
 
@@ -85,6 +94,84 @@ The planned destinations are declared in `DESTINATIONS` as `kind: 'planned'`
 so no mission can be filed under a place nobody planned. They have no
 pictures and no missions, nothing draws them, and a contract holds them to
 that: a declared plan, not content pretending to exist.
+
+## Sound Scout: `sound-pick` (Mars)
+
+**Objective:** hear the first sound of a spoken word: phonemic awareness,
+the step between knowing letters and reading words.
+
+A round is heard before it is seen. Pip says "Listen.", plays the sound (a
+PHONEME cue: /m/ held, never "muh"), asks "Which picture starts with…", and
+plays the sound again. Then three pictures rise onto low Mars rocks as Pip
+names each one, so a child who does not know a picture's name still can.
+The child taps the picture that starts with the sound.
+
+- **The sound is the question.** The screen never shows the letter as the
+  clue. Once the picture is found, the letter that spells the sound appears
+  on the scanner ("M"), after "mmm … Moon!". It is a bridge from sounds to
+  letters, never the thing asked.
+- **Sounds that can be held come first:** /m/ /s/ /f/ (the first mission),
+  then /n/ /r/. A stop said on its own is where a stray "uh" creeps in, so
+  stops wait.
+- **Every answer starts with the sound on its own**, never a cluster: "sun",
+  not "star".
+- **Wrong pictures** never start with the sound. At level 1 they start with
+  a sound of another kind altogether (a hum, a hiss, a glide, a stop or a
+  vowel); /m/ and /n/ are never set against each other. At level 2, one
+  wrong picture rhymes with the answer (moon: spoon): hearing past "sounds
+  the same at the end" is the skill.
+- **Help:** a wrong picture steps aside, and Pip says "almost", the sound
+  again and the pictures left. After a second miss: "Here it is! Moon
+  starts with…" /m/ "Tap the moon!".
+- **Evidence** is kept per sound (/m/), not per word.
+
+## Word Builder: `word-build` (Mars)
+
+**Objective:** segmenting and blending a CVC word, and matching each sound to
+its letter: SOUND → SOUND → SOUND → WORD, never spelling from memory.
+
+Pip says "Listen." and the word sound by sound (/m/ … /æ/ … /p/), each slot
+lighting as its sound plays, then "Build the word!". The child taps the
+letters (uppercase, clean tiles) into three slots in order:
+
+- **Tap to place, never drag:** a tapped letter hops into the next empty
+  slot. Fine motor precision is not the skill.
+- **A letter tapped plays its SOUND, never its name**, so a child who does
+  not yet know letter sounds can find out by trying.
+- **Undo:** a letter in a slot tapped again hops back.
+- **When the word is full it is checked**, as the order of its letters.
+  Right: the letters slide together as Pip blends the word slowly
+  ("mmm-aaa-p"), then says it ("Map! You built it!"), and its picture
+  appears. The word is taught as sounds, never as letter names ("em, ay,
+  pee").
+- **Wrong order:** only the letters in the wrong places hop back, then
+  "almost" and the word sound by sound again. After a second miss, Pip
+  builds it with the child, a sound at a time, then hands it back, and only
+  the next right letter can go in.
+- **Level 1** offers exactly the word's three letters, never already in
+  order. **Level 2** adds one letter whose sound is nowhere in the word and
+  which is not a lookalike of its letters.
+- The first mission builds short-a words (map, fan, hat, cat, cap, pan), and
+  the second short-u words (sun, cup, nut, bus, bug). Short i, o and e wait
+  for words that picture well.
+- **Evidence** is kept per word built.
+
+## Review, by rule
+
+A few rounds are **review rounds**: each lists what it may ask. When it
+begins, it asks what the child most needs to see again:
+
+1. the candidate whose recent answers (the last 8) needed help most often;
+2. if there is a tie, the one practised longest ago;
+3. with nothing shown yet, the first one listed;
+4. never something already asked in the same mission, and never at random.
+
+Evidence counts across games where the skills meet. A letter found only with
+help in Letter Explorer counts for its sound in Sound Scout: M was hard → /m/
+comes back, with a picture that starts with it. `moon-3` ends with two
+letter reviews, `mars-3` with two sound reviews, and `mars-4` with one word
+review. The same evidence always picks the same thing, and a grown-up could
+follow the rule on paper.
 
 ## Letter Explorer: `find-letter` (the Moon)
 
@@ -210,10 +297,15 @@ to stop listening to a guide. Pip therefore speaks by **fixed rules**:
    once, on the flight home from the mission that made them true.
 4. **Pip finishes its sentences.** A tap asking for the line already playing
    does not restart it, and tapping Pip mid-sentence does not cut Pip off.
-5. **Each kind of line has its own timing** (`DIALOGUE`): a small breath
+5. **Each kind of line has its own timing** (`AUDIO_TYPES`): a small breath
    after a piece of story before the next line, praise held long enough to
    see the right answer, and whether a tap may cut the line short. Recorded
-   narration will keep these rules.
+   narration will keep these rules. [AUDIO.md](AUDIO.md) has the table, and
+   Pip's personality.
+6. **A letter's name and its sound are never confused.** "Em" is the
+   letter M's name, and the device voice may say it. /m/ is its sound: a
+   recording, or until then the development phonics voice, never the device
+   voice.
 
 The choice of line is deterministic: it comes from counts, never from chance,
 and never from an AI. A contract plays whole journeys and fails if any rule is
@@ -246,7 +338,8 @@ Adaptation is deterministic and explainable, for letters and rhymes alike:
 - Choice order comes from a random generator seeded by the run and round, so
   the same inputs always give the same round, and a test can prove it.
 
-Beats have one level: the count is the count.
+Beats have one level: the count is the count. Sound Scout and Word Builder
+have two (see their sections above).
 
 There is no AI or model anywhere, and none should be added.
 
@@ -271,16 +364,18 @@ weak. Evidence exists only to shape the next experience.
 ## What changes for the next skills
 
 Each learning area gets interactions designed around its real objective, not
-reskinned multiple choice. Rhyming (listen-first pairing of pictures) and
-syllables (tap once per beat) are now built. Still planned, **and not
-built**:
+reskinned multiple choice. Rhyming (listen-first pairing of pictures),
+syllables (tap once per beat), beginning sounds (hear a sound, find what
+starts with it) and CVC words (hear the sounds, build the word, hear it
+blended) are now built. Still planned, **and not built**:
 
-- **Beginning sounds:** hear the word, then the sound.
-- **CVC words:** hear the phonemes, blend them, build the word.
 - **Sight words:** a sourced list, recognition in simple contexts.
 - **Handwriting:** tracing with a start point, a demonstrated direction, and
   forgiving path proximity. **No handwriting recognition.**
 
-**Recorded audio is a prerequisite for any phonics work.** A speech
-synthesiser cannot be trusted to produce isolated phonemes without an added
-schwa, so no letter-sound or CVC content will run on the device voice.
+**Recordings are a prerequisite for calling any phonics content final.** A
+speech synthesiser cannot be trusted to produce isolated phonemes without an
+added schwa, so no letter-sound or CVC content runs on the device voice.
+Until recordings exist, the sounds are development audio from a synthesiser
+made for this purpose, and every sound and word is Awaiting review
+([CONTENT-REVIEW.md](CONTENT-REVIEW.md), [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)).

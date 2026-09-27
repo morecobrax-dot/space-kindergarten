@@ -33,6 +33,8 @@ const BASE = [
   { name: 'icon-192',     scene: 'pip',     variant: 'icon', size: 192, target: 'icon-192.png', format: 'png' }
 ];
 
-/* The Phase 2 game pictures and props, and the Phase 2.2 rocket gear and
-   world props, live in their own lists. */
-module.exports = BASE.concat(require('./jobs-phase2.js'), require('./jobs-rocket22.js'), require('./jobs-world22.js'));
+/* The Phase 2 game pictures and props, the Phase 2.2 rocket gear and
+   world props, and the Phase 3 Mars art and word pictures live in their
+   own lists. */
+module.exports = BASE.concat(require('./jobs-phase2.js'), require('./jobs-rocket22.js'), require('./jobs-world22.js'),
+                           require('./jobs-mars3.js'), require('./jobs-pictures3.js'));

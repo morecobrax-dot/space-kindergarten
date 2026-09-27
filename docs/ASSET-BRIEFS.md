@@ -53,7 +53,7 @@ the render.
 
 ## The worlds you stand on
 
-### Horizons — `assets/horizons/earth.webp`, `moon.webp`, `mercury.webp` · 2400×780 each · transparent sky
+### Horizons — `assets/horizons/earth.webp`, `moon.webp`, `mercury.webp`, `mars.webp` · 2400×780 each · transparent sky
 
 Every world is the top of **the same clay sphere seen by the same camera**
 (`tools/art/scenes/horizon.js`): a long lens, the crest of the curve **18%**
@@ -71,6 +71,11 @@ version must keep that exact curve, because the app stands things on it.
 - **The Moon:** lavender-grey clay with fingertip craters, bigger nearer the
   viewer. Nothing standing on it: the beacon is its own picture.
 - **Mercury:** warm stone with soft overlapping dimples.
+- **Mars:** a red clay playground: warm coral-rust clay, soft craters with
+  rolled rims and deep-red floors, small huddles of round rust stones, and
+  an orange sunset glow at its edge. Friendly, never dark or hostile. Its
+  relief stays low (a stone at most 0.0038 of the sphere high), because
+  taller relief makes the shared soft shadow paint black patches.
 - **Keep clear:** the landing spots and marker feet listed below must be on
   plain ground, not in a crater's wall or under a cloud.
 
@@ -82,6 +87,9 @@ version must keep that exact curve, because the app stands things on it.
 | Mercury: the rocket's landing spot | (76.5%, 45%) |
 | Mercury: the radar dish's foot | (37%, 50%) |
 | Mercury: the meteor rocks' centre | (58%, 55%) |
+| Mars: the rocket's landing spot | (76.5%, 45%) |
+| Mars: the sound scanner's foot | (37%, 50%) |
+| Mars: the word machine's foot | (58%, 55%) |
 
 ## The worlds seen from afar
 
@@ -107,6 +115,12 @@ height: a blue ocean, green land, cream clouds. It must read at 80 px.
 
 - Warm stone covered in soft dimples. Its sunward side glows a little warm.
 - **Restored:** the same model, warm light in the dimples, a warm halo.
+
+### Mars — `assets/planets/mars.webp` and `mars-lit.webp` · 560×560 each · transparent
+
+- Coral clay with a cream polar cap on its face, one big soft crater, a few
+  small ones and one deep-red patch: it reads as Mars at 60 px.
+- **Restored:** the same model, warm light in its hollows, a warm halo.
 
 ## What stands on the worlds
 
@@ -134,6 +148,29 @@ height: a blue ocean, green land, cream clouds. It must read at 80 px.
 - Three round clay rocks of different sizes in a shallow pressed crater of
   warm stone, with a baked contact shadow.
 - **On:** the rocks glow warm orange from within, with a gentle bloom.
+
+### Sound scanner — `assets/props/scanner.webp` and `scanner-on.webp` · 480×480 each · transparent
+
+- **Anchor:** the **foot at (35.74%, 84.07%)**.
+- The Sound Scout marker: a flared cream listening horn with a coral lip on
+  a teal base with a coral band, and a small antenna ball.
+- **On:** the horn glows warm inside and the ball lights.
+
+### Word machine — `assets/props/workshop.webp` and `workshop-on.webp` · 480×400 each · transparent
+
+- **Anchor:** the **foot at (43.18%, 80.84%)**; it stands 0.42 of the
+  horizon's height tall.
+- The Word Builder marker: a cream box machine with a coral lid, three
+  EMPTY sockets in lavender bezels (never a letter), a crank, a lamp and
+  stubby legs. It must not read as a house or a train.
+- **On:** the sockets glow amber and the lamp lights.
+
+### Rock pedestal — `assets/props/pedestal.webp` · 384×200 · transparent
+
+- **Anchor:** the flat top's **centre at (50%, 29.98%)**: a picture stands
+  there in Sound Scout.
+- A low rust rock drum with an exactly flat, lighter top, drawn with the
+  word pictures' own camera and scale.
 
 ### Letter stone — `assets/props/letter-stone.webp` · 400×440 · transparent
 
@@ -215,14 +252,21 @@ drift past as scenery, never toward the rocket.
 ## Pictures for words — `assets/pictures/<word>.webp` · 384×384 each · transparent
 
 `apple`, `banana`, `bee`, `cake`, `car`, `rock`, `snake`, `sock`, `spoon`,
-`tomato`, `tree`.
+`tomato`, `tree`; and from Phase 3 (`tools/art/scenes/picture-p3.js`, the same
+camera) `map`, `sun`, `fish`, `fan`, `net`, `rug`, `hat`, `cat`, `cap`, `pan`,
+`cup`, `bus`, `bug` (a ladybug), `nut` (an acorn-like nut), `pumpkin`,
+`umbrella`, `cupcake`.
 
 - **One set:** the same camera for every picture, a gentle three-quarter
   view from slightly above; each object centred and filling about 80% of the
   frame's larger dimension.
 - **Instantly recognisable at 120 px** by a five-year-old: exaggerate the
   defining feature (a banana's curve, a car's wheels, a bee's stripes).
-- Only the snake and the bee have faces: two dark bead eyes each.
+- Only the snake, the bee, the fish, the cat and the bug have faces: two
+  bead eyes each (the ladybug's are white with dark pupils, because dark
+  beads disappear on its dark head). Nothing else has a face.
+- Pairs a child could mix up must differ at a glance: the sun hat and the
+  baseball cap, the cupcake and the cake, the fan and a flower.
 - Friendly, saturated colours, never neon. No text.
 
 ## The rocket and the guide

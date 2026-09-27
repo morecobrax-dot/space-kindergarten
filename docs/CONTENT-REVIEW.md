@@ -9,8 +9,10 @@ what they found.
 
 ## How to review
 
-1. Play the Moon and Mercury missions on an actual iPad, with the sound on,
-   in the voice the child will hear.
+1. Play the Moon, Mercury and Mars missions on an actual iPad, with the sound
+   on, in the voice the child will hear. The letter sounds on Mars are
+   development audio (section 11): judge the content, and note any sound that
+   is wrong.
 2. Work down each table, and mark each row **OK**, **Change** (with the fix)
    or **Remove**.
 3. Put the reviewer's name and the date at the bottom. A change is made in
@@ -125,7 +127,7 @@ rocket; star: spoon), because "starts the same" is the usual mix-up with
 | Question, first round | "What rhymes with cake?" (bubble: "What rhymes?") | Awaiting review |
 | Question, later rounds | "Which one rhymes with bee?" / "Find the one that rhymes with rock!" | Awaiting review |
 | The pictures | each named as it lights: "Snake." "Sock." "Moon." | Awaiting review |
-| Correct | "Yes! cake, snake. They rhyme!" / "Cake and snake. You found the rhyme!" / "Great listening! cake, snake!" / "You got it! cake rhymes with snake!" | Awaiting review |
+| Correct | "Yes! Cake, snake. They rhyme!" / "Cake and snake. You found the rhyme!" / "Great listening! Cake, snake!" / "You got it! Cake rhymes with snake!" | Awaiting review |
 | First miss | the rotating "almost", then "What rhymes with cake?" and the pictures left, named again | Awaiting review |
 | Second miss | "Here it is! cake, snake. Tap the snake!" | Awaiting review |
 | Nudge, after 10 seconds | "Listen. What rhymes with cake?", then "Take your time. What rhymes with cake?" | Awaiting review |
@@ -172,14 +174,31 @@ yet. A contract checks these against a second, hand-typed list.
 | rocket | 2 | Awaiting review |
 | banana | 3 | Awaiting review |
 | tomato | 3 | Awaiting review |
+| map | 1 | Awaiting review |
+| fan | 1 | Awaiting review |
+| hat | 1 | Awaiting review |
+| cat | 1 | Awaiting review |
+| cap | 1 | Awaiting review |
+| pan | 1 | Awaiting review |
+| sun | 1 | Awaiting review |
+| nut | 1 | Awaiting review |
+| rug | 1 | Awaiting review |
+| cup | 1 | Awaiting review |
+| bus | 1 | Awaiting review |
+| bug | 1 | Awaiting review |
+| net | 1 | Awaiting review |
+| fish | 1 | Awaiting review |
+| pumpkin | 2 | Awaiting review |
+| umbrella | 3 | Awaiting review |
+| cupcake | 2 | Awaiting review |
 
 | Line | Script | Status |
 |---|---|---|
 | Explained once, until the mission is done | "Words have beats. Tap the big stone once for each beat!" | Awaiting review |
 | Question | "Banana." then "Tap the stone once for each beat!" / "How many beats? Tap them!" / "Tap the beats!" (bubble: "Tap the beats!", never the count) | Awaiting review |
-| Correct | "Yes! banana has three beats!" / "You got it! three beats!" / "Great tapping! banana, three beats!" | Awaiting review |
+| Correct | "Yes! Banana has three beats!" / "You got it! Three beats!" / "Great tapping! Banana, three beats!" | Awaiting review |
 | First miss | the rotating "almost", then the word again and the question | Awaiting review |
-| Second miss, and the guided first round | "Let's tap it together. Listen!", each beat as a meteor lights, then "Now you! three beats. Tap the stone!" — after this, only that many taps count | Awaiting review |
+| Second miss, and the guided first round | "Let's tap it together. Listen!", each beat as a meteor lights, then "Now you! Three beats. Tap the stone!" — after this, only that many taps count | Awaiting review |
 | Nudge, after 10 seconds | "Listen. banana. Tap each beat!", then "Take your time. banana. Tap each beat!" | Awaiting review |
 | Pause length | 1.5 seconds ends a count. Long enough for a slow tapper, short enough not to feel stuck? | Awaiting review |
 
@@ -233,11 +252,211 @@ readers; Pip still says everything a pre-reader needs.
 | Item | Status |
 |---|---|
 | "Heard N times · found on the first try N times": neutral, not a grade? | Awaiting review |
-| Practice is listed skill by skill: letters; rhymes ("rhyme found on the first try"); beats ("beats counted on the first try"). Neutral? | Awaiting review |
-| The journey, place by place: "Restored", "1 of 2 missions done", "Not reached yet" | Awaiting review |
+| Practice is listed skill by skill: letters; rhymes ("rhyme found on the first try"); beats ("beats counted on the first try"); beginning sounds, each shown as a sound (/m/), never a letter ("first sound heard on the first try"); built words in capitals (MAP, "built on the first try"). Neutral? | Awaiting review |
+| The journey, place by place: "Restored · 1 of 3 missions done", "2 of 4 missions done", "Not reached yet" | Awaiting review |
+| "Letter sounds: Development audio, awaiting recordings", and the note that explains it | Awaiting review |
 | The note that answers given with the voice off are not counted | Awaiting review |
 | The rocket: "Bumblebee · Star topper · 5 of 16 unlocked" | Awaiting review |
 | "Display checks: All clear" (or "Redrawn N times this session"): useful to a grown-up testing the app, or noise? | Awaiting review |
+
+## 11. Letter sounds: the development phonics voice (Phase 3)
+
+**Development audio, not final.** A letter's NAME ("em") and its SOUND (/m/)
+are different things to a child. The device voice may say a name, but never
+a sound: it adds a vowel ("muh") and cannot hold one. Every sound below is
+made on the device by the development phonics voice, a small formant
+synthesiser written for this app (see [AUDIO.md](AUDIO.md)). It is
+deterministic and labelled as development audio. **Each sound needs a
+recording by a person before it is final.** The full recording list is
+[AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md).
+
+| Sound | As in | Spelled | How it is made today | Question for the reviewer | Status |
+|---|---|---|---|---|---|
+| /m/ | moon | M | a hum with the lips closed, held about half a second | Recognisable as "mmm", with no "uh" after it? | Awaiting review |
+| /s/ | sun | S | a hiss, held | Clearly "sss", not "sh"? | Awaiting review |
+| /f/ | fish | F | a softer, flatter hiss, held | Distinct from /s/? | Awaiting review |
+| /n/ | net | N | a hum, held (close to /m/: never asked against /m/) | Is keeping /m/ and /n/ apart enough? | Awaiting review |
+| /r/ | rug | R | a held American "rrr" | Clearly /r/, not "er"? | Awaiting review |
+| /h/ | hat | H | breath shaped like the vowel after it | Audible at all as a sound on its own? | Awaiting review |
+| /p/ /t/ /k/ | pan, tub, cat | P, T, C | one short puff, no vowel after it | Hearable, and never "puh", "tuh", "kuh"? | Awaiting review |
+| /b/ /g/ | bus, bug | B, G | a short voiced burst | The riskiest: any "buh"/"guh"? | Awaiting review |
+| /æ/ /ʌ/ | apple, up | A, U | the short vowel, held | Clearly the short vowel (not "ay", "you")? | Awaiting review |
+
+## 12. Sound Scout (`mars-1`, `mars-3`) — beginning sounds, development content
+
+**Development content, not curriculum-approved; every row Awaiting review.**
+A round: Pip says "Listen.", plays the sound, asks "Which picture starts
+with…" and plays the sound again. Three pictures then rise onto rocks as
+Pip names each one. The child taps the picture that starts with the sound.
+**The screen never shows the letter as the clue**: once the picture is
+found, the letter that spells the sound appears on the scanner. It is a
+bridge to letters and sounds, never the question.
+
+The first sounds are ones that can be held (/m/ /s/ /f/ /n/ /r/), because a
+stop said on its own is where a stray "uh" creeps in. Every answer starts
+with that sound on its own, never a cluster ("star" and "spoon" start with
+two sounds together).
+
+| Mission | Round | Sound | Letter (shown after) | Answer picture | Audio | Status |
+|---|---|---|---|---|---|---|
+| mars-1 | 1 (guided: the answer glows) | /m/ | M | moon | development | Awaiting review |
+| mars-1 | 2 | /s/ | S | sun | development | Awaiting review |
+| mars-1 | 3 | /f/ | F | fish | development | Awaiting review |
+| mars-1 | 4 | /m/ | M | map | development | Awaiting review |
+| mars-1 | 5 | /s/ | S | sock | development | Awaiting review |
+| mars-1 | 6 | /f/ | F | fan | development | Awaiting review |
+| mars-3 | 1 | /n/ | N | net | development | Awaiting review |
+| mars-3 | 2 | /r/ | R | rug | development | Awaiting review |
+| mars-3 | 3 | /n/ | N | nut | development | Awaiting review |
+| mars-3 | 4 | /r/ | R | rock | development | Awaiting review |
+| mars-3 | 5, 6 | REVIEW: the sound the child most needed help with (see section 17); /m/ (map) and /s/ (sun) until there is any | — | — | development | Awaiting review |
+
+**The wrong pictures** are chosen by the engine from the word list, never by
+hand. A wrong picture never starts with the sound asked about. At the easy
+level it starts with a sound of another kind altogether: a hum (/m/ /n/), a
+hiss (/s/ /f/ /h/), a glide (/r/), a stop, or a vowel. At the harder level,
+one wrong picture RHYMES with the answer (moon: spoon), because "sounds the
+same at the end" is the mix-up to hear past.
+
+| Item | Question for the reviewer | Status |
+|---|---|---|
+| A wrong picture may start with a cluster ("snake" beside /m/) | Fair, since it does not start with the sound asked? | Awaiting review |
+| The picture for "nut" is an acorn-like nut | Will children say "acorn"? Pip names every picture aloud | Awaiting review |
+| The picture for "rug" | Could a child call it "mat"? | Awaiting review |
+| "fish" ends in /ʃ/ | Only its first sound is asked; fine? | Awaiting review |
+| The letter shown on the scanner after the answer | Helpful bridge to letter sounds, or a distraction? | Awaiting review |
+| Three choices, six rounds | Right for a first beginning-sounds mission? | Awaiting review |
+
+| Line | Script | Status |
+|---|---|---|
+| Explained once, until the game is played | "Words start with a sound. I'll play a sound. You find the picture that starts with it." | Awaiting review |
+| The round | "Listen." … /m/ … "Which picture starts with…" /m/, then the pictures named: "Moon." "Sun." "Fish." (bubble: "Which one starts with this sound?", never the letter) | Awaiting review |
+| Later questions | "Which one starts with…" / "Find the one that starts with…", each followed by the sound | Awaiting review |
+| Correct | the sound, then "Moon!" / "Yes! Moon!" / "You found it! Moon!" / "Great listening! Moon!" | Awaiting review |
+| First miss | the rotating "almost", the sound again, then the pictures left, named again | Awaiting review |
+| Second miss | "Here it is! Moon starts with…" /m/ "Tap the moon!" | Awaiting review |
+| Nudge, after 10 seconds | "Listen again." then the sound; then "Take your time. Listen." then the sound | Awaiting review |
+| With no sound at all | the bubble shows "Find the picture that starts with M!", and the answer is not counted as practice | Awaiting review |
+
+## 13. Word Builder (`mars-2`, `mars-4`) — CVC words, development content
+
+**Development content, not curriculum-approved; every row Awaiting review.**
+A round: Pip says "Listen." and the word sound by sound (/m/ … /æ/ … /p/),
+each slot lighting as its sound plays, then "Build the word!". The child
+taps the letters into the three slots in order. **Tapping a letter plays its
+SOUND, never its name.** Tapping a letter in a slot takes it back (undo).
+When the word is full it is checked: right, and the letters slide together
+as Pip blends it slowly ("mmm-aaa-p"), says it ("Map! You built it!"), and
+its picture appears. Wrong: only the letters in the wrong places hop back.
+After a second miss, Pip builds it with the child sound by sound, then only
+the next right letter can go in.
+
+Every word is CVC: three letters, each spelling one sound, consonant, short
+vowel, consonant, with no letter twice.
+
+| Word | Sounds | Pattern | Level | Picture | Audio (sound by sound, and blended) | Possible ambiguity | Status |
+|---|---|---|---|---|---|---|---|
+| map | /m/ /æ/ /p/ | CVC, short a | 1 | a folded treasure map | development | | Awaiting review |
+| fan | /f/ /æ/ /n/ | CVC, short a | 1 | a desk fan | development | | Awaiting review |
+| hat | /h/ /æ/ /t/ | CVC, short a | 1 | a sun hat with a ribbon | development | /h/ alone is only breath | Awaiting review |
+| cat | /k/ /æ/ /t/ | CVC, short a | 2 | a sitting cat | development | C spells /k/ | Awaiting review |
+| cap | /k/ /æ/ /p/ | CVC, short a | 2 | a baseball cap | development | a child may say "hat" | Awaiting review |
+| pan | /p/ /æ/ /n/ | CVC, short a | 2 | a frying pan | development | | Awaiting review |
+| sun | /s/ /ʌ/ /n/ | CVC, short u | 1 | the sun | development | | Awaiting review |
+| cup | /k/ /ʌ/ /p/ | CVC, short u | 2 | a cup with a handle | development | a child may say "mug" | Awaiting review |
+| nut | /n/ /ʌ/ /t/ | CVC, short u | 1 | an acorn-like nut | development | a child may say "acorn" | Awaiting review |
+| bus | /b/ /ʌ/ /s/ | CVC, short u | 2 | a school bus | development | /b/ alone is the riskiest sound | Awaiting review |
+| bug | /b/ /ʌ/ /g/ | CVC, short u | 2 | a ladybug | development | a child may say "ladybug" | Awaiting review |
+
+`mars-2` builds map (guided), fan, hat, cat, cap, pan. `mars-4` builds sun,
+cup, nut, bus, bug, then a REVIEW round: the short-a word the child most
+needed help with, map until there is any.
+
+**Words not used, and why** (for the reviewer to confirm): "tap" (in US
+English a faucet), "nap" and "man" (people; Pip is the only character),
+"sit" (an action, hard to picture), "pin" and "fin" (short i: less familiar
+as pictures; short i waits for better words), and anything with a digraph or
+x ("fish", "rock", "fox" are not CVC by sound and letter).
+
+**At the harder level** one extra letter joins the three, whose sound is
+nowhere in the word and which is not a lookalike of its letters (for
+example F or S beside M, A, P).
+
+| Line | Script | Status |
+|---|---|---|
+| Explained once, until the game is played | "I'll say a word sound by sound. Tap the letters to build it." | Awaiting review |
+| The round | "Listen." /m/ … /æ/ … /p/ "Build the word!" / "Tap the letters in order!" / "Can you build it?" | Awaiting review |
+| A letter tapped | its sound, never its name | Awaiting review |
+| Correct | the word blended slowly ("mmm-aaa-p"), then "Map! You built it!" / "Map! You made the word!" / "Great building! Map!", and the picture | Awaiting review |
+| First miss | the rotating "almost", then the word sound by sound again | Awaiting review |
+| Second miss, and the guided first round | "Let's build it together. Listen.", each letter hopping in with its sound, the blend, then "Now you! Build map." | Awaiting review |
+| Nudge, after 10 seconds | "Listen again." then the word sound by sound; then "Take your time. Listen." | Awaiting review |
+
+## 14. More letters on the Moon (`moon-2`, `moon-3`)
+
+The same game and lines as `moon-1` (sections 2–4). The game is already
+known, so no round is guided and the task is not explained again.
+
+| Mission | Letters | Question for the reviewer | Status |
+|---|---|---|---|
+| moon-2 | A, P, F, N, A, P | Chosen because the first Word Builder words are built from them. Fair second set? | Awaiting review |
+| moon-3 | C, H, U, B, then two REVIEW rounds: the letters so far the child most needed help with (M and S until there is any) | Is C/G/O at the hardest level too hard this early? | Awaiting review |
+
+## 15. Rhyme Radar's second mission (`mercury-3`)
+
+| Round | Word heard / the rhyme | Rhyming part | Status |
+|---|---|---|---|
+| 1 | cat / hat | *-at* | Awaiting review |
+| 2 | map / cap | *-ap* | Awaiting review |
+| 3 | fan / pan | *-an* | Awaiting review |
+| 4 | bug / rug | *-ug* | Awaiting review |
+| 5 | sock / rock | *-ock* | Awaiting review |
+
+The wrong pictures follow section 6's rules, from the larger word list.
+"cupcake" rhymes with cake and snake (*-ake*), so it can never be a wrong
+picture beside them.
+
+## 16. Syllable Meteors' second mission (`mercury-4`)
+
+| Word | Beats | Beats as Pip says them | Status |
+|---|---|---|---|
+| cupcake | 2 | "cup!" "cake!" | Awaiting review |
+| sun | 1 | "sun!" | Awaiting review |
+| umbrella | 3 | "um!" "brel!" "la!" | Awaiting review |
+| pumpkin | 2 | "pump!" "kin!" | Awaiting review |
+| fish | 1 | "fish!" | Awaiting review |
+| banana | 3 | "ba!" "na!" "na!" | Awaiting review |
+
+## 17. Review: what was hard comes back
+
+A few rounds are REVIEW rounds. Each lists what it may ask. When it begins,
+it asks the item whose recent answers needed help most often. If there is a
+tie, it asks the one practised longest ago. With nothing shown yet, it asks
+the first one listed. It never asks something already asked in the same
+mission, and never at random. A letter found only with help in Letter
+Explorer brings its SOUND back in Sound Scout (M hard → /m/ with a picture
+that starts with it). A grown-up could follow the rule on paper.
+
+| Item | Question for the reviewer | Status |
+|---|---|---|
+| "Needed help most often" counts the answers that needed help among the last 8 of that item | A fair measure of "hard"? | Awaiting review |
+| Two review rounds at the end of `moon-3` and `mars-3`, one at the end of `mars-4` | Enough, or too much? | Awaiting review |
+
+## 18. Mars and the world
+
+| Line | Script | Status |
+|---|---|---|
+| The route opens, seen from Mercury | "Look! A red planet is waiting for us. That is Mars!" | Awaiting review |
+| Home, the first time | "Next stop, Mars! Tap Launch when you are ready." | Awaiting review |
+| Choosing it in the sky | "Mars! That's where we play with sounds and words. Tap Launch to fly there!" | Awaiting review |
+| First arrival | "We made it to Mars! Its sound scanner is quiet. Let's help it hear again!" | Awaiting review |
+| Later arrivals | "Back on Mars!" / "Mars again! Hello, red rocks!" / "Here we are on Mars!" | Awaiting review |
+| The markers | "Tap the sound scanner to start!" / "Now tap the word machine!" | Awaiting review |
+| One done, one to go | "It works! Now the word machine needs help." | Awaiting review |
+| Mars restored | "You did it! Mars is full of sounds again!" | Awaiting review |
+| Home after restoring it | "Welcome home! Look, Mars is glowing!" | Awaiting review |
+| A child who had already cleared Mercury before Mars existed | on Earth, once: Mars appears in the sky with the reveal line and "Next stop, Mars!" | Awaiting review |
+| On screen | "MARS" / "Sounds • Words"; "SOUND SCOUT" / "Find the starting sound"; "WORD BUILDER" / "Build the word you hear" | Awaiting review |
 
 ---
 

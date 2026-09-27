@@ -131,6 +131,56 @@ const MERCURY_DIMPLES = [
   { d: dirAt(0.38, 0.62), r: 0.018, depth: 0.0016 }, { d: dirAt(0.66, 0.66), r: 0.02, depth: 0.0018 },
   { d: dirAt(0.04, 0.9), r: 0.035, depth: 0.003 }, { d: dirAt(0.33, 0.95), r: 0.03, depth: 0.0026 }
 ];
+/* Mars, a red clay playground: a few wide, soft thumb-press craters (a
+   flat floor, a rounded wall, a rolled rim) and a few friendly huddles of
+   smooth round stones in deeper rust clay. Its relief is as low as
+   Mercury's, so what stands on the ground stays on it, and every feature
+   keeps clear of where the markers stand (37%, 50% and 58%, 55%) and the
+   rocket lands (about 76%, 45%). A stone is a gentle dome, no taller than
+   0.3 of its radius and 0.0038 in all: on a steeper slope facing the key
+   light, or above the height where ground() switches to its unscaled far
+   bound, the distance grows faster than a shadow ray and the soft shadow
+   paints a black patch there. */
+const MARS_CRATERS = [
+  { d: dirAt(0.13, 0.64), r: 0.05, depth: 0.0055 }, { d: dirAt(0.47, 0.83), r: 0.058, depth: 0.006 },
+  { d: dirAt(0.9, 0.67), r: 0.045, depth: 0.005 }, { d: dirAt(0.215, 0.41), r: 0.02, depth: 0.0028 },
+  { d: dirAt(0.655, 0.36), r: 0.018, depth: 0.0025 }, { d: dirAt(0.935, 0.515), r: 0.022, depth: 0.003 },
+  { d: dirAt(0.29, 0.94), r: 0.034, depth: 0.004 }
+];
+/* stones: [across, down, size]; big, middling and small (radius, height) */
+const STONE = { big: [0.016, 0.0038], mid: [0.012, 0.0029], small: [0.0078, 0.0019] };
+const MARS_ROCKS = [
+  [0.075, 0.47, 'big'], [0.108, 0.5, 'mid'], [0.052, 0.505, 'small'],
+  [0.695, 0.68, 'big'], [0.73, 0.71, 'mid'], [0.668, 0.715, 'small'],
+  [0.18, 0.865, 'big'], [0.222, 0.9, 'mid'], [0.148, 0.905, 'small'],
+  [0.5, 0.365, 'mid'], [0.528, 0.38, 'small'],
+  [0.975, 0.578, 'mid'], [0.996, 0.6, 'small']
+].map(p => ({ d: dirAt(p[0], p[1]), r: STONE[p[2]][0], h: STONE[p[2]][1] }));
+const MARS = { clay: hex('#C8673A'), light: hex('#D27646'), floor: hex('#A8472F'), rock: hex('#AE5130'), rockTop: hex('#C0613A') };
+/* a thumb-press crater: [height, how deep in the floor] */
+function thumbs(u, list){
+  let h = 0, floor = 0;
+  for(const k of list){
+    const c = len3(u[0] - k.d[0], u[1] - k.d[1], u[2] - k.d[2]);
+    if(c > k.r * 1.6) continue;
+    const t = c / k.r;
+    const bowl = smoothstep(1.0, 0.5, t);
+    h += -k.depth * bowl + k.depth * 0.42 * Math.exp(-((t - 1.02) / 0.2) * ((t - 1.02) / 0.2));
+    if(bowl > floor) floor = bowl;
+  }
+  return [h, floor];
+}
+/* a smooth round stone, half sunk in the clay: a gentle dome. [height, how high up the stone] */
+function rocks(u, list){
+  let h = 0, up = 0;
+  for(const k of list){
+    const c = len3(u[0] - k.d[0], u[1] - k.d[1], u[2] - k.d[2]);
+    if(c > k.r) continue;
+    const v = k.h * (0.5 + 0.5 * Math.cos(Math.PI * c / k.r));
+    if(v > h){ h = v; up = v / k.h; }
+  }
+  return [h, up];
+}
 
 const WORLDS = {
   earth: {
@@ -160,6 +210,16 @@ const WORLDS = {
       const f = dimples(u, MERCURY_DIMPLES)[1];
       const m = 0.5 + 0.5 * noise(u[0] * 12 + 7, u[1] * 12, u[2] * 12);
       return mix3(mix3(hex('#B48E70'), hex('#C49E7E'), m * 0.4), hex('#8E6D56'), f * 0.8);
+    }
+  },
+  mars: {
+    halo: hex('#FF8A55'), haloStrength: 0.62,
+    height(u){ return thumbs(u, MARS_CRATERS)[0] + rocks(u, MARS_ROCKS)[0] + 0.0007 * noise(u[0] * 12 - 3, u[1] * 12, u[2] * 12); },
+    albedo(u){
+      const f = thumbs(u, MARS_CRATERS)[1], k = rocks(u, MARS_ROCKS)[1];
+      const m = 0.5 + 0.5 * noise(u[0] * 12 + 7, u[1] * 12, u[2] * 12);
+      const ground = mix3(mix3(MARS.clay, MARS.light, m * 0.4), MARS.floor, f * 0.7);
+      return mix3(ground, mix3(MARS.rock, MARS.rockTop, smoothstep(0.5, 0.95, k)), smoothstep(0.04, 0.2, k));
     }
   }
 };

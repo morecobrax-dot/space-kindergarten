@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.4.0';
+const CACHE_NAME = 'space-kindergarten-v0.5.0';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -35,6 +35,7 @@ const ASSETS = [
   './assets/horizons/earth.webp',
   './assets/horizons/moon.webp',
   './assets/horizons/mercury.webp',
+  './assets/horizons/mars.webp',
   './assets/places/station-outside.webp',
   './assets/places/station-inside.webp',
   './assets/planets/earth.webp',
@@ -42,12 +43,19 @@ const ASSETS = [
   './assets/planets/moon-lit.webp',
   './assets/planets/mercury.webp',
   './assets/planets/mercury-lit.webp',
+  './assets/planets/mars.webp',
+  './assets/planets/mars-lit.webp',
   './assets/props/beacon.webp',
   './assets/props/beacon-lit.webp',
   './assets/props/radar.webp',
   './assets/props/radar-on.webp',
   './assets/props/meteor-field.webp',
   './assets/props/meteor-field-on.webp',
+  './assets/props/scanner.webp',
+  './assets/props/scanner-on.webp',
+  './assets/props/workshop.webp',
+  './assets/props/workshop-on.webp',
+  './assets/props/pedestal.webp',
   './assets/props/letter-stone.webp',
   './assets/props/beat-stone.webp',
   './assets/props/meteor.webp',
@@ -70,6 +78,23 @@ const ASSETS = [
   './assets/pictures/spoon.webp',
   './assets/pictures/tomato.webp',
   './assets/pictures/tree.webp',
+  './assets/pictures/map.webp',
+  './assets/pictures/fan.webp',
+  './assets/pictures/hat.webp',
+  './assets/pictures/cat.webp',
+  './assets/pictures/cap.webp',
+  './assets/pictures/pan.webp',
+  './assets/pictures/sun.webp',
+  './assets/pictures/nut.webp',
+  './assets/pictures/rug.webp',
+  './assets/pictures/cup.webp',
+  './assets/pictures/bus.webp',
+  './assets/pictures/bug.webp',
+  './assets/pictures/net.webp',
+  './assets/pictures/fish.webp',
+  './assets/pictures/pumpkin.webp',
+  './assets/pictures/umbrella.webp',
+  './assets/pictures/cupcake.webp',
   './assets/rocket/rocket.webp',
   './assets/rocket/rocket-paint.webp',
   './assets/rocket/flame.webp',
