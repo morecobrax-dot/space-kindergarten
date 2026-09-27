@@ -108,8 +108,9 @@ follows Klatt (1980) and is written for this app.
 - A hiss with its own resonances makes /s/ and /f/.
 - Vowel resonances are from Peterson & Barney (1952), women's voices.
 
-It is **deterministic** (the same cue gives the same samples every time)
-and takes a few milliseconds per word. It needs no files and no network: it
+It is **deterministic** (the same cue gives the same samples every time).
+A word takes about 15–50 ms to make on a desktop computer (not yet timed
+on an iPad), once: after that it is cached. It needs no files and no network: it
 plays through the Web Audio output that the first tap wakes (`AudioOut`),
 the same one the sound effects use. A contract measures what it makes:
 
