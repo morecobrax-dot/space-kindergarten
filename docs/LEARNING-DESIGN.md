@@ -10,11 +10,21 @@ awaiting review.
 
 ## Principles every activity follows
 
-- **One clear task at a time,** spoken aloud, with a large **Repeat** button
+- **One clear task at a time,** spoken aloud, with a **Repeat** button
   always visible.
 - **Almost no reading.** On-screen text is a few words and never necessary.
-- **Big, forgiving targets.** Choice tiles are 130–236px, and every child
-  control is at least 76px.
+  Each game shows its name and what to do (LETTER EXPLORER / Find the
+  letter you hear), and each planet what it teaches (MERCURY / Rhymes •
+  Syllables): for grown-ups and early readers. Pip says everything a
+  pre-reader needs, and nothing on screen gives an answer away.
+- **Big, forgiving targets.** Choice tiles are 130–236px on an iPad (they
+  shrink to fit a phone rather than slip off it), and every child control
+  is at least a 76px target, whatever the size of its mark.
+- **An answer being praised owns the screen.** Taps during praise wait; a
+  tap during the explanation means "go on" and skips to the question; a
+  second tap straight after a wrong answer is the same finger bouncing, not
+  a second try (a 0.45s hold). Found on a real iPad: fast taps during
+  feedback cut the praise off.
 - **Immediate, calm feedback.** There is no "wrong!", no buzzer, no red, no
   lost lives and no lost stars. There is no countdown.
 - **Short.** A mission is five or six rounds, which takes about 1–2 minutes
@@ -187,7 +197,7 @@ to stop listening to a guide. Pip therefore speaks by **fixed rules**:
 
 1. **An instruction is given once.** After that Pip stays quiet, and offers a
    hint only when the child seems stuck: no tap for 12 seconds on Earth, on a
-   planet or in the Rocket Dock. It gives at most one hint per visit, and
+   planet or in the space station. It gives at most one hint per visit, and
    never during a mission, where the 10-second nudges above do that job. A
    task is explained when its mission starts, until it has been done once.
 2. **A recurring moment rotates its words.** Launching, arriving, finishing,
@@ -199,6 +209,10 @@ to stop listening to a guide. Pip therefore speaks by **fixed rules**:
    once, on the flight home from the mission that made them true.
 4. **Pip finishes its sentences.** A tap asking for the line already playing
    does not restart it, and tapping Pip mid-sentence does not cut Pip off.
+5. **Each kind of line has its own timing** (`DIALOGUE`): a small breath
+   after a piece of story before the next line, praise held long enough to
+   see the right answer, and whether a tap may cut the line short. Recorded
+   narration will keep these rules.
 
 The choice of line is deterministic: it comes from counts, never from chance,
 and never from an AI. A contract plays whole journeys and fails if any rule is

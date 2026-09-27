@@ -228,8 +228,9 @@ Phase 1. Each one has a reason; keep it with the rule.
     brings its own. A render that warns it touches its frame edge is not
     shipped: the app would show a cut line.
 49. **A paint is a colour token, not a picture.** A new paint is a
-    `--paint-*` token and a `COSMETICS` line. Never add one rocket image per
-    colour, and never tint anything else in CSS.
+    `--paint-*` token and a `COSMETICS` line. A theme is a pattern of
+    colour tokens through the same paint mask. Never add one rocket image
+    per colour or per look, and never tint anything else in CSS.
 50. **Clay is for the world, not the controls.** Buttons, tiles and panels
     stay clean UI whose depth follows the key light: highlight up and to the
     left, lip and shadow down and to the right. Nothing textured ever sits
@@ -239,15 +240,16 @@ Phase 1. Each one has a reason; keep it with the rule.
     Transitions stay smooth and fast, and nothing a child waits for imitates
     stop-motion. Reduce Motion turns all of it off.
 52. **Keep the anchors.** CSS positions the antenna light, the flame, the
-    beacon glow and the rocket's landing spot by fixed points in the
-    renders (`docs/ASSET-BRIEFS.md`). A scene change that moves one updates
-    the CSS in the same change.
+    beacon glow, the rocket's landing spot and the station's turntable by
+    fixed points in the renders (`docs/ASSET-BRIEFS.md`). Gear is drawn
+    in the rocket's own frame, so it needs no anchor of its own. A scene
+    change that moves one updates the CSS in the same change.
 
 ## The world is the navigation
 
 53. **One stage, drawn from data.** Every child scene sits over the one
-    `#stage`. A place — its horizon, its sky, its markers — is drawn by
-    `drawPlace()` from `DESTINATIONS`. A scene never adds a backdrop of its
+    `#stage`. A place — its horizon, its sky, its markers, or the space
+    station's room — is drawn by `drawPlace()` from `DESTINATIONS`. A scene never adds a backdrop of its
     own, and never names a place, a picture or a mission. Two backdrops
     fight during a flight, and a hand-placed prop drifts off the ground.
 54. **Everything in the world stands at a fraction of its horizon.** Landing
@@ -266,3 +268,59 @@ Phase 1. Each one has a reason; keep it with the rule.
     entry.** `choose()`, the help ladder, evidence, praise and reprompts
     are shared. A second copy of the ladder is how a game quietly starts
     costing stars or skipping help.
+
+## One shell for every game
+
+These came from the Phase 2 real-iPad QA, which found good games inside
+a shell that felt like web pages.
+
+58. **One HUD, drawn from state.** The HUD owns the top band of every
+    child scene (`--hud-h`): the way back top left, the place or the game
+    in the centre (a title, then a few words of task), the stars top
+    right. `setHud()` decides what it shows from the scene and the
+    content. A scene never draws a corner button, a title or a star count
+    of its own: each scene once did, and every one was a giant disc.
+59. **Quiet marks, full targets.** A HUD mark is `--hud-mark`; the button
+    around it is a full `--touch-kid`. On a short screen `--ui` shrinks
+    marks and type, never a target, and `--hud-side` keeps every target on
+    the screen.
+60. **Size the child world in `--vh` and `--vw`, never in `vh` or `vw`.**
+    They are the viewport actually visible, measured by `fitViewport()`.
+    On iPad Safari 100vh is taller than the visible page. A contract
+    refuses raw units in the child world.
+61. **The CSS owns the game's box; `playfieldSizes()` fills it.** Never
+    give a game element a minimum pixel size that can push it out of its
+    box: Rhyme Radar's pictures climbed under the HUD on a real device
+    exactly that way. A new game adds its shapes to `playfieldSizes()`
+    and to contract 37's sweep.
+62. **A trip is a plan, built from motifs by rule.** `travelPlan()`
+    chooses the motifs (clouds, cruise, shooting star, asteroids, light
+    tunnel, station) and the five phases from where a trip starts and
+    ends and whether it has been flown before. Never by chance, and never
+    a new engine per route. A common trip stays 2–3 s with its settle, a
+    first arrival 3–4 s, a repeat shorter. What a flight passes is made by
+    `travelFx()` for that flight alone and cleared when it lands.
+63. **The resting stage is written down.** `stageRestingProblems()` lists
+    what must be true when nothing is flying. `checkStage()` runs after
+    every flight, at boot and when the app comes back into view; it
+    redraws from state and counts the repair for the grown-ups area. A new
+    stage layer or class adds its rule there. A device once showed a
+    planet drawn wrong at rest, and it was never reproduced.
+64. **An answer being praised owns the screen.** `session.input` says who
+    owns a tap: `intro` (a tap skips to the question), `open` (answers are
+    taken), `wait` (praise, correction, between rounds: a tap waits). A
+    wrong answer holds taps for `TIMING.wrongHold`. A feedback tap never
+    calls `Voice.stop()`, and `Voice.skip()` refuses to cut praise. On a
+    real iPad, fast taps in Letter Explorer cut the praise off.
+65. **Dialogue timing belongs to `DIALOGUE`.** A pause before or after a
+    line, its minimum hold, and whether a tap may cut it follow the line's
+    kind (`lineKind()`), not a timeout written into a scene.
+66. **Arrivals settle before taps.** After touchdown, `settleInto()` plays
+    the dust, Pip and the HUD, and only then clears `session.busy`. A
+    marker tapped during the settle is not a start.
+67. **A rocket wears one thing per slot.** Paint is a colour token. Gear is
+    a picture in the rocket's own 640×800 frame, laid over the paint
+    layer. A theme is a pattern of colour tokens through the same paint
+    mask. Every slot has a free starter, so a saved look is never empty,
+    and a record saved before a slot existed reads as its starter: no
+    migration. The space station writes stars and rocket only.

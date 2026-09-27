@@ -83,10 +83,10 @@ rules for when Pip speaks at all are in
 | Earth, hint when stuck | "Ready to fly? Tap Launch!" / "Let's fly! Tap the yellow Launch button." / "Tap the big Launch button to fly!" | Awaiting review |
 | Home | "Welcome home, explorer!" / "Home again! Nice flying." / "Welcome back to Earth!" | Awaiting review |
 | Home after the relight | "Welcome home! Look, the Moon is shining!" | Awaiting review |
-| Stars to spend | "You have stars! Tap the paint brush to give your rocket new paint." Said once unasked; after that, only when Pip is tapped | Awaiting review |
-| Rocket Dock, first visit each time the app is opened | "Welcome to the Rocket Dock! Tap a color." | Awaiting review |
-| Rocket Dock, hint when stuck | "Tap a color to try it on your rocket." / "Which color do you like? Tap one to try it!" | Awaiting review |
-| Hint timing | A pause of 12 seconds on Earth, on a planet or in the Dock earns one hint per visit. Is 12 seconds right for this age? | Awaiting review |
+| Stars to spend | "You have stars! Tap the paint brush to visit the space station and dress up your rocket." Said once unasked; after that, only when Pip is tapped | Awaiting review |
+| Space station, first visit each time the app is opened | "Welcome to the space station! This is your rocket's garage. Tap something to try it on." | Awaiting review |
+| Space station, hint when stuck | "Tap a color to try it on your rocket." / "Which one do you like? Tap one to try it on!" / "Tap Gear to find a star or a moon for the top of your rocket!" | Awaiting review |
+| Hint timing | A pause of 12 seconds on Earth, on a planet or in the station earns one hint per visit. Is 12 seconds right for this age? | Awaiting review |
 
 ## 6. Rhyme Radar (`mercury-1`) — development content
 
@@ -189,7 +189,7 @@ yet. A contract checks these against a second, hand-typed list.
 |---|---|---|
 | The route opens, seen from the Moon | "Look! A new planet is waiting for us. That is Mercury!" | Awaiting review |
 | Home, the first time | "Next stop, Mercury! Tap Launch when you are ready." | Awaiting review |
-| Choosing a planet in the sky | "The Moon! Tap Launch to fly there." / "Mercury! Tap Launch to fly there." | Awaiting review |
+| Choosing a planet in the sky | "The Moon! That's where we find letters. Tap Launch to fly there!" / "Mercury! That's where we play with rhymes and beats. Tap Launch to fly there!" | Awaiting review |
 | First arrival | "We made it to Mercury! Mercury's signal is fuzzy. Let's fix it!" | Awaiting review |
 | Later arrivals | "Back on Mercury!" / "Mercury again! Hello, warm rocks!" / "Here we are on Mercury!" | Awaiting review |
 | The markers | "Tap the beacon to start!" / "Tap the radar dish to start!" / "Now tap the meteor rocks!" | Awaiting review |
@@ -198,7 +198,37 @@ yet. A contract checks these against a second, hand-typed list.
 | Home after restoring it | "Welcome home! Look, Mercury is glowing!" | Awaiting review |
 | Nothing left to play on a planet | "Tap the big yellow button to fly home!" (only if the child waits) | Awaiting review |
 
-## 9. Grown-ups area wording
+## 9. The shell: titles, labels and the space station (Phase 2.2)
+
+The HUD shows a short title and a task over every lesson, and a planet's
+name and what it teaches. They are on screen for grown-ups and early
+readers; Pip still says everything a pre-reader needs.
+
+| Item | On screen | Question for the reviewer | Status |
+|---|---|---|---|
+| Letter Explorer | "LETTER EXPLORER" / "Find the letter you hear" | Clear? Never gives the answer away? | Awaiting review |
+| Rhyme Radar | "RHYME RADAR" / "Find the picture that rhymes" | | Awaiting review |
+| Syllable Meteors | "SYLLABLE METEORS" / "Tap the beats" | Is "beats" the right word for syllables at this age? | Awaiting review |
+| What a planet teaches | "MOON" / "Letters"; "MERCURY" / "Rhymes • Syllables". Derived from the missions' skills (`SKILLS[].short`) | "Syllables" is a hard word; would "Beats" be better on screen, since the game says beats? | Awaiting review |
+| Home | "EARTH" / "Home base" | | Awaiting review |
+| The station | "SPACE STATION" / "Rocket garage"; the Earth button reads "Station" | | Awaiting review |
+
+| Line | Script | Status |
+|---|---|---|
+| Flying up to the station | "Up we go, to the space station!" | Awaiting review |
+| Flying home from it | "Back down to Earth!" | Awaiting review |
+| A tab | "Paint!" / "Rocket gear!" / "Rocket themes!" | Awaiting review |
+| Trying something on | its name: "Grape purple!", "Star topper!", "Bumblebee!" | Awaiting review |
+| Unlocking | "Ta-da! It's on your rocket!" | Awaiting review |
+| Wearing one already owned | "Looking good!" | Awaiting review |
+
+| Things to wear | Names and prices | Status |
+|---|---|---|
+| Paint | Classic red (free), Sky blue 3★, Grape purple 4★, Tangerine orange 4★, Sunny yellow 5★, Bubblegum pink 5★, Lime green 6★, Ocean teal 6★ | Awaiting review |
+| Gear | No gear (free), Tiny antenna 3★, Star topper 4★, Moon topper 4★, Side lights 5★, Boosters 6★ | Awaiting review |
+| Themes | No theme (free), Bumblebee 8★ (stripes and wings), Rainbow explorer 9★, Galaxy explorer 10★ | Are the prices fair? A mission pays 3★ | Awaiting review |
+
+## 10. Grown-ups area wording
 
 | Item | Status |
 |---|---|
@@ -206,6 +236,8 @@ yet. A contract checks these against a second, hand-typed list.
 | Practice is listed skill by skill: letters; rhymes ("rhyme found on the first try"); beats ("beats counted on the first try"). Neutral? | Awaiting review |
 | The journey, place by place: "Restored", "1 of 2 missions done", "Not reached yet" | Awaiting review |
 | The note that answers given with the voice off are not counted | Awaiting review |
+| The rocket: "Bumblebee · Star topper · 5 of 16 unlocked" | Awaiting review |
+| "Display checks: All clear" (or "Redrawn N times this session"): useful to a grown-up testing the app, or noise? | Awaiting review |
 
 ---
 

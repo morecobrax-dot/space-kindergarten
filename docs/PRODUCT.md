@@ -47,29 +47,50 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
 
-## Phase 2: what is built
+## Phase 2.2: what is built
 
-The flow is welcome → Earth → Launch → a flight through one world → the Moon
-→ tap the beacon → Letter Explorer → the beacon lights, stars arc to the
-count → Mercury appears → home → Launch → Mercury → Rhyme Radar → the radar
-is fixed → Syllable Meteors → Mercury restored → home → Rocket Dock → reload,
-with everything persisted.
+Phase 2.2 kept the games and rebuilt the shell around them, from a real-iPad
+QA (Rocket 4/10, Travel 5, Rocket Dock 2, World feel 6, Visual polish 6.5).
+The flow is welcome → Earth → choose a planet → Launch → one camera journey
+(lift-off, clouds, the cruise, the approach, touchdown) → the Moon → the
+beacon → Letter Explorer → the world answers → home → Mercury → Rhyme Radar →
+Syllable Meteors → home → fly up to the space station → dress up the
+rocket → fly home → reload, with everything persisted.
+
+| Area | Built |
+|---|---|
+| The HUD | One bar over every child scene: the way back top left (the grown-ups lock on Earth), a title and a few words of task top centre, the stars top right. Quiet marks inside full-size targets |
+| Lesson titles | LETTER EXPLORER / Find the letter you hear · RHYME RADAR / Find the picture that rhymes · SYLLABLE METEORS / Tap the beats, with progress stars |
+| Planet labels | MOON / Letters · MERCURY / Rhymes • Syllables, derived from each planet's missions |
+| Choosing a planet | The chosen planet comes forward (larger, lit, named with what it teaches), the others wait smaller; the route lights up; Launch shows the chosen planet; Pip says what is there |
+| Travel | Five phases (ignite, rise, cruise, approach, touchdown) and a vocabulary of motifs chosen by rule: clouds leaving and reaching Earth, the stellar cruise with rushing specks, a shooting star every other cruise, friendly asteroids one trip in three, a light tunnel on the first trip to Mercury, and the station's bay. About 2.6s with the settle; 3.4s for a first arrival; shorter on a route already flown |
+| Arrival | Touchdown dust or light, the rocket's clay giving a little, Pip settling, the HUD fading in; nothing can be tapped until it has settled |
+| Shooting stars | Rare (every 13–23s) and deterministic, on the far side of the sky, never over Pip, the caption or the title; not in missions, not in flight, not with Reduce Motion |
+| The rocket | Redesigned as a chunky clay toy (chosen from five silhouettes): a tall rounded cone, a big window, big swept fins, a simple engine bell. The paint mask architecture is unchanged |
+| The space station | The Rocket Dock as a place: a flight up through the clouds, the station ahead, into its bay, the rocket settling on a turntable. The rocket is the hero; Pip nearby; a window with Earth below; a compact panel on the right |
+| Customization | Paint (8 colours), Gear (star topper, tiny antenna, moon topper, side lights, boosters), Themes (Bumblebee with wings, Rainbow explorer, Galaxy explorer). Try on for free, then unlock with stars or use. Nothing random, nothing for money, nothing that changes play |
+| Responsive safety | Sized by the viewport actually visible; the HUD scales its marks (never its targets) on short screens; the game's play field fits its box on every screen, picture beside the game on a short phone |
+| Rapid taps | An answer being praised owns the screen; a wrong answer holds taps for 0.45s; the same in every game |
+| The resting stage | Written-down rules checked after every flight, at boot and on return; a broken rest is redrawn from state and counted in the grown-ups area |
+| Dialogue timing | One table (`DIALOGUE`): a breath before and after each kind of line, praise's minimum hold, and whether a tap may cut it |
+
+## Phase 2: what was built
 
 | Area | Built |
 |---|---|
 | The world stage | One continuous stage behind every child scene: space, two star layers, and the place you are in (its sky, its horizon, its markers). Planets are places, not screens |
 | Welcome | First launch only, on Earth. Pip introduces itself; the tap also unlocks sound on iPad |
-| Earth | A large curved clay horizon across the bottom ~40%; the rocket standing on its launch pad; Pip floating; the Moon (and, once open, Mercury) waiting in the sky, the one Launch will fly to ringed and joined by a dotted path. One huge **Launch**; the Dock, the star count and the grown-ups lock in the corners. Tap a planet in the sky to choose it |
-| Flights | The camera moves through the world: lift-off, Earth falling away, parallax stars, the destination growing, its horizon rising, the rocket settling. About 1.3s; 2.2s the first time to a place; a tap skips it; Reduce Motion crossfades. Transforms and opacity only; every picture preloaded |
+| Earth | A large curved clay horizon across the bottom ~40%; the rocket standing on its launch pad; Pip floating; the Moon (and, once open, Mercury) waiting in the sky. One huge **Launch**. Tap a planet in the sky to choose it |
+| Flights | The camera moves through the world (rebuilt in Phase 2.2, above). Transforms and opacity only; every picture preloaded |
 | A planet | Arrive, hear its story, tap the marker that pulses. One mission at a time; the world lights up and brightens as it is restored; a new route appears in its sky; the way home turns yellow when nothing is left to play |
 | Letter Explorer `moon-1` | Six rounds of "hear a letter name, find it" (M S O T S M, uppercase), on Moon stones with clean letter plates. The first round is guided, and difficulty adapts per letter |
 | Rhyme Radar `mercury-1` | Five rounds: hear a word and three pictures named, tap the one that rhymes. The harder level adds a picture that starts like the word. Development content |
 | Syllable Meteors `mercury-2` | Six rounds: hear a word, tap the stone once for each beat. Only the count is judged; Pip shows the beats after a second miss. Development content |
 | Feedback | Correct: a ring, a check mark, praise that names the answer. Wrong: the choice steps aside (a count clears), "Almost! Listen again." Second wrong: the answer is shown |
 | Rewards | Three clay stars arc from what was fixed to the star count, which counts up as each lands |
-| Rocket Dock | The camera lowers to the pad and the rocket is the hero. Four paints: classic (free), sky (3★), sunny (5★), lime (6★). A tap previews at once, then unlock or use |
-| Grown-ups | The journey place by place, practice skill by skill (plain counts, not grades), voice and effects toggles, Reduce Motion, backup, erase, what's new, and storage and privacy status |
-| Offline | The service worker precaches the shell and every registered picture (39 files) |
+| Rocket Dock | Replaced in Phase 2.2 by the space station (above) |
+| Grown-ups | The journey place by place, practice skill by skill (plain counts, not grades), the rocket's look, voice and effects toggles, Reduce Motion, backup, erase, what's new, storage and privacy status, and "Display checks" |
+| Offline | The service worker precaches the shell and every registered picture (53 files) |
 | Replay | A restored place can be visited again; its missions come round in turn, with a shorter arrival line. Replays earn stars too |
 
 ## Deliberately not built yet
@@ -85,6 +106,10 @@ These are not built yet:
 - student profiles
 - recorded narration
 - final (signed-off) artwork: the current pictures are draft renders
+- more rocket looks: the dinosaur and space-puppy themes, and more gear
+  (Phase 2.2 proved the model with 8 paints, 5 gear and 3 themes)
+- a spinning turntable, and animated station lights beyond the
+  turntable's slow breath
 - ambient music
 - Capacitor or native packaging
 
@@ -138,6 +163,52 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Phase 2.2 QA record (2026-09-27)
+
+**Tested in Chromium (headless Edge and the in-app browser on Windows) with
+emulated iPad and phone viewports, not on a physical iPad.** The real-iPad
+checklist is [IPAD-QA-PHASE-2.2.md](IPAD-QA-PHASE-2.2.md); nothing in it is
+marked tested.
+
+| Check | How | Result |
+|---|---|---|
+| The whole journey | Scripted through the app's own functions, captured at 1180×820 (2×) and 1024×768: welcome → Earth → a flight frozen at six moments → the Moon → Letter Explorer → the world answers → home (clouds rising) → choosing each planet → the first trip to Mercury (the light tunnel) → Rhyme Radar → Syllable Meteors → home → the station flight frozen at three moments → paint, gear and a theme tried on and unlocked → flying home → an asteroid pass → Reduce Motion → grown-ups. 1366×1024, 844×390 and 667×375: Earth, the three games, the station | No page errors, no resting-stage problem after any step, and no repair at any size, after the fixes below |
+| Rhyme Radar, the reported defect | Reproduced at 844×390 on v0.3.0 (the pictures rose under the top bar), then measured on the new build at every size | Every picture, the title, Pip and the stars keep their own space; a row layout on short phones |
+| Offline | Headless Edge: loaded once, the network cut in DevTools and the server stopped, then reloaded and played through Earth, a flight, the Moon, Mercury, Rhyme Radar and the space station | The v0.4.0 cache holds 56 entries (the shell and all 53 pictures). No missing picture anywhere, including the flight's clouds, the station and the gear chips; the stage at rest |
+| Contracts | `npm run verify` | 1015 passed, 0 failed |
+| Mutation check | 40 defects planted one at a time in the new state rules: tap ownership, dialogue timing, travel plans, the resting stage, arrival, the HUD, planet labels and focus, the play field, looks and the station, ambient shooting stars | First run: 36 of 38 caught. The 2 missed exposed weak tests (a flight awaited before checking it had landed; Reduce Motion checked inside a mission, where shooting stars are off anyway). Both tests were strengthened and now catch them, as do 2 more mutants for the fixes: all 40 caught |
+
+**Found and fixed in browser QA:**
+
+1. **The clouds passed after Earth had gone,** grey and small, because they
+   started far above the screen, at 80% opacity, behind the ground. They
+   now sweep past while Earth falls away, solid, between the ground and
+   the rocket.
+2. **A stale caption:** coming home from the station, Earth's bubble still
+   said "To the station!". Entering a scene now clears its caption.
+3. **An asteroid crossed right behind the rocket,** which reads as a near
+   miss. The rocks now drift down the edges, away from the rocket.
+4. **Gear was invisible in its chip:** a topper is about 10% of the
+   rocket's frame. A chip now zooms onto where each piece sits.
+5. **The station's panel ran the full height,** mostly empty glass. It now
+   hugs its contents.
+6. **The chosen planet's label and the route lingered** for a moment after
+   Launch. They now go with the controls.
+7. **The growing destination overlapped its own rising ground** for too
+   long. It now dissolves as the ground rises.
+8. **After a relight, the first planet choice redrew the whole sky** (a
+   stale `data-held` in the drawn sky; a possible blink on a device). The
+   hold is now released in place and the redraw record kept in step.
+
+**Not physically tested on an iPad** (see the checklist):
+
+- how the flights, clouds, tunnel and station feel and perform on the device
+- the HUD's marks and targets under a real finger; Safari's toolbar; Split View
+- the rocket's new look at iPad size; the toppers' size; the station
+- rapid taps with real fingers, and the dialogue pauses with the device voice
+- the Home Screen install, offline after install, and the v0.3.0 → v0.4.0
+  update on a device that already has progress
 
 ## Phase 2 QA record (2026-09-26/27)
 

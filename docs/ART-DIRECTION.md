@@ -46,9 +46,12 @@ A child moves through **one continuous world**, not a stack of screens. One
 | **Sky** | `bg.space`: near-black navy deepening to blue low down, a faint haze. No stars. | Never. |
 | **Far stars** | `bg.starsFar`: many tiny dim stars, mostly empty sky | Slowly, in a flight |
 | **Near stars** | `bg.starsNear`: a handful of brighter stars | Further than the far layer: the difference reads as speed |
-| **Places** | Two slots: the place the rocket is in, and the one a flight is bringing in. A place is its **sky** (planets and home, far away) and its **ground** (the horizon picture and the markers standing on it). | The ground falls away on departure and rises on arrival; the destination in the sky grows until it is the ground ahead |
-| **The rocket** | One actor, standing on its place's landing spot | Lifts off, crosses, settles |
-| **UI plane** | The scene: bubbles, buttons, tiles, progress, stars | Fades between scenes; never moves with the world |
+| **Ambient** | Now and then a faint shooting star, far side of the sky | Rarely, at rest only; never over Pip, the title or a lesson |
+| **Far travel layer** | What a flight passes behind the rocket: far clouds, far rocks, the light tunnel, the space station seen from outside | Only in a flight |
+| **Places** | Two slots: the place the rocket is in, and the one a flight is bringing in. A place is its **sky** (planets and home, far away) and its **ground** (the horizon picture and the markers standing on it), or the station's garage | The ground falls away on departure and rises on arrival; the destination in the sky grows until it is the ground ahead |
+| **The rocket** | One actor, standing on its place's landing spot | Trembles, lifts off, crosses, settles, and its clay gives a little on touchdown |
+| **Near travel layer** | Near clouds, a big passing rock, specks rushing by; touchdown dust | Only in a flight, and at touchdown |
+| **UI plane** | The HUD (the way back, the title, the stars) and the scene: bubbles, buttons, tiles | Clears as a flight begins and settles back after it; never moves with the world |
 
 **Composition, on every place:**
 
@@ -62,20 +65,29 @@ A child moves through **one continuous world**, not a stack of screens. One
 
 **Earth, home base.** A large curved Earth horizon; the rocket standing on
 its launch pad, on the left-hand continent; Pip floating above; the Moon (and,
-once open, Mercury) waiting in the sky, the one Launch will fly to ringed and
-joined to the rocket by a dotted path. Launch is the one warm-yellow
-action; the Dock is a small round button; the grown-ups lock and the star
-count keep their corners. Nothing else.
+once open, Mercury) waiting in the sky. The one Launch will fly to comes
+forward — a little larger, lit from behind by a cool light, its name and
+what it teaches beneath it — and a band of light with marching dots joins
+it to the rocket; the others wait, smaller and quieter. Launch is the one
+warm-yellow action, and shows the chosen planet on it. The station button is
+small and round; the HUD holds the lock, "EARTH", and the stars. Nothing
+else.
 
 **A planet.** The same composition: its horizon at the bottom, the rocket
 parked on the right, Pip upper left, home far away in the sky. Its markers
 stand on the ground — the Moon's beacon; Mercury's radar dish and meteor
-rocks — and the one to play next breathes a warm-yellow ring on the ground
-around its foot.
+rocks — and the one to play next stands in a warm pool of light with a
+warm-yellow ring breathing on the ground around its foot.
 
-**The Rocket Dock** is not a new screen: it is the same camera lowered to
-the launch pad, so the rocket becomes the hero, large on its pad, with the
-paints beside it.
+**The space station** (the Rocket Dock) is a place, not a menu: a small,
+friendly orbital garage above Earth, reached by a flight — up through the
+clouds, the station coming into view, the camera on into its open bay, and
+the rocket settling onto a turntable. Inside: rounded cream and lavender
+clay walls, a softly curved floor, one big round window onto space with
+Earth below, paint pots, a hose, and a turntable ringed with small warm
+lights. The rocket stands on the turntable, large, as the hero; Pip hovers
+nearby; the right-hand wall is kept quiet for the panel of things to try.
+A kindergarten space workshop — never industrial, never a dark corridor.
 
 ## The planet system
 
@@ -197,20 +209,33 @@ hops when it cheers.
 
 ## Rocket and paints
 
-The rocket is small, friendly and chunky: a short cream body with a rounded
-cone nose, a big porthole, one painted band, three thick fins and a little
-nozzle, with pressed seams where the painted pieces meet the hull. It stands
-on its nozzle, on the launch pad at home and on the ground of every place it
-lands. The flame is a separate sculpted layer, hung from the nozzle and
-shown only in flight.
+The rocket is a friendly clay toy with a strong silhouette: a tall cone cap
+with a softly rounded tip, a straight cream body with a big round window
+(a cream rim, deep blue glass, a catch-light), three big swept fins and a
+simple flared lavender-grey engine bell. It was chosen from five silhouettes
+after the real-iPad QA found the first rocket weak and a little like an egg;
+it must read as a rocket at 60 px. It stands on its nozzle, on the launch
+pad at home, on the turntable in the station, and on the ground of every
+place it lands. The flame is a separate sculpted layer, hung from the
+nozzle and shown only in flight.
 
 **A paint is a colour, not a picture.** The rocket is rendered once, with its
-painted parts (nose, band, fins) in white clay. Those parts are also exported
-as a mask (`rocket.paintMask`). In the app, the paint colour (a `--paint-*`
-token) is cut to the mask and multiplied over the render. Multiplying is how
-a matte surface takes a colour, so the render's shading, seams and shadows
-all survive every paint. The rocket in a picture ("rocket" in Syllable
-Meteors) is always the child's own, in its paint.
+painted parts (the cap and the fins) in white clay. Those parts are also
+exported as a mask (`rocket.paintMask`). In the app, the paint colour (a
+`--paint-*` token) is cut to the mask and multiplied over the render.
+Multiplying is how a matte surface takes a colour, so the render's shading
+and shadows all survive every paint. There are eight.
+
+**A theme is a pattern through the same mask:** Bumblebee's stripes (with
+pale wings), Rainbow's bands, Galaxy's speckled purple. Still one render.
+
+**Gear is clay laid on the rocket:** a star or a moon topper, a tiny
+antenna, warm side lights, little boosters. Each is rendered in the
+rocket's own frame and camera, with the shadow it casts on the rocket, so
+it sits exactly in place over any paint. Gear keeps its own colours.
+
+The rocket in a picture ("rocket" in Syllable Meteors) is always the child's
+own, as it looks now.
 
 ## The game pictures and props
 
@@ -232,8 +257,16 @@ Meteors) is always the child's own, in its paint.
 The world, the characters, the planets and the rocket are **clay miniature
 art**. The controls are **clean, premium children's UI**. They are not made
 of clay, because a screen full of textured buttons is noise. Phase 2 took
-the UI back to the minimum: no editorial headings, no panels over the world,
-only the controls a child needs.
+the UI back to the minimum; Phase 2.2 made it quieter still.
+
+- **One HUD** over every scene: a small round way back top left, a short
+  title and a few words of task in a dark glass pill top centre, the star
+  count top right. Nothing else sits in the corners.
+- **A large target does not need a giant mark.** Secondary controls are
+  48–64 px marks inside full-size invisible targets; only Launch stays big.
+- **The space station's panel** is one compact dark-glass panel on the
+  quiet right-hand wall: three tabs, round chips (a colour for a paint, a
+  little rocket wearing it for gear and themes), and one action.
 
 - **Depth follows the world's light.** Buttons, tiles and panels get the same
   treatment (the `--shadow-*` tokens): a highlight at the top left, a darker
@@ -251,15 +284,28 @@ only the controls a child needs.
 
 ## Motion
 
-- **Flights move the camera through the one world.** Tap Launch: the rocket
-  lifts straight up with its flame, the Earth falls away, the stars stream
-  past (the near ones faster), the rocket leans into the crossing, the
-  destination grows, its horizon rises into place, and the rocket settles
-  upright onto its landing spot. About 1.3 s; 2.2 s the first time to a new
-  place; a tap anywhere skips it. Transforms and opacity only (the Web
+- **Flights move the camera through the one world**, in the rhythm action,
+  breath, travel, anticipation, settle. Tap Launch: the button presses in,
+  the controls quietly clear, the engine lights and the clay rocket
+  trembles, it lifts straight up, the Earth falls away, a layer of clouds
+  passes the camera, space opens and streams past (the near stars faster,
+  specks rushing by), the destination grows ahead, its horizon rises into
+  place, and the rocket comes down upright onto its landing spot — dust
+  puffs, the clay gives a little, Pip settles, the HUD returns.
+- **A small vocabulary of motifs, reused by every route:** clouds leaving
+  and reaching Earth; the stellar cruise; now and then a shooting star or a
+  pass of friendly clay asteroids (never in the way, never danger); an
+  original light tunnel of soft lavender, teal and cream rings for the
+  first trip to a world beyond the first stop (rings, not streaks: nobody
+  else's hyperspace); and the station's approach into its bay.
+- **Pacing:** about 2.6 s for a common trip, settle included; about 3.4 s
+  for a first arrival, which carries story; shorter for a route already
+  flown. A tap anywhere skips it. Transforms and opacity only (the Web
   Animations API), so an iPad composites it without repainting; no WebGL.
-  All the pictures a flight needs are fetched and decoded while the child is
-  still on Earth.
+  All the pictures a flight needs are fetched and decoded while the child
+  is still on Earth.
+- **Space is alive at rest:** a faint shooting star crosses the far side of
+  the sky every 13–23 seconds, never over what a child reads.
 - **Navigation stays smooth and fast.** Nothing a child waits for imitates
   stop-motion.
 - **Characters move like stop-motion.** Pip's idle bob and cheer, and the
@@ -270,8 +316,8 @@ only the controls a child needs.
 - **Rewards are quick:** three clay stars arc from what was fixed to the star
   count, landing within about two seconds.
 - **Reduce Motion** turns all of it off: a flight becomes a short crossfade
-  with nothing sliding or streaming, the stars simply count up, and nothing
-  steps. It is honoured from both the device and the grown-ups setting, and
+  with nothing sliding or streaming, no clouds, rocks, rings or shooting
+  stars, the stars simply count up, and nothing steps. It is honoured from both the device and the grown-ups setting, and
   contracts check both.
 
 ## The asset pipeline

@@ -141,8 +141,11 @@ height: a blue ocean, green land, cream clouds. It must read at 80 px.
   top 11.6%, 74% wide and 70% tall (corners about 29 px). The app lays a
   clean plate just inside it and draws the letter on the plate, so the face
   must be flat, plain and square to the frame.
-- A chunky rounded stone of lavender-grey Moon clay, its top showing a
-  little, with a soft baked contact shadow.
+- A chunky Moon rock around that smooth face: a lopsided domed top,
+  knobbly faceted sides, a broad belly and a few fingertip craters, in
+  darker, greyer Moon clay (`#958FAB`) so the pale plate stands out, with
+  a soft baked contact shadow. Its ground line sits at about 90% of the
+  picture.
 
 ### Meteor stone — `assets/props/beat-stone.webp` · 512×400 · transparent
 
@@ -162,8 +165,52 @@ height: a blue ocean, green land, cream clouds. It must read at 80 px.
 ### Star — `assets/props/star.webp` · 256×256 · transparent
 
 A puffy five-point star of warm yellow clay, thicker in the middle, with
-rounded tips and orange edges, and a faint warm glow. It must read at 26 px,
-the size of the Dock's price tags. It is also the picture for "star".
+rounded tips and orange edges, and a faint warm glow. It must read at 18 px,
+the size of the space station's price tags. It is also the picture for
+"star".
+
+## The space station (the Rocket Dock as a place)
+
+### Outside — `assets/places/station-outside.webp` · 1024×1024 · transparent
+
+- **Anchor:** the **docking bay's centre at (46.68%, 60.01%)**. A flight
+  into the station scales the picture around this point, so the camera
+  goes in through the door.
+- A small, friendly orbital station filling about 80% of the frame: a
+  round cream core inside a chunky lavender ring with a row of warm
+  lights, two cream modules with teal ends, a short dish, and a big
+  round-topped bay door trimmed with rolled coral clay, dark inside with a
+  warm glow deep within. Not an eye: the door is an arch, not a ring.
+
+### Inside — `assets/places/station-inside.webp` · 2400×1600 · opaque but for its window
+
+- **Anchors:**
+  - the **turntable's top-face centre at (38%, 70.5%)**: the rocket stands
+    here
+  - the **window's open circle**: centre (23.36%, 33.71%), radius 7.88% of
+    the width. Its glass is fully transparent, so the live sky and a
+    separate Earth picture show through it
+- The garage: cream walls with a lavender band, a softly curved floor, a
+  ceiling cove of warm lamps, a porthole with a thick cream rim, a chunky
+  teal turntable ringed with warm lights under a cream lid, three paint
+  pots, and a soft coral hose.
+- **Crop safety:** the app covers screens from 4:3 to about 2.2:1, so
+  everything important stays within x 8–92%, y 16–84%, and the right third
+  stays a quiet wall for the panel.
+
+## What a flight passes
+
+### Clouds — `assets/props/cloud-a.webp`, `cloud-b.webp`, `cloud-c.webp` · 640×400 each · transparent
+
+Puffy cream-white clay clouds with softly flattened bottoms, each a
+different lumpy outline. They are drawn large and pass the camera quickly,
+so they stay soft and simple.
+
+### Asteroids — `assets/props/asteroid-a.webp`, `asteroid-b.webp`, `asteroid-c.webp` · 384×384 each · transparent
+
+Friendly round clay rocks: (a) lavender-grey with two soft dimples, (b)
+lumpy warm grey-brown, (c) a small pair stuck together. No faces. They
+drift past as scenery, never toward the rocket.
 
 ## Pictures for words — `assets/pictures/<word>.webp` · 384×384 each · transparent
 
@@ -182,27 +229,49 @@ the size of the Dock's price tags. It is also the picture for "star".
 
 ### Rocket — `assets/rocket/rocket.webp` + `rocket-paint.webp` · 640×800 each · transparent
 
-- **Anchors:** the **nozzle's bottom centre at (50%, 81.8%)**: the rocket
-  stands on this point. The nozzle spans about 34%–66% of the width; the
-  nose tip is at about 11% from the top.
-- **Content:** a short cream clay body with a rounded cone nose, a big
-  porthole (a cream rim, dark blue glass with a catch-light), one band,
-  three thick rounded fins (two angled toward the viewer, one behind) and a
-  little dark nozzle, with pressed seams where the painted pieces meet the
-  hull.
+- **Anchors** (tools/art `rocket.js` exports them):
+  - the **nozzle's bottom centre at (50%, 81.8%)**: the rocket stands on
+    this point
+  - the nozzle's lip spans 35.0%–64.8% of the width
+  - the window's centre at (50%, 56.1%), its rim 13.9% of the width in
+    radius
+  - the nose tip about 8.5% from the top
+- **Design** (Phase 2.2, chosen from five silhouettes after the real-iPad
+  QA scored the first rocket 4 of 10): a friendly clay toy.
+  - a tall cone cap about as tall as the body, its tip softly rounded
+  - a straight cream body with a big round window: a cream rim, deep blue
+    glass and a catch-light
+  - three big swept fins standing level with a flared lavender-grey
+    engine bell
+  - no band, no seams to read, no realistic detail
+  - it must read as a rocket at 60 px
 - **Paint rule:**
-  - In `rocket.webp`, the **painted parts (nose, band, fins) are white
-    clay**, fully shaded.
+  - In `rocket.webp`, the **painted parts (the cap and the fins) are white
+    clay**, fully shaded: about 63% of the rocket.
   - `rocket-paint.webp` is the **mask**: white, its alpha set to exactly
     those painted parts, aligned pixel for pixel with `rocket.webp`.
-  - The app multiplies each paint colour through the mask. Never deliver one
-    rocket per colour.
+  - The app multiplies each paint colour, and each theme's pattern, through
+    the mask. Never deliver one rocket per colour or per look.
+
+### Gear — `assets/rocket/gear-*.webp` · 640×800 each · transparent
+
+`star`, `moon`, `antenna`, `lights`, `booster`, and `wings` (the
+Bumblebee theme's).
+
+- **Framing:** the **rocket's own frame and camera**. Each picture holds
+  only the piece, exactly where it sits on the rocket, with the shadow it
+  casts on the rocket, so the app lays it over the rocket without placing
+  it. The rocket itself is not in the picture.
+- **Fixed colours**, never painted: a warm yellow star, a lavender moon, a
+  lavender-grey antenna with a coral ball, warm lamps in lavender-grey
+  bezels, pale cream-white wings, cream boosters with a coral band. Each
+  must read on a red, blue, yellow or purple rocket.
 
 ### Flame — `assets/rocket/flame.webp` · 256×384 · transparent
 
 - **Framing:** the flame's root runs along the **top edge**, centred, about
   90% of the width. The app hangs it from the nozzle: its top edge at 80.5%
-  of the rocket's height, 35% of the rocket's width across.
+  of the rocket's height, left 33.6% and 32.8% wide (1.1× the nozzle).
 - Sculpted clay tongues of flame (orange outside, yellow core) that glow,
   with a soft bloom. Only the top edge may touch the frame.
 

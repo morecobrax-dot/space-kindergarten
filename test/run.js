@@ -57,7 +57,12 @@ const SUITES = [
   C.testDialogue,
   C.testClayWorld,
   C.testWorldStage,
-  C.testNewGames
+  C.testNewGames,
+  C.testHud,
+  C.testTravel,
+  C.testInput,
+  C.testPlayfield,
+  C.testStation
 ];
 
 async function main(){

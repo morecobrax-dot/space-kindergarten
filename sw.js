@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.3.0';
+const CACHE_NAME = 'space-kindergarten-v0.4.0';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -35,6 +35,8 @@ const ASSETS = [
   './assets/horizons/earth.webp',
   './assets/horizons/moon.webp',
   './assets/horizons/mercury.webp',
+  './assets/places/station-outside.webp',
+  './assets/places/station-inside.webp',
   './assets/planets/earth.webp',
   './assets/planets/moon.webp',
   './assets/planets/moon-lit.webp',
@@ -51,6 +53,12 @@ const ASSETS = [
   './assets/props/meteor.webp',
   './assets/props/meteor-lit.webp',
   './assets/props/star.webp',
+  './assets/props/cloud-a.webp',
+  './assets/props/cloud-b.webp',
+  './assets/props/cloud-c.webp',
+  './assets/props/asteroid-a.webp',
+  './assets/props/asteroid-b.webp',
+  './assets/props/asteroid-c.webp',
   './assets/pictures/apple.webp',
   './assets/pictures/banana.webp',
   './assets/pictures/bee.webp',
@@ -65,6 +73,12 @@ const ASSETS = [
   './assets/rocket/rocket.webp',
   './assets/rocket/rocket-paint.webp',
   './assets/rocket/flame.webp',
+  './assets/rocket/gear-star.webp',
+  './assets/rocket/gear-moon.webp',
+  './assets/rocket/gear-antenna.webp',
+  './assets/rocket/gear-lights.webp',
+  './assets/rocket/gear-booster.webp',
+  './assets/rocket/gear-wings.webp',
   './assets/characters/pip.webp',
   './icon-192.png',
   './icon-512.png'

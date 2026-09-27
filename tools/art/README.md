@@ -17,9 +17,15 @@ WebP files, and it never runs this code.
 npm run art:render                 # every job → tools/art/out/*.png (lossless masters)
 node tools/art/render.js earth     # only one job, or a list
 npm run art:encode                 # then open http://127.0.0.1:8397/ in Chrome or Edge
+                                   # (…/?only=rocket,gear- encodes only jobs whose names start so)
 npm run config:sync                # refresh the precache list and docs/ASSET-MANIFEST.md
 npm run verify
 ```
+
+Opening the encoder page encodes every master in `out/` at once. The
+browser's encoder is deterministic, so an unchanged master writes a
+byte-identical file, but `?only=` keeps a partial re-render from touching
+anything else.
 
 - **Rendering:** a full render of every job takes a few minutes on a
   20-core machine, because rows are shared across worker threads. A single
@@ -36,7 +42,9 @@ npm run verify
 |---|---|
 | `clay.js` | The renderer: shapes, noise, the camera, the **light rig (`RIG`)**, the house clay material (`clay()`), soft shadows, ambient occlusion, bloom, halos, the tone curve and the PNG writer |
 | `scenes/*.js` | One file per picture or family: `build(variant)` returns the scene, and `post()` adds glow or atmosphere |
-| `jobs.js` | Every picture made: its scene, variant, target path in `assets/` and WebP quality. It appends `jobs-phase2.js`, the game pictures and props |
+| `jobs.js` | Every picture made: its scene, variant, target path in `assets/` and WebP quality. It appends `jobs-phase2.js` (the game pictures and props), `jobs-rocket22.js` (the rocket's gear) and `jobs-world22.js` (the space station, travel clouds and asteroids) |
+| `scenes/rocketgear.js` | Gear rendered in the rocket's own frame and camera: the rocket is present as an invisible occluder, so only the piece and the shadow it casts on the rocket reach the picture |
+| `scenes/station.js`, `scenes/spacefx.js` | The space station (outside, and the garage room with a clear window), and what a flight passes (clouds, asteroids) |
 | `render.js` | Renders jobs into `out/`, and warns if a transparent picture touches its frame edge |
 | `encode.js` | The local encoder page and server |
 | `out/` | The masters, git-ignored |
@@ -55,14 +63,17 @@ npm run verify
 4. **Keep the anchors.** The app positions things by fixed points in each
    picture: Pip's antenna ball, the rocket's nozzle, the beacon's lamp, the
    Moon's beacon, the launch pad and every landing spot and marker foot on a
-   horizon, the letter stone's face and the meteor stone's top.
+   horizon, the letter stone's face, the meteor stone's top, and the
+   station's turntable, window and docking bay (`station.js` `ANCHORS`).
+   Gear shares the rocket's frame, so it has no anchor of its own: never
+   reframe the rocket without re-rendering every gear piece.
    [docs/ASSET-BRIEFS.md](../../docs/ASSET-BRIEFS.md) lists them, and
    contract 31 projects the scene cameras to check the CSS against them. If a
    scene moves one, update the CSS (or the destination's marker data) in the
    same change.
 5. **Paints are masks, not pictures.** The rocket job also writes
    `rocket-paint.png`, the coverage of its `paint: true` materials. Never add
-   one rocket per colour.
+   one rocket per colour; a theme is a CSS pattern through the same mask.
 6. **Nothing from `references/`.** A contract checks this folder never
    mentions it.
 

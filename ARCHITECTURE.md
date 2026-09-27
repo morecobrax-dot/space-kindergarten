@@ -14,7 +14,7 @@ The whole application is one file with four blocks, in this order:
 |---|---|
 | `<head>` | Meta, viewport, manifest link. The block between `APP-META-BEGIN/END` is **derived**, written by `config:sync`. |
 | One `<style>` | Design tokens, adult-area controls, the child's scenes, overlay presentation, toast, responsive rules. |
-| `<body>` markup | The world stage, six scenes, the rotate prompt, and every overlay, all declared statically. Everything else is generated. |
+| `<body>` markup | The world stage, the child's HUD, six scenes, the rotate prompt, and every overlay, all declared statically. Everything else is generated. |
 | One `<script>` | Foundation (config, storage, migration, overlays, toast, confirmation, navigation), then the product, then settings, utilities and boot. |
 
 **Keep it to one substantial `<script>` block.** The test harness evaluates
@@ -57,9 +57,14 @@ domain. Components read roles, never colours. Contracts forbid:
 
 The child has its own scale:
 
-- **Type:** `--fs-kid-*` and `--fs-glyph`.
+- **Type:** `--fs-kid-*`, `--fs-hud-*` and `--fs-glyph`.
 - **Touch targets:** `--touch-kid` (76px) and `--touch-hero` (112px).
-- **Tiles:** `--tile-size`.
+  A mark can be smaller than its target: the HUD's marks are `--hud-mark`.
+- **Tiles:** `--tile-size` before a play field is measured.
+- **The viewport a child can see:** `--vh` and `--vw`, measured by
+  `fitViewport()` into `--app-h` and `--app-w`, and `--ui`, which scales
+  marks and type (never targets) on a short screen. The child world never
+  uses raw `vh`/`vw`: on iPad Safari 100vh is taller than the visible page.
 
 ### Overlay engine
 
@@ -102,25 +107,32 @@ Each layer reads only the ones above it.
 | Layer | What it is | Rule |
 |---|---|---|
 | **ASSETS** | `ASSET_REGISTRY`: every picture, its source, licence and state | The only place an asset path is written. A contract enforces it. |
-| **CONTENT** | `SKILLS`, `LETTERS`, `DESTINATIONS`, `MISSIONS`, `COSMETICS`, `VOICE_CUES` | Data only. Checked by `validateContent()` at boot and in the contracts. |
-| **ENGINE** | Rounds, difficulty, the help ladder, evidence, progress and the star ledger | Pure functions: no DOM, no storage, seeded randomness. |
+| **CONTENT** | `SKILLS`, `LETTERS`, `WORDS`, `DESTINATIONS`, `MISSIONS`, `TRAVEL_ART`, `COSMETIC_SLOTS`, `COSMETICS`, `VOICE_CUES` | Data only. Checked by `validateContent()` at boot and in the contracts. |
+| **ENGINE** | Rounds, difficulty, the help ladder, evidence, progress, the star ledger, looks, what a place teaches | Pure functions: no DOM, no storage, seeded randomness. |
 | **JOURNEY** | The child's saved state (`journey`) | Five keys, each written only by its owner. |
-| **AUDIO** | `Voice`, `Sfx`, `TIMING` | A recording if one exists, otherwise the device voice (temporary), otherwise a caption. |
-| **SCENES** | The world stage and flights; welcome, Earth, travel, a planet, a mission, the Rocket Dock; one view per activity type | Controllers return promises, so a contract can walk the journey. |
+| **AUDIO** | `Voice`, `Sfx`, `TIMING`, `DIALOGUE` | A recording if one exists, otherwise the device voice (temporary), otherwise a caption. Each kind of line sits in time by `DIALOGUE`. |
+| **SCENES** | The HUD; the world stage, flights and the resting-stage check; welcome, Earth, travel, a planet, a mission, the space station; one view per activity type; the play-field fit | Controllers return promises, so a contract can walk the journey. |
 | **GROWN-UPS** | Hold gate, progress, sound, motion, data, about | Behind a 3-second hold, with erasing behind a confirmation too. |
 
 ### Content model
 
 ```
-Skill        { label, status: 'active' | 'planned', firstTry }  seven named, three active
+Skill        { label, short, status: 'active' | 'planned',   seven named, three active;
+               firstTry }                                    `short` is a child's word
 Word         { speak, picture, rime, onset, beats[] }         rhymes and beats
-Destination  { id, kind: 'home' | 'destination' | 'planned',   the STORY layer
+Destination  { id, kind: 'home' | 'destination' | 'station'  the STORY layer
+                   | 'planned', name, label, tagline?,
                asset, restoredAsset, horizon, sky{x,y,size},
                primarySkill, reviewSkills, missions[], unlock{after},
                markers{ missionId: { asset, litAsset, at, height, foot, call } },
                story{ lines } }
-Mission      { id, destinationId, skillId, howTo, choices,   the LEARNING layer
-               difficulty{min,max}, reward{stars}, activities[] }
+  station    { room, outside, bay, turntable, window{earth} } the Rocket Dock, as a place
+Mission      { id, destinationId, skillId, title, task,      the LEARNING layer;
+               howTo, choices, difficulty{min,max},          title and task are the HUD's
+               reward{stars}, activities[] }
+CosmeticSlot { id: 'paint' | 'gear' | 'theme', label, speak }
+Cosmetic     { id, slot, name, cost, starter?,               one of each slot is worn;
+               tint? | art? | pattern?, focus? }             focus: where a gear chip zooms
 Activity     { type, target, answer?, form?, guided? }       authored targets
 ActivityType { skillId, repeatable?, validate, evidenceKey,  ACTIVITY_TYPES registry
                promptCue, buildRound }
@@ -140,30 +152,97 @@ sky pictures, a horizon, a marker per mission and its story lines, and
 appending it to `JOURNEY_ORDER`. The world stage draws it from that data:
 no scene names a place.
 
+### The HUD
+
+One `<header class="hud">` sits over every child scene and owns the top
+band (`--hud-h`); every scene's controls start below it. `setHud(scene)`
+draws it from `hudState(scene)`, which reads the state and the content:
+
+| Scene | Left | Title / task |
+|---|---|---|
+| welcome, a flight | — (hidden) | — |
+| Earth | the grown-ups lock | Earth / Home base |
+| a planet | Home (flies home) | the planet's `label` / what it teaches (`focusLabel()`, from its missions' skills) |
+| a mission | Home (asks first) | the mission's `title` / `task`, and its progress |
+| the space station | Back (flies home) | Space Station / Rocket garage |
+
+The stars are always top right. `enterScene()` is the one way into a child
+scene: the scene, the stage's view, the HUD and ambient life together.
+
 ### The world stage
 
 One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
 "The world stage" in SCENES):
 
-- **Sky and two star layers,** painted once.
+- **Sky and two star layers,** painted once. The **ambient layer** holds
+  the rare shooting star at rest (`shootingStarPath()`: deterministic, far
+  side of the sky, below the HUD; off in missions, in flight and with
+  Reduce Motion).
 - **The camera** (`.stage-camera`): two place slots, the flight path, and the
-  rocket. The Rocket Dock is this camera lowered onto the launch pad
-  (`data-view="dock"`), not a separate screen.
+  rocket.
 - **A place slot** (`placeA`, `placeB`) holds a place's sky (planets, home,
-  the Sun's glow) and its ground: the horizon picture and the markers. It is
-  drawn by `drawPlace()` from `DESTINATIONS`; `paint()` redraws a part only
-  when its HTML changed, so nothing blinks.
+  the Sun's glow) and its ground: the horizon picture and the markers, or
+  the station's room with Earth behind its window. It is drawn by
+  `drawPlace()` from `DESTINATIONS`; `paint()` redraws a part only when its
+  HTML changed, so nothing blinks. Which planet is chosen on Earth is a
+  class (`applyPick()`), not markup, so choosing never redraws the sky.
 - **Geometry** is tokens (`--world-w`, `--crest-y`, `--world-top`,
-  `--rocket-h`): the horizon is 150vh wide and never narrower than the
-  screen, its crest at 62vh. Every prop, landing spot and hit area is a
-  fraction of the horizon box, so it stays on the ground at any size.
-- **Flights** (`travelTo()`): draw the destination into the other slot,
-  measure the rocket before and after moving the stage to the destination
-  (FLIP), and animate transforms and opacity with the Web Animations API.
-  The resting state is the destination, so a skip, a hidden tab or no
-  animation support all land in the same place. Reduce Motion crossfades.
+  `--rocket-h`; `--station-w/h` for the garage): the horizon is 150 `--vh`
+  wide and never narrower than the screen, its crest at 62 `--vh`. Every
+  prop, landing spot and hit area is a fraction of its picture, so it
+  stays in place at any size.
+- **Travel layers:** `travelFar` (behind the rocket), `travelNear` (in
+  front) and `landFx` (touchdown dust). `travelFx()` fills them for one
+  flight; they are cleared when it lands.
 - **Held beats** (`relightHold`, `markerHold`, `revealHold`): what was
-  restored is drawn dark for a beat, then lights up while the child watches.
+  restored is drawn dark for a beat, then lights up while the child watches
+  (`releaseHeld()` lets go in place, so it crossfades).
+
+### Flights
+
+- **The plan** (`travelPlan()`, pure): from where a trip starts and ends,
+  whether it is a first arrival, whether the route was flown this session,
+  and the flight's number, it picks the duration and the motifs, and splits
+  the trip into five phases: ignite, rise, cruise, approach, touchdown.
+  Motifs: `clouds-out` (leaving Earth), `clouds-in` (coming home), `cruise`
+  (streaming stars and rushing specks), `shooting` (every other cruise),
+  `asteroids` (one trip in three, never a first arrival), `tunnel` (the
+  first trip to a world beyond the first stop), `station-in` and
+  `station-out`.
+- **The move** (`travelTo()` + `flightMoves()`): the controls clear, the
+  destination is drawn into the other slot and held out of sight, the
+  rocket is measured before and after the stage moves (FLIP, with scale),
+  and everything moves by transforms and opacity with the Web Animations
+  API. The resting state is the destination, so a skip, a resize, a hidden
+  tab or no animation support all land in the same place. Reduce Motion
+  crossfades.
+- **Arriving** (`settleInto()`): touchdown dust or light, the rocket's clay
+  giving a little, Pip settling, the HUD fading in — and only then may
+  anything be tapped.
+- **The rest** (`stageRestingProblems()`, `checkStage()`): the rules of a
+  stage at rest, checked after every flight, at boot and on return to the
+  app. A broken rest is redrawn from state and counted in the grown-ups
+  area ("Display checks").
+
+### Missions: input and the play field
+
+- **Who owns a tap** (`session.input`): `intro` (a tap skips to the
+  question), `open` (answers are taken), `wait` (praise, correction,
+  between rounds: a tap waits). A wrong answer holds taps for
+  `TIMING.wrongHold`, so a bouncing finger is one answer.
+- **The play field:** the CSS owns the game's box (below the HUD, right of
+  Pip, standing on the ground); `playfieldSizes()` (pure) sizes the tiles,
+  the picture, the stone and the meteors to fit it, stacked or, on a short
+  wide screen, in a row. `fitPlayfield()` measures and applies it when a
+  round is drawn and when the screen changes shape.
+
+### The space station
+
+The Rocket Dock is a place (`DESTINATIONS.station`), reached by a flight
+(`openDock()` → `travelTo('station')`, and `leaveDock()` home). The rocket
+stands on the turntable, larger. The panel holds three tabs (paint, gear,
+themes), the things to try and one action. Trying something on changes
+only the stage rocket (`previewLook()`); the action unlocks or wears it.
 
 ### Data model
 
@@ -173,7 +252,7 @@ One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
 | `data.completions` | `[{ id: runId, missionId, destinationId, skillId, startedAt, completedAt, rounds, firstTry, helped, unscored }]` | end of a mission |
 | `data.stars` | `[{ id: 'earn.<runId>' \| 'spend.<cosmeticId>', kind, amount, runId \| cosmeticId, at }]` | end of a mission (earn); the Dock (spend) |
 | `data.evidence` | `[{ id: '<skill>.<item>.<form>', item, form, seen, firstTry, recent[≤8], lastPracticed }]` | after each resolved round |
-| `data.rocket` | `{ paint, updatedAt }` | the Dock |
+| `data.rocket` | `{ paint, gear?, theme?, updatedAt }` (a missing slot reads as its free starter, so v0.3.0 records need no migration) | the space station |
 | `ui.sound`, `ui.motion` | device preferences | grown-ups area |
 
 **Derived, never stored:**
@@ -189,7 +268,8 @@ One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
 - A run earns once.
 - A cosmetic is bought once.
 - A spend is refused without enough stars.
-- Only owned paint is worn. An unknown saved paint shows the starter paint without rewriting the record.
+- Only owned things are worn. An unknown or unowned saved item shows its slot's starter without rewriting the record.
+- Choosing a paint takes a theme off; a theme hides the paint without forgetting it.
 - A completion with no earning is repaid at boot, exactly once.
 - An unreadable value is copied to `sys.backup.unreadable.<key>` before anything can overwrite it.
 - The Dock has no write path to completions or evidence.
@@ -198,8 +278,17 @@ One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
 
 `TIMING` is the one table of durations:
 
-- **Flights:** 1.3s normally, 2.2s on the first arrival, 0.32s with Reduce Motion.
-- **Feedback:** the praise hold, the celebration guard, and the reward stars (all landed within about 2s).
+- **Flights:** 2.2s normally, 3.0s on a first arrival, 1.7s on a route
+  already flown, 1.9s (1.5s again) to or from the station, 0.32s with
+  Reduce Motion; then 0.42s to settle. The controls clear in 0.18s.
+- **Feedback:** the wrong-answer hold (0.45s), the celebration guard, and
+  the reward stars (all landed within about 2s).
+- **Ambient:** a shooting star about every 13–23s at rest.
+
+`DIALOGUE` is the other table: for each kind of line (story, instruction,
+question, praise, feedback, hint, reaction) its breath before and after,
+its minimum hold (praise holds 0.95s), and whether a tap may cut it.
+`TIMING.dialogueScale` scales all of it; the contracts set 0.
 - **Beats:** a 1.5s pause ends a count; taps closer than 0.09s are one.
 - **Prompts:** re-asking after 10s idle, at most twice.
 - **Gate:** 3s.
@@ -213,9 +302,12 @@ The contracts collapse these to zero to run the journey in milliseconds.
 
 - **Contracts 1–19** are the foundation's own, retargeted where they used to
   exercise the starter demo.
-- **Contracts 20–33** cover the product. 32 holds the world stage (one
+- **Contracts 20–38** cover the product. 32 holds the world stage (one
   stage, places from data, one primary action, one mission at a time); 33
-  holds Rhyme Radar and Syllable Meteors.
+  holds Rhyme Radar and Syllable Meteors; 34 the HUD, lesson titles and
+  choosing a planet; 35 travel plans, the resting stage and ambient
+  shooting stars; 36 who owns a tap; 37 the play field on every screen;
+  38 the space station and what a rocket wears.
 
 The journey contract (28) plays welcome → Earth → the Moon → the beacon →
 the mission → the world answering → home → Dock → reload through the same
@@ -231,7 +323,12 @@ See the QA notes in `docs/PRODUCT.md`.
 | A picture | A file in `assets/`, one `ASSET_REGISTRY` entry, then `npm run config:sync` |
 | A recording | A registry entry, then its path in `VOICE_RECORDINGS` under the line's id |
 | A mission | `MISSIONS` plus the destination's `missions` list; `validateContent()` checks it |
-| A new kind of activity | An `ACTIVITY_TYPES` entry, content, and a `GAME_VIEWS` entry |
+| A new kind of activity | An `ACTIVITY_TYPES` entry, content, a `GAME_VIEWS` entry, and its shapes in `playfieldSizes()` |
+| A lesson title or task | The mission's `title` and `task`; the HUD shows them |
+| Something to wear | A `COSMETICS` line in its slot: a `--paint-*` token, a gear picture in the rocket's frame, or a theme pattern in the CSS |
+| A travel motif | A rule in `travelPlan()`, its pieces in `travelFx()`, its moves in `flightMoves()`, and a contract 35 check |
+| A rule for the resting stage | A line in `stageRestingProblems()`, and what `repairStage()` must reset |
+| A pause in Pip's speech | The line's kind in `DIALOGUE`, never a timeout in a scene |
 | A destination | A `DESTINATIONS` entry (sky pictures, horizon, markers, story) and `JOURNEY_ORDER`; its renders in `tools/art/jobs.js` |
 | Persistent state | A key in `KEYS`, under `data.` or `ui.`, with a single owner |
 | A data shape change | Bump `DATA_SCHEMA_VERSION` and add a migration |

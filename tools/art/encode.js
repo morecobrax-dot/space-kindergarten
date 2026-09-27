@@ -4,6 +4,8 @@
    ---------------------------------------------------------
      node tools/art/encode.js
      then open http://127.0.0.1:8397/ in Chrome or Edge
+   (…/?only=rocket,gear- encodes only the jobs whose names start so,
+   leaving every other shipped picture exactly as it is)
 
    Node has no WebP encoder, and adding one would mean a new
    dependency. Every Chromium browser has one, so this serves a
@@ -47,7 +49,7 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>encoding…</title>
 <h1>Encoding clay renders</h1><table id="t"></table><p id="s"></p>
 <script>
 (async function(){
-  const items = await (await fetch('/list')).json();
+  const items = await (await fetch('/list' + location.search)).json();
   const t = document.getElementById('t');
   let total = 0, failed = 0;
   for(const it of items){
@@ -79,7 +81,12 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>encoding…</title>
 http.createServer((req, res) => {
   const u = new URL(req.url, 'http://127.0.0.1');
   if(req.method === 'GET' && u.pathname === '/'){ res.writeHead(200, { 'Content-Type': 'text/html' }); res.end(PAGE); return; }
-  if(req.method === 'GET' && u.pathname === '/list'){ res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(list())); return; }
+  if(req.method === 'GET' && u.pathname === '/list'){
+    const only = (u.searchParams.get('only') || '').split(',').filter(Boolean);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(list().filter(i => !only.length || only.some(o => i.name.indexOf(o) === 0))));
+    return;
+  }
   if(req.method === 'GET' && u.pathname.indexOf('/out/') === 0){
     const f = path.join(OUT, path.basename(u.pathname));
     if(!fs.existsSync(f)){ res.writeHead(404); res.end(); return; }

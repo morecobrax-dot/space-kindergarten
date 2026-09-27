@@ -73,8 +73,9 @@ function imageSize(file){
    values themselves are asserted elsewhere; here only the order matters. */
 function fast(c){
   Object.assign(c.TIMING, {
-    travel: 0, travelFirst: 0, travelReduced: 0, travelSettle: 0,
-    praiseMin: 0, betweenRounds: 0, celebrateGuard: 0, starEvery: 0, starFirst: 0, starFlight: 0,
+    travel: 0, travelFirst: 0, travelRepeat: 0, travelDock: 0, travelDockRepeat: 0, travelReduced: 0, travelSettle: 0,
+    uiClear: 0, arriveSettle: 0, wrongHold: 0, dialogueScale: 0, shootingStarEvery: 1e9, shootingStarJitter: 0,
+    betweenRounds: 0, celebrateGuard: 0, starEvery: 0, starFirst: 0, starFlight: 0,
     reprompt: 1e9, idleHint: 1e9, captionBase: 0, captionPerChar: 0,
     speechStartGrace: 5, speechSafetyBase: 40, speechSafetyPerChar: 0,
     relight: 0, beatPause: 0, beatSettle: 0, beatBounce: 0
@@ -121,7 +122,7 @@ async function playMission(c, opts){
     const r = c.session.run.round;
     if(!r) break;
     /* Between rounds, or while Pip is showing the beats: wait, as a child would. */
-    if(c.session.locked || c.session.beat.hold){ await wait(2); continue; }
+    if(c.session.input !== 'open' || c.session.beat.hold){ await wait(2); continue; }
     const wrongNow = (o.wrongRounds || []).indexOf(r.index) !== -1 && r.misses < 2;
     if(r.activity.type === 'syllable-tap'){
       const n = wrongNow ? (r.answer === 0 ? 2 : 1) : (r.guide || r.answer + 1);
@@ -736,9 +737,32 @@ function testMobile(){
     const re = new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\{[^}]*min-height: var\\(--touch-kid\\)');
     T(sel + ' meets the child floor', re.test(style));
   });
-  T('the launch button uses the hero size', /\.launch-btn\{[^}]*min-height: var\(--touch-hero\)/.test(style));
-  T('a choice tile is never smaller than 130px', /--tile-size: clamp\(130px,/.test(style));
-  T('the repeat button is large and round', /\.repeat-btn\{[^}]*width: 104px; height: 104px/.test(style));
+  T('the launch button uses the hero size, and on a short screen never shrinks below a child\'s target',
+    /\.launch-btn\{[^}]*min-height: var\(--touch-hero-fit\)/.test(style) &&
+    /--touch-hero-fit: max\(var\(--touch-kid\), calc\(var\(--touch-hero\) \* var\(--ui\)\)\);/.test(style));
+  T('before its play field is measured, a choice tile is never smaller than 130px', /--tile-size: clamp\(130px,/.test(style));
+  const repeatSize = style.match(/\.repeat-btn\{[^}]*width: (\d+)px; height: (\d+)px/);
+  T('the repeat button is round and a full child\'s target', !!repeatSize && repeatSize[1] === repeatSize[2] && Number(repeatSize[1]) >= Number(kid),
+    repeatSize ? repeatSize[1] + 'px' : 'none');
+
+  sub('the HUD: quiet marks, full targets, inside the safe area');
+  /* Found on a real iPad: every child control was a giant disc. The mark
+     can be small; the target never is. */
+  T('the HUD reads the top, left and right insets',
+    /\.hud\{[\s\S]{0,420}padding: calc\(var\(--hud-pad\) \+ var\(--inset-top\)\) calc\(var\(--hud-side\) \+ var\(--inset-right\)\) 0 calc\(var\(--hud-side\) \+ var\(--inset-left\)\)/.test(style));
+  T('and keeps every full target on the screen, however small its mark has become',
+    /--hud-side: max\(var\(--space-lg\), calc\(\(var\(--touch-kid\) - var\(--hud-mark\)\) \/ 2\)\);/.test(style));
+  T('a HUD button is a full child\'s target', /\.hud-btn\{[^}]*width: var\(--touch-kid\); height: var\(--touch-kid\)/.test(style));
+  T('while its visible mark is smaller, and quiet', /--hud-mark: calc\(58px \* var\(--ui\)\);/.test(style) && /\.hud-disc\{[^}]*width: var\(--hud-mark\)/.test(style));
+  T('the star count too: the pill is the mark, the button the target', /\.star-pill\{[^}]*height: var\(--hud-mark\)/.test(style) &&
+    /\.star-count\{[^}]*min-width: var\(--touch-kid\); min-height: var\(--touch-kid\)/.test(style));
+  T('marks shrink on a short screen through --ui, and no target does',
+    !/--touch-kid:[^;]*var\(--ui\)/.test(style) && /function uiScale\(h\)\{ return Math\.round\(Math\.max\(0\.72, Math\.min\(1, h \/ 820\)\) \* 100\) \/ 100; \}/.test(js()));
+  const world = style.slice(style.indexOf('CHILD WORLD — one stage'), style.indexOf('OVERLAY ENGINE — presentation'));
+  T('the child world is sized in the viewport the child can see (--vh, --vw), never in raw vh or vw',
+    world.length > 5000 && !/[\d.]\s*(vh|vw)\b/.test(world), (world.match(/[^\s;{]*[\d.]\s*(?:vh|vw)\b[^;]*/g) || []).slice(0, 3).join(' | '));
+  T('which is measured from the window, on every resize', /root\.style\.setProperty\('--app-h', h \+ 'px'\);/.test(js()) &&
+    /window\.addEventListener\('resize', \(\) => \{\s*fitViewport\(\);/.test(js()));
   T('the grown-ups lock still meets the adult floor', /\.gate-btn\{[^}]*width: 56px; height: 56px/.test(style));
 
   sub('orientation, landscape-first');
@@ -1340,8 +1364,15 @@ function testContent(){
   T('the rest of the route is declared, and pretends to nothing: no pictures, no missions, never drawn',
     planned.length >= 5 && planned.every(id => !c.DESTINATIONS[id].asset && !(c.DESTINATIONS[id].missions || []).length &&
       c.JOURNEY_ORDER.indexOf(id) === -1 && !c.destinationUnlocked(id, [])), planned.join(','));
-  T('every destination is home, on the journey, or planned',
-    Object.keys(c.DESTINATIONS).every(id => id === 'earth' || c.JOURNEY_ORDER.indexOf(id) !== -1 || c.DESTINATIONS[id].kind === 'planned'));
+  T('every destination is home, on the journey, planned, or the space station',
+    Object.keys(c.DESTINATIONS).every(id => id === 'earth' || c.JOURNEY_ORDER.indexOf(id) !== -1 ||
+      c.DESTINATIONS[id].kind === 'planned' || c.DESTINATIONS[id].kind === 'station'));
+  const task = c.MISSIONS['moon-1'].task;
+  c.MISSIONS['moon-1'].task = 'Find the letter M';
+  T('a lesson task that gives the answer away is caught', c.validateContent().some(p => /gives an answer away/.test(p)));
+  c.MISSIONS['moon-1'].task = 'Tap the letter that you hear Pip say out loud';
+  T('and so is a task that is a paragraph', c.validateContent().some(p => /paragraph/.test(p)));
+  c.MISSIONS['moon-1'].task = task;
   const wordsSaved = JSON.stringify(c.WORDS.cake);
   c.WORDS.cake.rime = 'ook';
   T('a rhyme that does not rhyme is caught', c.validateContent().some(p => /does not rhyme/.test(p)));
@@ -1578,7 +1609,7 @@ function testCosmeticIsolation(){
   })());
 
   sub('the Dock has no write path to learning');
-  const dockCode = ['openDock', 'renderDockScene', 'pickPaint', 'dockAction', 'popDockRocket', 'leaveDock']
+  const dockCode = ['openDock', 'renderDockScene', 'pickItem', 'pickDockTab', 'previewLook', 'lookShows', 'itemChipHtml', 'dockAction', 'popDockRocket', 'leaveDock']
     .map(n => fnBody(src, n)).join('\n');
   T('the Dock code was found', dockCode.length > 500);
   ['KEYS.completions', 'KEYS.evidence', 'saveCompletions', 'saveEvidence', 'journey.completions =', 'journey.evidence =']
@@ -1726,7 +1757,8 @@ async function testAudio(){
     families.every(f => [0, 1, 2, 3, 7, 100].every(n => !!c.voiceCue(c.familyLine(f, n)))));
   T('star counts from 0 to 50 all have lines', Array.from({ length: 51 }, (_, n) => n).every(n => c.voiceCue('stars.have.' + n)));
   T('every price shortfall has a line', [1, 2, 3, 4, 5, 6].every(n => c.voiceCue('dock.needMore.' + n)));
-  T('every paint has its name spoken', c.COSMETICS.every(x => c.voiceCue('paint.' + x.id)));
+  T('everything a rocket can wear has its name spoken', c.COSMETICS.every(x => c.voiceCue('item.' + x.id)));
+  T('and so does every kind of thing to change', c.COSMETIC_SLOTS.every(x => c.voiceCue('dock.tab.' + x.id)));
 
   sub('the screen never gives the answer away');
   Object.keys(c.LETTERS).forEach(L => {
@@ -2021,27 +2053,29 @@ async function testChildJourney(){
   T('Pip points at the Dock once, because there are stars to spend', sp.said.some(s => /paint brush/.test(s)));
   T('and remembers having done so', c.storyFlag('heard.dockHint'));
 
-  sub('the Rocket Dock');
-  c.openDock();
-  T('the Dock opens', c.currentScene === 'dock');
-  T('it is the same world, the camera lowered to the pad', d.getElementById('stage').getAttribute('data-view') === 'dock');
-  c.pickPaint('paint-lime');
+  sub('the Rocket Dock: the space station');
+  await c.openDock();
+  T('the Dock opens: the rocket flies up to the space station', c.currentScene === 'dock' && c.session.place === 'station');
+  T('it is a place in the same world, not a menu over it', d.getElementById('stage').getAttribute('data-place') === 'station' &&
+    d.getElementById('place' + c.session.slot + 'Art').innerHTML.indexOf(c.assetSrc(c.DESTINATIONS.station.room)) !== -1);
+  c.pickItem('paint-lime');
   T('trying a paint shows it on the rocket at once', /--paint: var\(--paint-lime\)/.test(d.getElementById('stageRocket').getAttribute('style')));
   c.dockAction();
   T('a paint the child cannot afford is not bought', c.ownedCosmetics(c.journey.stars).indexOf('paint-lime') === -1);
   T('Pip says how many more stars it needs', /You need 3 more stars/.test(sp.said[sp.said.length - 1]));
-  c.pickPaint('paint-sky');
+  c.pickItem('paint-sky');
   c.dockAction();
   c.dockAction();
   T('an affordable paint unlocks', c.ownedCosmetics(c.journey.stars).indexOf('paint-sky') !== -1);
   T('and is worn at once', c.currentPaint() === 'paint-sky');
   T('a second tap does not spend twice', c.journey.stars.filter(e => e.kind === 'spend').length === 1);
   T('the balance is what is left', c.starBalance(c.journey.stars) === 0);
-  c.pickPaint('paint-sunny');
-  c.leaveDock();
-  T('leaving with an unchosen preview keeps the real paint', c.currentPaint() === 'paint-sky' &&
+  c.pickItem('paint-sunny');
+  await c.leaveDock();
+  T('leaving with an unchosen try-on keeps the real paint', c.currentPaint() === 'paint-sky' &&
     /--paint: var\(--paint-sky\)/.test(d.getElementById('stageRocket').getAttribute('style')));
-  T('and the camera rises back to home', d.getElementById('stage').getAttribute('data-view') === 'home');
+  T('and the rocket flies back down to Earth', c.currentScene === 'earth' && c.session.place === 'earth' &&
+    d.getElementById('stage').getAttribute('data-place') === 'earth');
 
   sub('reload');
   const again = H.loadApp({ sharedStorage: shared });
@@ -2059,7 +2093,8 @@ async function testChildJourney(){
   const third = H.loadApp({ sharedStorage: shared, windowExtras: sp2.extras });
   const t = fast(third.ctx);
   t.pickDestination('moon');
-  T('tapping the Moon in the sky chooses it for Launch', t.launchTarget() === 'moon' && /The Moon! Tap Launch/.test(sp2.said[sp2.said.length - 1]));
+  T('tapping the Moon in the sky chooses it for Launch, and Pip says what is there', t.launchTarget() === 'moon' &&
+    /The Moon! That's where we find letters/.test(sp2.said[sp2.said.length - 1]));
   await t.launch();
   const arrivals = [1, 2, 3].map(n => t.voiceCue('story.moon.arrive.' + n).speak);
   T('a returning explorer hears a short arrival, not the whole story again',
@@ -2102,10 +2137,18 @@ async function testMotion(){
   const stage = d.getElementById('stage');
 
   sub('the promised timings');
-  T('an ordinary flight takes about a second', c.TIMING.travel >= 1000 && c.TIMING.travel <= 1500, String(c.TIMING.travel));
-  T('the first flight to a new place is longer, and still under three seconds',
-    c.TIMING.travelFirst >= 1500 && c.TIMING.travelFirst <= 2500, String(c.TIMING.travelFirst));
-  T('with Reduce Motion a flight is a short crossfade', c.TIMING.travelReduced <= 400);
+  /* Found on a real iPad: flights felt like page transitions — too quick
+     to read as a journey. A trip is now action, a breath, travel, and a
+     settle; still quick, and never the long version every time. */
+  const plan = o => c.travelPlan(Object.assign({ from: 'earth', to: 'moon', first: false, repeat: false, reduced: false, flight: 1 }, o));
+  const trip = p => p.duration + c.TIMING.arriveSettle;
+  T('a common trip, the settle after touchdown included, takes 2 to 3 seconds', trip(plan({})) >= 2000 && trip(plan({})) <= 3000, trip(plan({})) + 'ms');
+  T('a first arrival carries story: 3 to 4 seconds', trip(plan({ first: true })) >= 3000 && trip(plan({ first: true })) <= 4000, trip(plan({ first: true })) + 'ms');
+  T('a route already flown is quicker, and still a journey', plan({ repeat: true }).duration < plan({}).duration && trip(plan({ repeat: true })) >= 1800,
+    trip(plan({ repeat: true })) + 'ms');
+  T('the space station is close: under 3 seconds, quicker once flown', trip(plan({ to: 'station' })) <= 3000 &&
+    plan({ to: 'station', repeat: true }).duration < plan({ to: 'station' }).duration && trip(plan({ from: 'station', to: 'earth' })) <= 3000);
+  T('with Reduce Motion a flight is a short crossfade, even the first', plan({ reduced: true, first: true }).duration <= 400 && c.TIMING.travelReduced <= 400);
   T('a flight can be skipped with a tap', /onclick="skipTravel\(\)"/.test(H.readApp()));
   T('the grown-ups hold takes three seconds', c.TIMING.gateHold === 3000);
   T('reward stars are quick: all three have landed within two seconds',
@@ -2123,12 +2166,15 @@ async function testMotion(){
   T('the place left behind is emptied, so no picture in it answers to a name the new place uses',
     d.getElementById('place' + (shown[0] === 'A' ? 'B' : 'A') + 'Sky').innerHTML === '');
   T('the rocket is not left flying', !d.getElementById('stageRocket').classList.contains('is-flying'));
-  c.TIMING.travel = 5000;
+  T('and the resting stage checks out', c.stageRestingProblems().length === 0, c.stageRestingProblems().join('; '));
+  c.TIMING.travel = 5000; c.TIMING.travelRepeat = 5000;
   const t1 = Date.now();
   const flight = c.travelTo('earth', {});
   const during = ['A', 'B'].filter(s => d.getElementById('place' + s).classList.contains('is-shown'));
   T('where nothing can animate, the destination shows at once: never both places at the same time',
     during.length === 1 && d.getElementById('place' + during[0]).getAttribute('data-place') === 'earth');
+  const heldDuring = ['Ground', 'Sky'].map(k => d.getElementById('place' + c.session.slot + k).style).filter(s => s.transform || s.opacity);
+  T('and nothing holds it out of sight while the flight runs its course', heldDuring.length === 0);
   c.skipTravel();
   await flight;
   T('a skipped flight lands at once, at its destination',
@@ -2291,28 +2337,28 @@ async function testDialogue(){
   await wait(20);
   const isDockIdle = inFamily('dock.idle');
   mark = sp.said.length;
-  c.openDock();
+  await c.openDock();
   await wait(150);
-  const visit1 = sp.said.slice(mark);
+  const visit1 = sp.said.slice(mark).filter(s => s !== line('travel.station'));
   T('the first visit welcomes', visit1.indexOf(line('dock.welcome')) !== -1);
   T('and a child who has not tried a color is offered one hint', visit1.filter(isDockIdle).length === 1, visit1.join(' / '));
-  c.leaveDock();
+  await c.leaveDock();
   await wait(20);
+  await c.openDock();
   mark = sp.said.length;
-  c.openDock();
   await wait(20);
   T('a second visit is quiet', sp.said.length === mark);
-  c.pickPaint('paint-sky');
+  c.pickItem('paint-sky');
   await wait(150);
   T('a child who tries a color is not told to try a color', !sp.said.slice(mark).some(isDockIdle));
-  c.leaveDock();
+  await c.leaveDock();
   await wait(20);
   mark = sp.said.length;
-  c.openDock();
+  await c.openDock();
   await wait(150);
   const visit3 = sp.said.slice(mark).filter(isDockIdle);
   T('a later pause is met in other words', visit3.length === 1 && visit3[0] !== visit1.filter(isDockIdle)[0], visit3.join(' / '));
-  c.leaveDock();
+  await c.leaveDock();
 
   sub('on a planet, Pip points at what to tap — once a visit');
   await wait(20);
@@ -2484,6 +2530,8 @@ async function testClayWorld(){
     Math.abs(cssPercent(flameRule, 'top') - nozzle[1]) < 3, 'flame top ' + cssPercent(flameRule, 'top') + '% vs nozzle ' + nozzle[1].toFixed(1) + '%');
   const standAt = Number((cssRule(sheet, '.stage-rocket').match(/margin-top: calc\(var\(--rocket-h\) \* -([\d.]+)\)/) || [])[1]) * 100;
   T('the rocket stands on the bottom of its nozzle', Math.abs(standAt - nozzle[1]) < 0.6, 'css ' + standAt.toFixed(1) + '% vs nozzle ' + nozzle[1].toFixed(1) + '%');
+  T('and touchdown dust puffs from that same point', Math.abs(c.ROCKET_FOOT * 100 - standAt) < 0.01 && Math.abs(c.ROCKET_FOOT * 100 - nozzle[1]) < 0.6,
+    'ROCKET_FOOT ' + c.ROCKET_FOOT + ' vs css ' + (standAt / 100).toFixed(3));
 
   sub('everything stands on its world, not in its sky');
   const HZ = scene('horizon');
@@ -2492,20 +2540,31 @@ async function testClayWorld(){
   T('on Earth the rocket stands on the centre of its launch pad',
     Math.abs(cssNumber(onEarth, '--rx') * 100 - pad[0]) < 0.6 && Math.abs(cssNumber(onEarth, '--ry') * 100 - pad[1]) < 0.6,
     'css ' + cssNumber(onEarth, '--rx') + ',' + cssNumber(onEarth, '--ry') + ' vs pad ' + pad.map(v => (v / 100).toFixed(4)).join(','));
-  const camera = cssRule(sheet, '.stage-camera');
-  T('the Dock\'s camera lowers onto that same pad',
-    camera.indexOf('(' + cssNumber(onEarth, '--rx') + ' - 0.5)') !== -1 && camera.indexOf(cssNumber(onEarth, '--ry') + ' * var(--world-h)') !== -1);
   const landings = c.JOURNEY_ORDER.map(id => [id, cssRule(sheet, '.stage[data-place="' + id + '"]')]);
   T('on every destination the rocket lands on the ground',
     landings.every(l => l[1] && HZ.groundAt(cssNumber(l[1], '--rx'), cssNumber(l[1], '--ry'))), landings.map(l => l[0]).join(','));
+  const ST = scene('station');
+  const top = projectInScene('station', 'inside', ST.TURNTABLE_TOP);
+  const onStation = cssRule(sheet, '.stage[data-place="station"]');
+  const turntable = c.DESTINATIONS.station.turntable;
+  T('in the space station the rocket stands on the turntable\'s top, in the CSS and in the data',
+    Math.abs(cssNumber(onStation, '--rx') * 100 - top[0]) < 0.6 && Math.abs(cssNumber(onStation, '--ry') * 100 - top[1]) < 0.6 &&
+    Math.abs(turntable[0] * 100 - top[0]) < 0.6 && Math.abs(turntable[1] * 100 - top[1]) < 0.6,
+    'css ' + cssNumber(onStation, '--rx') + ',' + cssNumber(onStation, '--ry') + ' vs render ' + top.map(v => (v / 100).toFixed(4)).join(','));
+  T('the flight in goes through the docking bay where the render has it',
+    c.DESTINATIONS.station.bay.every((v, i) => Math.abs(v - ST.ANCHORS.outside.bay[i]) < 0.005), c.DESTINATIONS.station.bay.join(','));
+  const win = ST.ANCHORS.inside.window, earthAt = c.DESTINATIONS.station.window.earth;
+  const apart = Math.hypot(earthAt[0] - win.x, (earthAt[1] - win.y) * (1600 / 2400)), earthR = earthAt[2] * 0.42;
+  T('Earth hangs behind the window glass: part of it seen through the window, with space above it',
+    apart < earthR + win.r && apart + win.r > earthR, 'centres ' + apart.toFixed(3) + ' apart; Earth ' + earthR.toFixed(3) + ', window ' + win.r);
   const markers = [];
   c.JOURNEY_ORDER.forEach(id => Object.keys(c.DESTINATIONS[id].markers).forEach(mid => markers.push([mid, c.DESTINATIONS[id].markers[mid]])));
   T('every marker stands on the ground', markers.length >= 3 && markers.every(m => HZ.groundAt(m[1].at[0], m[1].at[1])),
     markers.filter(m => !HZ.groundAt(m[1].at[0], m[1].at[1])).map(m => m[0]).join(','));
   T('the horizon\'s crest is where the CSS puts it', /--world-top: calc\(var\(--crest-y\) - var\(--world-h\) \* ([\d.]+)\)/.test(sheet) &&
     Number(sheet.match(/--world-top: calc\(var\(--crest-y\) - var\(--world-h\) \* ([\d.]+)\)/)[1]) === HZ.CREST);
-  const crest = Number((sheet.match(/--crest-y: ([\d.]+)vh;/) || [])[1]);
-  const wide = Number((sheet.match(/--world-w: max\(100vw, ([\d.]+)vh\);/) || [])[1]);
+  const crest = Number((sheet.match(/--crest-y: calc\(([\d.]+) \* var\(--vh\)\);/) || [])[1]);
+  const wide = Number((sheet.match(/--world-w: max\(var\(--app-w\), calc\(([\d.]+) \* var\(--vh\)\)\);/) || [])[1]);
   const planetShare = 100 - crest;
   T('the planet fills the bottom 35–45% of the screen at its crest', planetShare >= 35 && planetShare <= 45, planetShare + '%');
   T('and the picture reaches past the bottom edge, so the ground never ends in a line',
@@ -2537,16 +2596,20 @@ async function testWorldStage(){
 
   sub('one primary action per screen');
   const sceneMarkup = name => { const at = markup.indexOf('id="scene-' + name + '"'); return markup.slice(at, markup.indexOf('</main>', at)); };
-  const primaries = name => (sceneMarkup(name).match(/class="[^"]*\b(launch-btn|play-btn)\b/g) || []).length;
+  const primaries = name => (sceneMarkup(name).match(/class="[^"]*\b(launch-btn|play-btn|primary-btn)\b/g) || []).length;
   T('welcome: Play', primaries('welcome') === 1);
   T('Earth: Launch', primaries('earth') === 1 && /id="launchBtn"/.test(sceneMarkup('earth')));
   T('the Dock stays secondary on Earth', /class="kid-icon-btn earth-dock"/.test(sceneMarkup('earth')));
   T('a planet: the marker pulses; the yellow way home appears only when nothing is left to play',
     primaries('planet') === 1 && /\.scene-planet:not\(\.is-done\) \.planet-go-home\{ display: none; \}/.test(sheet));
-  T('Dock: the paint action', primaries('dock') === 1);
+  T('the space station: the one action for what is being tried on', primaries('dock') === 1 && /id="dockAction"/.test(sceneMarkup('dock')));
   T('a mission has no yellow button: the choices are the task', primaries('mission') === 0);
-  T('the grown-ups lock and the star count keep their corners on Earth',
-    /\.gate-btn\{[^}]*top: 0; left: 0;/.test(sheet) && /\.star-count\{[^}]*top: 0; right: 0;/.test(sheet));
+  const hud = (() => { const at = markup.indexOf('id="hud"'); return markup.slice(at, markup.indexOf('</header>', at)); })();
+  T('one HUD holds the corners of every child scene: the way back (the lock on Earth) top left, the stars top right',
+    (markup.match(/class="hud[ "]/g) || []).length === 1 && /class="hud-left"[\s\S]*id="gateBtn"[\s\S]*id="hudBack"[\s\S]*class="hud-title"[\s\S]*class="hud-right"[\s\S]*id="hudStars"/.test(hud) &&
+    /\.hud-left\{ grid-column: 1; justify-self: start;/.test(sheet) && /\.hud-right\{ grid-column: 3; justify-self: end;/.test(sheet));
+  T('no scene draws a corner button or a star count of its own',
+    !/class="star-count"/.test(markup.replace(hud, '')) && !/(planetHomeBtn|missionHomeBtn|dockBackBtn|earthStars|planetStars|dockStars)/.test(markup));
 
   sub('places are drawn from data');
   const app = H.loadApp();
@@ -2556,7 +2619,7 @@ async function testWorldStage(){
   T('a planet in the sky is big enough for a small finger', c.JOURNEY_ORDER.every(id => c.DESTINATIONS[id].sky.size >= 10));
   T('the scenes never write a horizon, a planet or a marker picture by name',
     !/'(horizon|planet|prop)\.[a-z]+[A-Z]?[a-zA-Z]*'/.test(stripComments(fnBody(js(), 'drawPlace') + fnBody(js(), 'skyHtml') + fnBody(js(), 'markerHtml'))));
-  T('every stage picture is fetched and decoded ahead of a flight', /\^\(horizon\|planet\|bg\|prop\|rocket\|character\)\\\./.test(fnBody(js(), 'preloadStage')) &&
+  T('every stage picture is fetched and decoded ahead of a flight', /\^\(horizon\|planet\|bg\|prop\|rocket\|character\|place\)\\\./.test(fnBody(js(), 'preloadStage')) &&
     /img\.decode\(\)/.test(fnBody(js(), 'preloadStage')));
 
   sub('one mission at a time');
@@ -2795,6 +2858,540 @@ async function testNewGames(){
   T('no console errors here either', g3.errors.length === 0, g3.errors.join(' | '));
 }
 
+/* =========================================================
+   CONTRACT 34 — ONE HUD
+   Found on a real iPad: a child could not tell what each planet
+   teaches or what a lesson was called, and every scene drew its own
+   oversized corner buttons. One HUD now says where you are (or what
+   you are playing) and what to do, from state and content.
+   ========================================================= */
+async function testHud(){
+  section('CONTRACT 34 — one HUD says where you are, what you are playing, and what to do');
+  const src = H.readApp(), sheet = css();
+
+  sub('the HUD owns the top band, and nothing else draws there');
+  T('it sits above the scenes', Number((cssRule(sheet, '.hud').match(/z-index: (\d+)/) || [])[1]) > Number((cssRule(sheet, '.scene').match(/z-index: (\d+)/) || [])[1]));
+  T('its band is its own height', /--hud-h: calc\(var\(--hud-pad\) \+ var\(--touch-kid\)\);/.test(sheet) &&
+    /\.hud\{[^}]*height: calc\(var\(--hud-h\) \+ var\(--inset-top\)\)/.test(sheet));
+  T('every scene\'s controls start below that band', /\.scene-ui\{[^}]*top: calc\(var\(--hud-h\) \+ var\(--inset-top\)\)/.test(sheet));
+  T('so the game\'s box begins under it, and the stars can never cover a choice', /\.game\{[^}]*right: 0; top: 0;/.test(sheet));
+  T('the welcome alone has no HUD band to leave room for', /\.scene-welcome \.scene-ui\{\s*top: calc\(var\(--space-lg\) \+ var\(--inset-top\)\)/.test(sheet));
+
+  sub('what it shows follows the state, drawn from the content');
+  const sp = fakeSpeech();
+  const app = H.loadApp({ windowExtras: sp.extras });
+  const c = fast(app.ctx), d = app.dom.document;
+  const hud = () => ({
+    hidden: d.getElementById('hud').classList.contains('is-hidden'), left: d.getElementById('hud').getAttribute('data-left'),
+    title: d.getElementById('hudTitleMain').textContent, sub: d.getElementById('hudTitleSub').textContent,
+    back: d.getElementById('hudBack').getAttribute('aria-label') || ''
+  });
+  T('the welcome: no HUD, the world alone', c.currentScene === 'welcome' && hud().hidden);
+  await c.startAdventure();
+  T('Earth: the grown-ups lock top left, and where you are', !hud().hidden && hud().left === 'gate' && hud().title === 'Earth' && hud().sub === 'Home base');
+  const flight = c.launch();
+  T('a flight: the controls clear as the engine lights', hud().hidden);
+  await flight;
+  T('a planet names itself and what it teaches, with the way home', !hud().hidden && hud().left === 'home' && hud().title === 'Moon' && hud().sub === 'Letters' && /Earth/.test(hud().back));
+  await c.tapMarker('moon-1');
+  T('a mission names its game, and what to do — two lines, not a paragraph', hud().title === 'Letter Explorer' && hud().sub === 'Find the letter you hear');
+  T('with its progress, in words for a screen reader', /^0 of 6 letters found$/.test(d.getElementById('missionProgress').getAttribute('aria-label')));
+  T('the stars are always the balance, top right', d.getElementById('hudStars').getAttribute('aria-label') === 'You have 0 stars');
+  c.hudBack();
+  c.__flush();
+  T('in a mission, the way back asks first', d.getElementById('homeSheet').classList.contains('open'));
+  c.closeHomeSheet();
+  c.__flush();
+  await playMission(c);
+  T('back on the planet after the mission, the planet\'s own title returns', hud().title === 'Moon' && hud().sub === 'Letters');
+  await c.hudBack();
+  T('on a planet, the way back flies home', c.currentScene === 'earth' && c.session.place === 'earth');
+  c.pickDestination('mercury');
+  await c.launch();
+  T('Mercury teaches two things, named in a child\'s words', hud().title === 'Mercury' && hud().sub === 'Rhymes • Syllables');
+  await c.tapMarker('mercury-1');
+  T('Rhyme Radar', hud().title === 'Rhyme Radar' && hud().sub === 'Find the picture that rhymes');
+  await playMission(c);
+  await c.tapMarker('mercury-2');
+  T('Syllable Meteors', hud().title === 'Syllable Meteors' && hud().sub === 'Tap the beats');
+  await playMission(c);
+  await c.flyHome();
+  await c.openDock();
+  T('the space station names itself, with a way back to Earth', hud().title === 'Space Station' && hud().sub === 'Rocket garage' && hud().left === 'back' && /Earth/.test(hud().back));
+  await c.hudBack();
+  T('where the way back flies home', c.currentScene === 'earth' && c.session.place === 'earth');
+  T('no console errors on the way', app.errors.length === 0, app.errors.join(' | '));
+
+  sub('titles and labels are content, and never the answer');
+  const ids = Object.keys(c.MISSIONS);
+  T('every lesson has a title, and a task of a few words', ids.every(id => c.MISSIONS[id].title && c.MISSIONS[id].task && c.MISSIONS[id].task.split(' ').length <= 6));
+  T('what a place teaches is derived from its missions\' skills', c.destinationFocus('moon').join() === 'Letters' && c.destinationFocus('mercury').join() === 'Rhymes,Syllables');
+  T('so a mission moved to another world takes its label with it', (() => {
+    const was = c.MISSIONS['mercury-2'].skillId;
+    c.MISSIONS['mercury-2'].skillId = 'letter-recognition';
+    const moved = c.destinationFocus('mercury').join();
+    c.MISSIONS['mercury-2'].skillId = was;
+    return moved === 'Rhymes,Letters';
+  })());
+  T('a child is told what a place is for, never the name of a course', Object.keys(c.SKILLS).every(k => c.SKILLS[k].short && c.SKILLS[k].short.split(' ').length <= 2));
+  T('the scenes never write a lesson title or a planet label themselves',
+    !/'(Letter Explorer|Rhyme Radar|Syllable Meteors|Letters|Rhymes|Syllables|Moon|Mercury|Home base|Space Station|Rocket garage)'/.test(stripComments(js().slice(js().indexOf('SCENES\n')))));
+
+  sub('choosing a planet');
+  const sp2 = fakeSpeech();
+  const b = H.loadApp({ windowExtras: sp2.extras });
+  const e = fast(b.ctx), bd = b.dom.document;
+  await e.startAdventure();
+  await launchAndStart(e);
+  await playMission(e);
+  await e.flyHome();
+  await wait(10);                     // the Moon's relight, shown once on the way home, is over
+  const sky = () => bd.getElementById('place' + e.session.slot + 'Sky').innerHTML;
+  const before = sky();
+  e.pickDestination('mercury');
+  T('Launch says where it goes, in words and in its picture', /Mercury/.test(bd.getElementById('launchBtn').getAttribute('aria-label')) &&
+    bd.getElementById('launchBtn').innerHTML.indexOf(e.assetSrc(e.DESTINATIONS.mercury.asset)) !== -1);
+  T('and Pip says what is there', /rhymes and beats/.test(sp2.said[sp2.said.length - 1]));
+  e.pickDestination('moon');
+  T('choosing again moves it: one destination at a time', e.launchTarget() === 'moon' && /the Moon/.test(bd.getElementById('launchBtn').getAttribute('aria-label')) &&
+    bd.getElementById('launchBtn').innerHTML.indexOf(e.assetSrc(e.DESTINATIONS.moon.restoredAsset)) !== -1);
+  T('choosing never launches', e.currentScene === 'earth' && e.session.place === 'earth');
+  T('the sky is not redrawn to move the focus — a class moves, so it can glide and nothing reloads', sky() === before);
+  T('the chosen planet alone wears its name and what it teaches; the others wait, smaller',
+    /\.sky-label\{[^}]*opacity: 0;/.test(sheet) && /html\[data-scene="earth"\] \.sky-body\.is-picked \.sky-label\{ opacity: 1;/.test(sheet) &&
+    /html\[data-scene="earth"\] \.sky-body\.is-picked \.sky-focus\{ transform: scale\(1\.1\d?\); \}/.test(sheet) &&
+    /html\[data-scene="earth"\] \.sky-body\.is-dimmed \.sky-focus\{ transform: scale\(0\.8\d?\);/.test(sheet));
+  T('each planet in the sky carries its label, ready to be shown', /class="sky-label-name">Moon</.test(sky()) && /class="sky-label-focus">Letters</.test(sky()) &&
+    /class="sky-label-focus">Rhymes • Syllables</.test(sky()));
+  T('the chosen light is cool: the warm yellow stays Launch\'s', /--focus-glow: rgba\((1[0-9]{2}),(2[0-9]{2}),(2[0-9]{2}),/.test(sheet));
+  T('the route is drawn as light under the dots, and lights up when the choice changes',
+    /class="route-glow"/.test(fnBody(js(), 'drawFlightPath')) && /drawFlightPath\(changed\)/.test(fnBody(js(), 'pickDestination')));
+}
+
+/* =========================================================
+   CONTRACT 35 — TRAVEL, AND THE STAGE AT REST
+   Found on a real iPad: travel felt like a page transition, and a
+   planet was once drawn wrong at rest. A trip is now one camera move
+   built from a few motifs by rule, and the rest it ends in is written
+   down, checked, and repaired from state.
+   ========================================================= */
+async function testTravel(){
+  section('CONTRACT 35 — one world, one camera, and a stage that always comes to rest');
+  const app = H.loadApp();
+  const c = app.ctx;
+
+  sub('a small vocabulary of motifs, chosen by rule');
+  const P = o => c.travelPlan(Object.assign({ from: 'earth', to: 'moon', first: false, repeat: false, reduced: false, flight: 1 }, o));
+  const has = (p, m) => p.motifs.indexOf(m) !== -1;
+  T('leaving Earth passes through clouds', has(P({}), 'clouds-out') && has(P({ to: 'station' }), 'clouds-out'));
+  T('coming home passes through them the other way', has(P({ from: 'moon', to: 'earth' }), 'clouds-in') && !has(P({ from: 'moon', to: 'earth' }), 'clouds-out') &&
+    has(P({ from: 'station', to: 'earth' }), 'clouds-in'));
+  T('a trip between worlds cruises through streaming stars', has(P({}), 'cruise') && has(P({ to: 'mercury' }), 'cruise') && has(P({ from: 'mercury', to: 'earth' }), 'cruise'));
+  T('a shooting star crosses on every other cruise, the same ones every time', [0, 1, 2, 3, 4].map(f => has(P({ flight: f }), 'shooting')).join() === 'true,false,true,false,true');
+  T('friendly rocks pass one trip in three, and never on a first arrival', [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(f => has(P({ flight: f }), 'asteroids')).length === 3 &&
+    !has(P({ flight: 2, first: true }), 'asteroids'));
+  T('the light tunnel is kept for the first trip to a world beyond the first stop',
+    has(P({ to: 'mercury', first: true }), 'tunnel') && !has(P({ to: 'moon', first: true }), 'tunnel') && !has(P({ to: 'mercury' }), 'tunnel') && !has(P({ from: 'mercury', to: 'earth' }), 'tunnel'));
+  T('the space station is flown into, and out of, by its own motif — no star cruise',
+    has(P({ to: 'station' }), 'station-in') && has(P({ from: 'station', to: 'earth' }), 'station-out') && !has(P({ to: 'station' }), 'cruise'));
+  T('the same trip always plans the same way', JSON.stringify(P({ flight: 5 })) === JSON.stringify(P({ flight: 5 })));
+  const phases = ['ignite', 'rise', 'cruise', 'approach', 'touchdown'];
+  const plans = [P({}), P({ first: true }), P({ repeat: true }), P({ to: 'station' }), P({ from: 'station', to: 'earth', repeat: true }), P({ to: 'mercury', first: true })];
+  T('every trip has the same five phases, in order, filling it exactly',
+    plans.every(p => phases.every((k, i) => p.at[k][0] <= p.at[k][1] && p.at[k][0] === (i ? p.at[phases[i - 1]][1] : 0)) && p.at.touchdown[1] === p.duration));
+  T('action, then a breath: the engine lights for a moment, and the arrival has room to be seen',
+    plans.every(p => p.at.ignite[1] >= 240 && p.at.approach[1] - p.at.approach[0] >= 380 && p.at.cruise[1] - p.at.cruise[0] >= 250),
+    plans.map(p => p.at.cruise[1] - p.at.cruise[0]).join(','));
+  T('with Reduce Motion, a crossfade and nothing else', P({ reduced: true }).motifs.join() === 'fade' && P({ reduced: true, first: true, to: 'mercury' }).motifs.join() === 'fade');
+
+  sub('what a flight may touch');
+  const travelSrc = stripComments(fnBody(js(), 'travelTo')), fxSrc = stripComments(fnBody(js(), 'travelFx'));
+  T('what a flight passes is made for it alone and cleared when it lands', /clearTravelFx\(\);/.test(travelSrc) &&
+    (travelSrc.match(/clearTravelFx\(\)/g) || []).length === 2);
+  T('its pictures come from the content, not from names in a scene', /TRAVEL_ART\.clouds/.test(fxSrc) && /TRAVEL_ART\.rocks/.test(fxSrc) && !/'(prop|place)\.[a-zA-Z]+'/.test(fxSrc));
+  T('the arriving place is put out of sight before it is shown, not only by a first frame',
+    travelSrc.indexOf('holdArrival(') !== -1 && travelSrc.indexOf('holdArrival(') < travelSrc.indexOf("classList.add('is-shown')"));
+  T('the rocket is measured where it stands and where it lands, and flown between the two at each place\'s size',
+    /const s0 = f\.from && f\.land && f\.land\.h \? f\.from\.h \/ f\.land\.h : 1;/.test(fnBody(js(), 'flightMoves')));
+
+  sub('whatever happens, a flight lands and the stage rests');
+  const t = fast(H.loadApp().ctx);
+  const rest = () => t.stageRestingProblems();
+  const landed = where => t.session.travel === null && t.session.place === where && rest().length === 0;
+  await t.startAdventure();
+  await t.travelTo('moon', { first: true });
+  T('a flight lands at its destination, at rest', landed('moon'), rest().join('; '));
+  t.TIMING.travel = 5000; t.TIMING.travelRepeat = 5000; t.TIMING.travelDock = 5000; t.TIMING.travelDockRepeat = 5000;
+  let f = t.travelTo('earth', {});
+  T('in flight, the stage is between places, and the check allows it', t.session.travel !== null && rest().length === 0);
+  t.skipTravel();
+  await f;
+  T('skipped, it lands at once', landed('earth'));
+  /* "At once": checked before the flight is awaited, or a flight left to
+     finish on its own timer would pass for one that was landed. */
+  f = t.travelTo('moon', {});
+  t.window.dispatch('resize');
+  const resized = t.session.travel === null;
+  await f;
+  T('the screen changing shape mid-flight lands it at once, where it was going', resized && landed('moon'));
+  f = t.travelTo('earth', {});
+  t.document.visibilityState = 'hidden'; t.document.dispatch('visibilitychange'); t.document.visibilityState = 'visible';
+  const hid = t.session.travel === null;
+  await f;
+  T('so does leaving the app mid-flight', hid && landed('earth'));
+  f = t.travelTo('station', {});
+  t.document.getElementById('stage').setAttribute('data-place', 'mercury');
+  t.skipTravel();
+  await f;
+  T('a stage knocked out of place during a flight is put right when it lands', landed('station') && t.document.getElementById('stage').getAttribute('data-place') === 'station');
+  T('and that repair is counted for the grown-ups area', t.session.repairs === 1 && /the stage stands at mercury/.test(t.session.lastRepair), t.session.lastRepair);
+  t.TIMING.travel = 0; t.TIMING.travelRepeat = 0; t.TIMING.travelDock = 0; t.TIMING.travelDockRepeat = 0;
+  const rand = H.mulberry32(22);
+  let bad = 0;
+  for(let i = 0; i < 60; i++){
+    const to = ['earth', 'moon', 'mercury', 'station'][Math.floor(rand() * 4)];
+    if(to === t.session.place) continue;
+    const g = t.travelTo(to, { first: rand() < 0.3 });
+    const k = rand();
+    if(k < 0.25) t.skipTravel();
+    else if(k < 0.4) t.window.dispatch('resize');
+    else if(k < 0.5) t.setMotionPref(t.motionPref === 'reduce' ? 'system' : 'reduce');
+    await g;
+    if(!landed(to)) bad++;
+  }
+  t.setMotionPref('system');
+  T('sixty flights in any order, skipped, resized, with and without Reduce Motion: every one comes to rest', bad === 0 && t.session.repairs === 1, bad + ' did not; repairs ' + t.session.repairs);
+
+  sub('a broken rest is found, and redrawn from state');
+  const plant = (name, harm) => {
+    harm();
+    const found = t.checkStage();
+    return found.length > 0 && rest().length === 0;
+  };
+  const other = () => (t.session.slot === 'A' ? 'B' : 'A');
+  T('two places shown at once', plant('two', () => t.document.getElementById('place' + other()).classList.add('is-shown')));
+  T('the rocket\'s place hidden', plant('hidden', () => t.document.getElementById('place' + t.session.slot).classList.remove('is-shown')));
+  T('the wrong place in the rocket\'s slot', plant('wrong', () => t.document.getElementById('place' + t.session.slot).setAttribute('data-place', 'mercury')));
+  T('a place with no ground', plant('ground', () => t.setHtml('place' + t.session.slot + 'Art', '')));
+  T('pictures left in the hidden slot', plant('left', () => t.setHtml('place' + other() + 'Sky', '<img src="x">')));
+  T('a rocket still flying', plant('flying', () => t.document.getElementById('stageRocket').classList.add('is-flying')));
+  T('a place left out of position by a flight', plant('moved', () => { t.document.getElementById('place' + t.session.slot + 'Ground').style.transform = 'translateY(900px)'; }));
+  T('things a flight passed, left in the sky', plant('fx', () => t.setHtml('travelNear', '<span class="fx-speck"></span>')));
+  t.renderGrownups();
+  T('the grown-ups area says how often the display was redrawn, for device testing',
+    /Display checks/.test(t.document.getElementById('gAbout').innerHTML) && /Redrawn 9 times this session/.test(t.document.getElementById('gAbout').innerHTML),
+    t.session.repairs + ' repairs');
+  T('the stage is checked after every flight, at boot, and when the app comes back into view',
+    /checkStage\(\);/.test(fnBody(js(), 'travelTo')) && /checkStage\(\);\s*\}\s*$/.test(fnBody(js(), 'wireProduct').trim()) &&
+    /visibilitychange[\s\S]{0,420}checkStage\(\);/.test(fnBody(js(), 'wireProduct')));
+
+  sub('arriving: nothing can be tapped until the world has settled');
+  const u = fast(H.loadApp().ctx);
+  await u.startAdventure();
+  u.TIMING.arriveSettle = 60;
+  const arrive = u.launch();
+  await wait(20);
+  T('touching down, the planet is shown but still settling', u.currentScene === 'planet' && u.session.busy === true);
+  await u.tapMarker('moon-1');
+  T('a tap on the beacon while it settles is not a start', u.session.run === null);
+  await arrive;
+  T('settled, the planet is the child\'s', u.session.busy === false);
+  await u.tapMarker('moon-1');
+  T('and the beacon starts its mission', u.currentScene === 'mission' && !!u.session.run);
+
+  sub('space is alive, and never in the way');
+  const paths = Array.from({ length: 40 }, (_, k) => c.shootingStarPath(k));
+  T('a shooting star\'s path is the same for the same star, every time', JSON.stringify(c.shootingStarPath(7)) === JSON.stringify(paths[7]));
+  T('rare: never sooner than 13 seconds after the last', paths.every(p => p.wait >= 13000), Math.min.apply(null, paths.map(p => p.wait)) + 'ms');
+  T('it keeps to the far side of the sky, away from Pip and the caption', paths.every(p => p.x0 >= 0.6 && p.x1 >= 0.4 && p.x1 < p.x0 && p.y1 > p.y0));
+  T('and starts below the HUD, never across the title', /const top = \(hud \? hud\.top \+ hud\.h : H \* 0\.12\) \+ 16/.test(fnBody(js(), 'shootStar')));
+  const v = H.loadApp();
+  const w = fast(v.ctx);
+  w.TIMING.shootingStarEvery = 100000;
+  await w.startAdventure();
+  T('on Earth, the next one is waiting', w.ambient.timer !== null);
+  await launchAndStart(w);
+  T('in a mission, none', w.ambient.timer === null && w.ambientAllowed() === false);
+  w.askGoHome();
+  w.__flush();
+  await w.goHomeFromMission();
+  T('home again, the next one is waiting', w.currentScene === 'earth' && w.ambient.timer !== null);
+  w.setMotionPref('reduce');
+  w.armAmbient();
+  T('with Reduce Motion, none — even on Earth', w.ambient.timer === null && w.ambientAllowed() === false);
+  w.setMotionPref('system');
+}
+
+/* =========================================================
+   CONTRACT 36 — WHO OWNS A TAP
+   Found on a real iPad: in Letter Explorer, fast taps during
+   feedback reacted badly — one flag did the work of "Pip is
+   explaining" and "Pip is praising", so a tap meant to start early
+   cut the praise off instead. Now an answer being praised owns the
+   screen, and a wrong answer holds taps for a moment.
+   ========================================================= */
+async function testInput(){
+  section('CONTRACT 36 — an answer being praised owns the screen; a bouncing finger is one tap');
+  const sp = fakeSpeech();
+  const app = H.loadApp({ windowExtras: sp.extras });
+  const c = fast(app.ctx);
+  await c.startAdventure();
+  await c.launch();
+
+  sub('the intro: a tap means "go on"');
+  const starting = c.tapMarker('moon-1');
+  await Promise.resolve();
+  await Promise.resolve();
+  const cut = sp.cancels();
+  const r0 = c.session.run.round;
+  c.choose(r0.answer);
+  T('during the explanation, a tap skips to the question', c.session.input !== 'intro' || sp.cancels() > cut);
+  T('and is not taken as an answer', r0.resolved === false && r0.misses === 0);
+  await starting;
+  T('the question is then asked, and the screen is open', c.session.input === 'open');
+
+  sub('praise: a tap waits');
+  const praising = c.choose(r0.answer);
+  T('a right answer takes the screen', c.session.input === 'wait' && r0.resolved === true);
+  const cancels = sp.cancels(), heard = sp.said.length, results = c.session.run.results.length;
+  c.choose(0); c.choose(1); c.choose(2); c.repeatPrompt(); c.tapBeat();
+  T('taps during praise neither answer, nor repeat, nor cut the praise short',
+    sp.cancels() === cancels && sp.said.length === heard && c.session.run.results.length === results);
+  T('praise cannot be skipped', c.Voice.skip() === false && sp.cancels() === cancels);
+  await praising;
+  T('the next question opens the screen again', c.session.input === 'open' && c.session.run.index === 1);
+
+  sub('a wrong answer: a moment\'s hold, not a lock');
+  c.TIMING.wrongHold = 300;
+  const r1 = c.session.run.round;
+  const wrong = r1.options.map((_, i) => i).filter(i => i !== r1.answer);
+  const missing = c.choose(wrong[0]);
+  c.choose(wrong[1]);
+  T('a second wrong tap straight after the first is a bouncing finger, not a second answer', r1.misses === 1 && r1.out.length === 1);
+  c.choose(r1.answer);
+  T('even the right one waits out the hold', r1.resolved === false);
+  await missing;
+  await wait(320);
+  const right = c.choose(r1.answer);
+  T('after it, the right answer is taken at once', r1.resolved === true);
+  await right;
+  c.TIMING.wrongHold = 0;
+  T('the hold is short: under half a second', c.TIMING.wrongHold === 0 && fnBody(js(), 'choose').indexOf('TIMING.wrongHold') !== -1 &&
+    Number((js().match(/wrongHold: (\d+),/) || [])[1]) <= 500);
+
+  sub('the same ownership in every game');
+  await playMission(c);
+  await c.flyHome();
+  c.journey.completions.push({ id: 'run_rhymes', missionId: 'mercury-1', destinationId: 'mercury', skillId: 'rhyming', completedAt: 't', updatedAt: 't' });
+  c.pickDestination('mercury');
+  await c.launch();
+  await c.tapMarker('mercury-2');
+  const g = c.session.run.round;
+  for(let k = 0; k < g.guide; k++){ c.session.beat.lastAt = 0; c.tapBeat(); }
+  const settling = c.settleBeats(c.session.run);
+  T('the beats are counted and praised', g.resolved === true && c.session.input === 'wait');
+  await settling;
+  T('then the stone is the child\'s again', c.session.input === 'open');
+
+  sub('how a line sits in time is one table, not timeouts in the scenes');
+  T('every line has a kind', ['story.moon.firstArrive', 'mission.howTo', 'find.M', 'word.cake', 'found.M.0', 'rhyme.found.cake.snake.0',
+    'feedback.almost.1', 'show.M', 'marker.beacon', 'guide.launchHint.1', 'item.gear-star'].map(c.lineKind).join() ===
+    'story,instruction,question,question,praise,praise,feedback,feedback,hint,hint,reaction');
+  T('praise holds long enough to see the right answer, and a tap cannot cut it; a story breathes after it',
+    c.DIALOGUE.praise.hold >= 900 && c.DIALOGUE.praise.interrupt === false && c.DIALOGUE.feedback.interrupt === false &&
+    c.DIALOGUE.story.post > 0 && c.DIALOGUE.instruction.interrupt === true);
+  c.TIMING.dialogueScale = 1;
+  const t0 = Date.now();
+  await c.Voice.say('found.M.0');
+  const held = Date.now() - t0;
+  const t1 = Date.now();
+  await c.Voice.sequence(['story.moon.arrive.1', 'marker.beacon']);
+  const breathed = Date.now() - t1;
+  c.TIMING.dialogueScale = 0;
+  T('a praise the voice finishes quickly still holds its minimum', held >= c.DIALOGUE.praise.hold - 20, held + 'ms');
+  T('a story line gets its breath before the next line', breathed >= c.DIALOGUE.story.pre + c.DIALOGUE.story.post - 20, breathed + 'ms');
+  T('no scene writes a pause of its own around a line: praise waits on the praise, nothing else',
+    !/delay\(TIMING\.praiseMin\)/.test(js()) && !/praiseMin/.test(js()) && /return Voice\.say\(view\.praise\(r, session\.praiseAt\+\+\)\)/.test(fnBody(js(), 'choose')));
+
+  c.TIMING.wrongHold = 300;
+  const b1 = c.session.run.round;
+  c.session.beat.lastAt = 0; c.tapBeat(); c.session.beat.lastAt = 0; c.tapBeat();
+  const almost = c.settleBeats(c.session.run);
+  c.session.beat.lastAt = 0; c.tapBeat();
+  T('after a wrong count, a tap straight away is the same finger, not a new count', b1.misses === 1 && c.session.beat.taps === 0);
+  await almost;
+  await wait(320);
+  c.session.beat.lastAt = 0; c.tapBeat();
+  T('a moment later the stone counts again', c.session.beat.taps === 1);
+  c.TIMING.wrongHold = 0;
+  T('no console errors', app.errors.length === 0, app.errors.join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 37 — THE PLAY FIELD
+   Found on a real iPad: Rhyme Radar's pictures climbed above the
+   play area and out of sight. The game's box was sized in vh while
+   what it held had minimum pixel sizes. Now the CSS owns the box and
+   its contents are sized to fit it, on every screen.
+   ========================================================= */
+function testPlayfield(){
+  section('CONTRACT 37 — the game always fits the box it stands in');
+  const c = H.loadApp().ctx, sheet = css();
+
+  sub('the box is owned by one rule, below the HUD and standing on the ground');
+  T('its top is the HUD\'s edge, its foot just below the horizon\'s crest',
+    /\.game\{[^}]*right: 0; top: 0;\s*bottom: calc\(100 \* var\(--vh\) - var\(--crest-y\) - 9 \* var\(--vh\) - var\(--space-lg\) - var\(--inset-bottom\)\);/.test(sheet));
+  T('the tiles, the picture, the stone and the meteors are sized from the fit, with the same gap', /\.choices\{[^}]*gap: var\(--game-gap\)/.test(sheet) &&
+    /\.beats\{[^}]*gap: var\(--game-gap\)/.test(sheet) && /\.choice-stone\{\s*width: var\(--tile-size\); height: calc\(var\(--tile-size\) \* 1\.1\);/.test(sheet) &&
+    /\.beat-stone\{[^}]*width: var\(--stone-w\); aspect-ratio: 1\.3;/.test(sheet) && /\.meteor-row\{[^}]*gap: 8px;/.test(sheet));
+  T('the picture\'s size is not re-declared where it would override the fit', !/\.game-signal\{[^}]*--signal:/.test(sheet));
+  T('the fit is measured when a round is drawn and whenever the screen changes shape',
+    /fitPlayfield\(\);/.test(fnBody(js(), 'renderRound')) && /fitPlayfield\(\)/.test(fnBody(js(), 'wireProduct')));
+
+  sub('what goes in it always fits');
+  /* The box a screen gives the game, from the same terms as the CSS:
+     the scene's side margins, Pip's column, the HUD band, the crest. */
+  const box = (W, Hh) => ({ w: W - 48 - (0.22 * W + 24), h: 0.71 * Hh - 84 });
+  const extent = (f, type) => {
+    if(type === 'rhyme-pick') return f.layout === 'row'
+      ? { w: f.signal + f.gap + 3 * f.tile + 2 * f.gap, h: Math.max(f.signal, f.tile) }
+      : { w: 3 * f.tile + 2 * f.gap, h: f.signal + f.gap + f.tile };
+    if(type === 'syllable-tap'){
+      const col = Math.max(f.stone, 4 * f.meteor + 24), stoneH = f.stone / 1.3;
+      return f.layout === 'row' ? { w: f.signal + f.gap + col, h: Math.max(f.signal, f.meteor + f.gap + stoneH) }
+                                : { w: col, h: f.signal + f.gap + f.meteor + f.gap + stoneH };
+    }
+    return { w: 3 * f.tile + 2 * f.gap, h: f.tile * 1.1 };
+  };
+  const TYPES = ['find-letter', 'rhyme-pick', 'syllable-tap'];
+  const IPADS = [[1024, 768], [1080, 810], [1133, 744], [1180, 820], [1194, 834], [1366, 1024], [1024, 690], [1180, 740]];
+  const PHONES = [[844, 390], [667, 375], [926, 428], [740, 360]];
+  const fits = (W, Hh) => TYPES.every(type => { const b = box(W, Hh), f = c.playfieldSizes(b.w, b.h, type), e = extent(f, type);
+    return f.tile > 0 && e.w <= b.w + 0.5 && e.h <= b.h + 0.5; });
+  const misfits = IPADS.concat(PHONES).filter(v => !fits(v[0], v[1]));
+  T('every game fits on every iPad and every phone in landscape — Safari\'s toolbar included', misfits.length === 0, misfits.map(v => v.join('×')).join(', '));
+  const smallest = IPADS.map(v => { const b = box(v[0], v[1]); return Math.min(c.playfieldSizes(b.w, b.h, 'rhyme-pick').tile, c.playfieldSizes(b.w, b.h, 'find-letter').tile); });
+  T('on every iPad a picture card and a letter stone stay at least 130px', smallest.every(s => s >= 130), smallest.join(','));
+  const phone = c.playfieldSizes(box(844, 390).w, box(844, 390).h, 'rhyme-pick');
+  T('on a short phone the picture stands beside the cards instead of above them', phone.layout === 'row', JSON.stringify(phone));
+  const ipad = c.playfieldSizes(box(1024, 768).w, box(1024, 768).h, 'rhyme-pick');
+  T('on an iPad the radar picture stands above the cards, as it was designed', ipad.layout === 'stack');
+  let sweepBad = 0;
+  for(let w = 260; w <= 1400; w += 45){
+    for(let h = 120; h <= 900; h += 35){
+      TYPES.forEach(type => { const f = c.playfieldSizes(w, h, type), e = extent(f, type); if(e.w > w + 0.5 || e.h > h + 0.5 || f.tile < 0) sweepBad++; });
+    }
+  }
+  T('and any box at all, from tiny to huge: nothing ever overflows', sweepBad === 0, String(sweepBad));
+}
+
+/* =========================================================
+   CONTRACT 38 — THE SPACE STATION, AND WHAT A ROCKET WEARS
+   Found on a real iPad: the Rocket Dock scored 2 of 10 — a menu over
+   the world. It is now a place a flight reaches, where the rocket is
+   the hero, and a rocket wears paint, gear and a theme. Nothing
+   bought with money, nothing random, and still only two keys written.
+   ========================================================= */
+async function testStation(){
+  section('CONTRACT 38 — a space station to fly to, and a rocket dressed up there');
+  const app = H.loadApp();
+  const c = app.ctx, sheet = css();
+
+  sub('three kinds of thing to wear, proved with a small set');
+  const of = slot => c.COSMETICS.filter(x => x.slot === slot);
+  T('eight paints, each a colour token', of('paint').length === 8 && of('paint').every(p => new RegExp('--' + p.tint + ':\\s*#').test(sheet)));
+  T('gear: a star topper, a tiny antenna, a moon topper, side lights and boosters',
+    ['gear-star', 'gear-antenna', 'gear-moon', 'gear-lights', 'gear-booster'].every(id => c.cosmeticById(id) && c.cosmeticById(id).slot === 'gear'));
+  T('each gear piece is a picture in the rocket\'s own frame, laid over it — never a second rocket',
+    of('gear').filter(g => g.art).every(g => c.assetEntry(g.art) && c.assetEntry(g.art).dimensions === c.assetEntry('rocket.body').dimensions));
+  const themes = of('theme').filter(t => !t.starter);
+  T('three themes, each a pattern of colour tokens through the one paint mask', themes.length === 3 &&
+    themes.every(t => new RegExp('\\[data-pattern="' + t.pattern + '"\\] \\.rocket-paint\\{').test(sheet)));
+  T('every kind starts with a free thing a rocket already wears, so a look is never empty',
+    c.COSMETIC_SLOTS.map(s => s.id).join() === 'paint,gear,theme' && c.COSMETIC_SLOTS.every(s => c.starterCosmetic(s.id) && c.starterCosmetic(s.id).cost === 0));
+  const allowed = ['id', 'slot', 'name', 'cost', 'tint', 'starter', 'art', 'pattern', 'focus'];
+  T('nothing is random, sold for money, or changes how anything plays: a cosmetic has a name, a slot, a price in stars and a look',
+    c.COSMETICS.every(x => Object.keys(x).every(k => allowed.indexOf(k) !== -1)));
+
+  sub('wearing a look');
+  let ledger = c.awardStars([], 'run_1', 40, 't').ledger;
+  ['paint-sky', 'paint-lime', 'gear-star', 'theme-bee'].forEach(id => { ledger = c.unlockCosmetic(ledger, id, 't').ledger; });
+  let rocket = null;
+  const wear = id => { const e = c.equipCosmetic(rocket, id, ledger, 't'); if(e.ok) rocket = e.rocket; return c.equippedLook(rocket, ledger); };
+  T('one thing per kind: a topper leaves the paint on', (() => { wear('paint-sky'); const l = wear('gear-star'); return l.paint === 'paint-sky' && l.gear === 'gear-star' && l.theme === 'theme-none'; })());
+  T('a theme hides the paint without forgetting it', (() => { const l = wear('theme-bee'); return l.theme === 'theme-bee' && l.paint === 'paint-sky' && l.gear === 'gear-star'; })());
+  T('choosing a paint takes the theme off, so the paint can be seen', (() => { const l = wear('paint-lime'); return l.paint === 'paint-lime' && l.theme === 'theme-none'; })());
+  T('and taking the theme off shows the paint that was on', (() => { wear('theme-bee'); const l = wear('theme-none'); return l.paint === 'paint-lime' && l.theme === 'theme-none'; })());
+  T('a rocket saved before gear and themes existed reads exactly as it did — no migration needed',
+    JSON.stringify(c.equippedLook({ paint: 'paint-sky', updatedAt: '2026-09-27T00:00:00.000Z' }, ledger)) === JSON.stringify({ paint: 'paint-sky', gear: 'gear-none', theme: 'theme-none' }));
+  T('a saved thing not owned shows the starter instead, and the record is left as it was', (() => {
+    const saved = { paint: 'paint-ocean', gear: 'gear-booster', theme: 'theme-galaxy' };
+    const copy = JSON.stringify(saved);
+    const l = c.equippedLook(saved, ledger);
+    return l.paint === 'paint-classic' && l.gear === 'gear-none' && l.theme === 'theme-none' && JSON.stringify(saved) === copy;
+  })());
+  const html = c.rocketHtml({ paint: 'paint-sky', gear: 'gear-star', theme: 'theme-bee' }, false);
+  T('any look is the one rocket render, its paint mask, and gear pictures over it', html.indexOf(c.assetSrc('rocket.body')) !== -1 &&
+    html.indexOf(c.assetSrc('rocket.paintMask')) !== -1 && html.indexOf(c.assetSrc('rocket.gearStar')) !== -1 &&
+    html.indexOf(c.assetSrc('rocket.gearWings')) !== -1 && /data-pattern="bee"/.test(html));
+
+  sub('the station is a place, reached by a flight');
+  const shared = new Map();
+  const sp = fakeSpeech();
+  const a2 = H.loadApp({ sharedStorage: shared, windowExtras: sp.extras });
+  const p = fast(a2.ctx), d = a2.dom.document;
+  await p.startAdventure();
+  const flights = p.session.flights;
+  await p.openDock();
+  T('the Dock is a flight up from Earth, not a menu', p.session.flights === flights + 1 && p.session.place === 'station' && p.currentScene === 'dock');
+  const room = d.getElementById('place' + p.session.slot + 'Art').innerHTML;
+  T('into a garage drawn from data: the room, and Earth behind its window', room.indexOf(p.assetSrc(p.DESTINATIONS.station.room)) !== -1 &&
+    room.indexOf(p.assetSrc(p.DESTINATIONS.earth.asset)) !== -1 && room.indexOf(p.assetSrc(p.DESTINATIONS.earth.asset)) < room.indexOf(p.assetSrc(p.DESTINATIONS.station.room)));
+  const onStation = cssRule(sheet, '.stage[data-place="station"]');
+  T('the rocket stands on the turntable, larger: it is what the child came to see',
+    Math.abs(cssNumber(onStation, '--rx') - p.DESTINATIONS.station.turntable[0]) < 0.001 && Math.abs(cssNumber(onStation, '--ry') - p.DESTINATIONS.station.turntable[1]) < 0.001 &&
+    /--rocket-h: calc\(var\(--station-h\) \* 0\.\d+\)/.test(onStation));
+  T('and the stage is at rest there', p.stageRestingProblems().length === 0, p.stageRestingProblems().join('; '));
+  T('Pip welcomes the child to it', sp.said.some(s => /Welcome to the space station/.test(s)));
+  T('a panel with three tabs, the things to try, and one action',
+    (d.getElementById('dockTabs').innerHTML.match(/role="tab"/g) || []).length === 3 &&
+    (d.getElementById('dockItems').innerHTML.match(/role="radio"/g) || []).length === 8 && !!d.getElementById('dockAction').getAttribute('aria-label'));
+  p.pickDockTab('gear');
+  T('each tab shows its own things', (d.getElementById('dockItems').innerHTML.match(/role="radio"/g) || []).length === 6 &&
+    /aria-label="No gear, on your rocket"/.test(d.getElementById('dockItems').innerHTML));
+  const before = {};
+  shared.forEach((v, k) => { before[k] = v; });
+  p.pickItem('gear-star');
+  T('trying gear on shows it on the rocket at once', d.getElementById('stageRocket').getAttribute('data-gear') === 'gear-star');
+  T('and saves nothing', (() => { let same = true; shared.forEach((v, k) => { if(before[k] !== v) same = false; }); return same && Object.keys(before).length === shared.size; })());
+  p.dockAction();
+  T('without enough stars, Pip says how many more', /You need 4 more stars/.test(sp.said[sp.said.length - 1]));
+  p.journey.stars = p.awardStars(p.journey.stars, 'run_x', 12, 't').ledger;
+  p.saveStars();
+  const keysBefore = new Map(shared);
+  p.dockAction();
+  T('with them, it is unlocked and worn', p.ownedCosmetics(p.journey.stars).indexOf('gear-star') !== -1 && p.currentLook().gear === 'gear-star');
+  p.pickDockTab('theme');
+  p.pickItem('theme-bee');
+  p.dockAction();
+  T('a theme too', p.currentLook().theme === 'theme-bee' && d.getElementById('stageRocket').getAttribute('data-pattern') === 'bee');
+  p.pickDockTab('paint');
+  p.pickItem('paint-sky');
+  T('trying a paint on while a theme is worn shows the paint, not the theme', d.getElementById('stageRocket').getAttribute('data-theme') === 'theme-none' &&
+    /--paint: var\(--paint-sky\)/.test(d.getElementById('stageRocket').getAttribute('style')));
+  const changed = [];
+  shared.forEach((v, k) => { if(keysBefore.get(k) !== v) changed.push(k.slice(p.STORAGE_NAMESPACE.length)); });
+  T('the station wrote stars and rocket, and nothing else', changed.length > 0 && changed.every(k => k === p.KEYS.stars || k === p.KEYS.rocket), changed.join(','));
+  await p.leaveDock();
+  T('leaving flies home: on Earth, the rocket in what it wears, the try-on gone', p.currentScene === 'earth' && p.session.place === 'earth' &&
+    d.getElementById('stageRocket').getAttribute('data-theme') === 'theme-bee' && p.stageRestingProblems().length === 0);
+  T('the way there and the way back are each a route, quicker once flown', p.session.routes['earth>station'] === true && p.session.routes['station>earth'] === true);
+  const again = H.loadApp({ sharedStorage: shared });
+  T('reloaded, the rocket still wears its gear and theme', again.ctx.currentLook().gear === 'gear-star' && again.ctx.currentLook().theme === 'theme-bee' && again.errors.length === 0,
+    again.errors.join(' | '));
+  T('no console errors', a2.errors.length === 0, a2.errors.join(' | '));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -2803,5 +3400,6 @@ module.exports = {
   testAccessibility, testContamination, testSourcesOfTruth,
   testContent, testLearningEngine, testStarLedger, testCosmeticIsolation,
   testPersistence, testAudio, testAssets, testPrivacy, testChildJourney, testMotion,
-  testDialogue, testWorldStage, testNewGames
+  testDialogue, testWorldStage, testNewGames,
+  testHud, testTravel, testInput, testPlayfield, testStation
 };
