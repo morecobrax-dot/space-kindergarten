@@ -119,18 +119,34 @@ the script; `sw.js`):
    fails, and the version already working stays. It then **waits**; it
    never takes over by itself (no `skipWaiting` on install).
 3. **Deciding.** The app asks a waiting worker its version (a `version`
-   message on a `MessageChannel`). The page's own version: it is told to
-   take over at once, and nothing reloads (the page came fresh from the
-   network). Newer: it waits for a quiet moment — `Domain.safeToReload()`
-   (the product: home on Earth, at rest, Pip quiet, no mission, flight,
-   station or grown-ups page) and no touch for `UPDATE_IDLE` — looked for
-   every `UPDATE_POLL` and whenever the app comes to the front.
+   message on a `MessageChannel`). Whatever the answer, it moves in only
+   at a quiet moment: never within `UPDATE_SETTLE` (4 s) of the page
+   loading; `Domain.safeToReload()` (the product: home on Earth, at rest,
+   Pip quiet, no mission, flight, station or grown-ups page, no picture
+   still loading); and no touch for `UPDATE_IDLE` — looked for every
+   `UPDATE_POLL` and whenever the app comes to the front. The page's own
+   version (the page came fresh from the network) moves in with no reload;
+   a newer one with one. Only a worker still waiting (`installed`) counts:
+   a first install's worker passes straight through it and goes in.
 4. **Taking over.** The app sends `activate`; the worker takes over, carries
    the non-precached pictures of older caches into its own
    (`carryPictures()`), deletes only this app's older caches, and claims the
    page. On `controllerchange` the page reloads **once**, and only if it
-   asked (`Updates.moving`): a first install or a same-version takeover
-   never reloads.
+   asked for a newer version (`Updates.moving === 'asked'`): a first
+   install or a same-version takeover never reloads.
+5. **A takeover the browser holds.** Asked while the old worker still has
+   work in hand, Chromium can keep the new worker waiting until the next
+   navigation. The first real rollout (v0.6.0 → v0.6.1) did exactly that:
+   a same-version worker asked about 85 ms after load stayed waiting until
+   the app was next opened. Hence the settle time and the no-picture-loading
+   rule. As a net under them (`watchTakeover()`): a newer version still
+   not in after `UPDATE_STALL` (8 s) gets one reload, at a quiet moment —
+   a navigation lets it in — marked on this tab's history entry
+   (`updateReloadAt`), so a stubborn one is never forced twice within
+   `UPDATE_EVERY`: the page stops trying (`'stalled'`) and the next launch
+   brings it in. A held worker of the page's own version would change
+   nothing on screen, so the page just stops waiting on it and goes on
+   looking for later versions.
 
 Both a worker already waiting at launch and one that finishes installing
 later (`updatefound` → `installed`) are handled. Nothing is shown or said
@@ -521,13 +537,15 @@ The contracts collapse these to zero to run the journey in milliseconds.
 - **Contracts 54–56** cover the v0.6.1 follow-up, played with fakes rather
   than read: 54 a world's pictures failing, hanging and recovering, and
   kept only on the worker's word; 55 updates (a same-version takeover, a
-  newer version at a quiet moment, one mid-letter, a touch just now,
+  newer version at a quiet moment, one mid-letter, a touch just now, a
+  picture still loading, nothing asked while the page settles, a held
+  takeover helped by one reload and never two, a first install,
   repeated foregrounding, a failed check, a redundant worker, nothing
   saved touched); 56 `sw.js` itself in a sandbox with fake caches and a
   fake network (install whole or not at all, never by itself, carry
   pictures, answer `version`/`activate`/`keep`, never store an error or
   replace an installed file). Real-browser flows for all of it are in
-  docs/PRODUCT.md's v0.6.1 QA record.
+  docs/PRODUCT.md's v0.6.1 and v0.6.2 QA records.
 
 The journey contract (28) plays welcome → Earth → the Moon → the beacon →
 the mission → the world answering → home → Dock → reload through the same

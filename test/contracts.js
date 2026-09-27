@@ -5078,8 +5078,51 @@ async function testUpdates(){
   await same.c.startAdventure();
   await same.c.startUpdates();
   await wait(20);
-  T('takes over at once — the page already is that version — and the page does not reload', activated(same, same.c.APP_VERSION) && same.reloads === 0, same.messages.join(','));
+  T('never while the page is still loading: its version is asked, nothing more (a browser can hold a takeover asked then)',
+    same.messages.indexOf('version@' + same.c.APP_VERSION) !== -1 && !activated(same, same.c.APP_VERSION), same.messages.join(','));
+  same.c.Updates.loadedAt = Date.now() - same.c.UPDATE_SETTLE - 1;
+  same.c.applyUpdate();
+  await wait(20);
+  T('once the page has settled, at a quiet moment, it takes over — the page already is that version — and nothing reloads',
+    activated(same, same.c.APP_VERSION) && same.reloads === 0, same.messages.join(','));
+  T('and later versions are still looked for', same.c.Updates.moving === false && same.c.Updates.same === null);
   T('the app asked for a new version at launch', same.updates === 1);
+  clearPreloadTimers(same.c);
+
+  sub('a waiting worker of this page\'s own version that does not come in when asked');
+  const held = rig('same');
+  held.reg.waiting.postMessage = function(msg, ports){ held.messages.push(msg.type + '@' + held.c.APP_VERSION); if(msg.type === 'version' && ports) ports[0].postMessage({ version: held.c.APP_VERSION }); };
+  await held.c.startAdventure();
+  await held.c.startUpdates();
+  await wait(10);
+  held.c.Updates.loadedAt = Date.now() - held.c.UPDATE_SETTLE - 1;
+  held.c.applyUpdate();
+  await wait(10);
+  T('asked at a quiet moment, it stays waiting: for now, nothing more is looked for', activated(held, held.c.APP_VERSION) && held.c.Updates.moving === 'quiet' && held.c.checkForUpdate(true) === false);
+  held.c.Updates.askedAt = Date.now() - held.c.UPDATE_STALL - 1;
+  held.c.watchTakeover();
+  const lookedAgain = held.c.checkForUpdate(true);
+  await wait(5);
+  T('after a while the page stops waiting on it — nothing reloads, the page already is that version — and goes on looking for later versions',
+    held.reloads === 0 && held.c.Updates.moving === false && held.c.Updates.same === null && lookedAgain === true && held.updates === 2, held.updates + ' ' + held.c.Updates.moving);
+  clearPreloadTimers(held.c);
+
+  sub('a first install: the worker goes straight in, it does not wait');
+  const first = rig(null);
+  await first.c.startAdventure();
+  await first.c.startUpdates();
+  await wait(10);
+  const fw = first.install(first.c.APP_VERSION);
+  fw.state = 'activated'; first.reg.waiting = null; first.reg.active = fw;     // nothing before it to wait for
+  await wait(20);
+  first.c.Updates.loadedAt = Date.now() - first.c.UPDATE_SETTLE - 1;
+  const firstAsked = first.c.applyUpdate();
+  const firstLooks = first.c.checkForUpdate(true);
+  await wait(5);
+  T('a worker already in is not asked to take over, nothing reloads, and later versions are still looked for',
+    firstAsked === false && !activated(first, first.c.APP_VERSION) && first.c.Updates.moving === false && first.c.Updates.same === null &&
+    firstLooks === true && first.updates === 2 && first.reloads === 0, first.messages.join(',') + ' moving ' + first.c.Updates.moving);
+  clearPreloadTimers(first.c);
 
   sub('a newer version already waiting at launch, the child at rest on Earth');
   const idle = rig('9.9.9');
@@ -5087,7 +5130,11 @@ async function testUpdates(){
   await wait(5);
   await idle.c.startUpdates();
   await wait(20);
-  T('it takes over, and the page reloads once, into it', activated(idle, '9.9.9') && idle.reloads === 1, idle.messages.join(',') + ' reloads ' + idle.reloads);
+  T('not in the page\'s first moments', !activated(idle, '9.9.9') && idle.reloads === 0 && !!idle.c.Updates.timer);
+  idle.c.Updates.loadedAt = Date.now() - idle.c.UPDATE_SETTLE - 1;
+  idle.c.applyUpdate();
+  await wait(20);
+  T('then it takes over, and the page reloads once, into it', activated(idle, '9.9.9') && idle.reloads === 1, idle.messages.join(',') + ' reloads ' + idle.reloads);
   idle.container.fire('controllerchange');
   idle.container.fire('controllerchange');
   T('a worker taking over again never reloads twice: no loop', idle.reloads === 1);
@@ -5101,6 +5148,7 @@ async function testUpdates(){
   await mid.c.launch();
   await mid.c.tapMarker('slate');
   await mid.c.startUpdates();
+  mid.c.Updates.loadedAt = Date.now() - mid.c.UPDATE_SETTLE - 1;
   const wt = mid.c.session.write;
   mid.c.writeDown(wt.plan[0].pts[0]);
   for(let q = 1; q < wt.plan[0].pts.length / 2; q++) mid.c.writeMove(wt.plan[0].pts[q]);
@@ -5142,12 +5190,33 @@ async function testUpdates(){
     [earthQuiet, stationQuiet, grownupsQuiet].join(','));
   clearPreloadTimers(where.c);
 
+  sub('a world\'s picture still loading');
+  const loading = rig(null);
+  await loading.c.startAdventure();
+  await wait(5);
+  for(let q = 0; q < 300 && loading.c.Voice.speaking(); q++) await wait(2);
+  const restQuiet = loading.c.Domain.safeToReload();
+  const hung = [];
+  loading.c.window.Image = class { set src(v){ this._src = v; hung.push(this); } get src(){ return this._src; } };
+  seedDone(loading.c, ['moon-1', 'mercury-1', 'mercury-2']);      // Jupiter is next, so near
+  loading.c.preloadStage();
+  const loadingQuiet = loading.c.Domain.safeToReload();
+  hung.forEach(im => { if(im.onload) im.onload(); });
+  await wait(5);
+  T('while a picture is still loading, home on Earth is not yet quiet (the old worker has it in hand); once it has loaded, it is',
+    restQuiet === true && hung.length > 0 && loadingQuiet === false && loading.c.Domain.safeToReload() === true,
+    [restQuiet, hung.length, loadingQuiet, loading.c.Domain.safeToReload()].join(','));
+  clearPreloadTimers(loading.c);
+
   sub('the child still touching');
   const touch = rig('9.9.9');
   await touch.c.startAdventure();
   await wait(5);
-  touch.c.Updates.touchedAt = Date.now();
   await touch.c.startUpdates();
+  await wait(10);
+  touch.c.Updates.loadedAt = Date.now() - touch.c.UPDATE_SETTLE - 1;
+  touch.c.Updates.touchedAt = Date.now();
+  touch.c.applyUpdate();
   await wait(20);
   T('a touch just now: it waits until the child has been still', !activated(touch, '9.9.9') && touch.reloads === 0);
   touch.c.Updates.touchedAt = Date.now() - touch.c.UPDATE_IDLE - 1;
@@ -5176,12 +5245,43 @@ async function testUpdates(){
   T('and nothing was taken over', fg.messages.every(m => !/^activate/.test(m)));
   clearPreloadTimers(fg.c);
 
+  sub('a newer version that does not come in when asked');
+  const stuck = rig('9.9.9');
+  stuck.reg.waiting.postMessage = function(msg, ports){ stuck.messages.push(msg.type + '@9.9.9'); if(msg.type === 'version' && ports) ports[0].postMessage({ version: '9.9.9' }); };
+  stuck.c.history = { state: null, replaceState(st){ this.state = st; }, pushState(){}, back(){} };
+  await stuck.c.startAdventure();
+  await stuck.c.startUpdates();
+  await wait(10);
+  stuck.c.Updates.loadedAt = Date.now() - stuck.c.UPDATE_SETTLE - 1;
+  stuck.c.applyUpdate();
+  await wait(10);
+  T('asked at a quiet moment, it does not come in: nothing is forced at once', activated(stuck, '9.9.9') && stuck.reloads === 0 && stuck.c.Updates.moving === 'asked');
+  T('a moment later, still nothing forced', stuck.c.watchTakeover() === false && stuck.reloads === 0);
+  stuck.c.Updates.askedAt = Date.now() - stuck.c.UPDATE_STALL - 1;
+  stuck.c.openGrownups();
+  T('after a while, but with a grown-ups page open: it waits', stuck.c.watchTakeover() === false && stuck.reloads === 0 && stuck.c.Updates.moving === 'asked');
+  stuck.c.closeGrownups();
+  for(let q = 0; q < 300 && stuck.c.Voice.speaking(); q++) await wait(2);
+  stuck.c.Updates.touchedAt = Date.now();
+  T('home on Earth again, but the child touched the screen just now: it waits', stuck.c.watchTakeover() === false && stuck.reloads === 0 && stuck.c.Updates.moving === 'asked');
+  stuck.c.Updates.touchedAt = Date.now() - stuck.c.UPDATE_IDLE - 1;
+  T('after a while, at a quiet moment again, the page reloads once — a navigation lets it in — and marks this tab',
+    stuck.c.Domain.safeToReload() === true &&
+    stuck.c.watchTakeover() === true && stuck.reloads === 1 && !!(stuck.c.history.state && stuck.c.history.state.updateReloadAt));
+  /* the reloaded page: the same tab, the same stubborn worker */
+  stuck.c.Updates.moving = false;
+  stuck.c.applyUpdate();
+  stuck.c.Updates.askedAt = Date.now() - stuck.c.UPDATE_STALL - 1;
+  stuck.c.watchTakeover();
+  T('a stubborn one is never forced twice in a row: the next launch brings it in', stuck.reloads === 1 && stuck.c.Updates.moving === 'stalled');
+  clearPreloadTimers(stuck.c);
+
   sub('a version that failed to install');
   const bad = rig('9.9.9');
   await bad.c.startAdventure();
   bad.reg.waiting.state = 'redundant';
   bad.c.Updates.waiting = bad.reg.waiting;
-  T('a waiting worker that turned redundant is dropped, and nothing reloads', bad.c.applyUpdate() === false && bad.c.Updates.waiting === null && bad.reloads === 0);
+  T('a waiting worker that turned redundant is dropped, and nothing reloads', bad.c.applyUpdate() === false && bad.c.Updates.waiting === null && bad.reloads === 0 && !activated(bad, '9.9.9'));
   clearPreloadTimers(bad.c);
 
   sub('what stays');
@@ -5190,12 +5290,15 @@ async function testUpdates(){
   const saved = () => JSON.stringify([...keep.app.storage._map.entries()].sort());
   const beforeKeys = saved();
   await keep.c.startUpdates();
+  keep.c.Updates.loadedAt = Date.now() - keep.c.UPDATE_SETTLE - 1;
+  keep.c.applyUpdate();
   await wait(20);
   T('taking over touches no saved record: progress, stars, the rocket and settings are all as they were',
     saved() === beforeKeys && beforeKeys.length > 20 && !/localStorage|Store\.(set|remove)/.test(fnBody(js(), 'applyUpdate') + fnBody(js(), 'considerUpdate') + fnBody(js(), 'startUpdates')));
   T('nothing about updates is ever shown or said to a child', !/Voice\.say|toast\(|setHtml\(/.test(fnBody(js(), 'applyUpdate') + fnBody(js(), 'considerUpdate') + fnBody(js(), 'startUpdates') + fnBody(js(), 'checkForUpdate')));
   clearPreloadTimers(keep.c);
-  T('no console errors', [same, idle, mid, touch, fg, bad, keep].every(b => b.app.errors.length === 0), [same, idle, mid, touch, fg, bad, keep].map(b => b.app.errors.join('|')).join(' '));
+  const rigs = [same, held, first, idle, mid, where, loading, touch, fg, stuck, bad, keep];
+  T('no console errors', rigs.every(b => b.app.errors.length === 0), rigs.map(b => b.app.errors.join('|')).join(' '));
 }
 
 /* =========================================================

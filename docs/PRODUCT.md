@@ -49,6 +49,18 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
 
+## Phase 4 follow-up, first rollout: what changed (v0.6.2)
+
+The first real rollout of v0.6.1 (the live v0.6.0 installed with progress in
+its own browser profile, then reopened once v0.6.1 was live) found that a
+new version could wait until the app was next opened before moving in.
+
+| Area | Built |
+|---|---|
+| A new version moves in on time | Asked to take over while the old worker was still serving the page's first loads, Chromium held the new worker waiting until the next navigation: the app showed v0.6.1 while v0.6.0's worker stayed in charge until a later launch. The app now lets itself settle (4 s after loading) and waits until no world picture is loading before it asks. In the same local rehearsal, the old timing left the new version waiting in 2 of 3 runs; the new timing brought it in within 8 s in 7 of 7, with no reload |
+| A net under it | A newer version still held 8 s after it was asked gets one reload at a quiet moment (a navigation lets it in), marked on the tab so it is never forced twice in a row; the next launch brings in a stubborn one. A held worker of the page's own version changes nothing on screen: the page stops waiting on it and keeps looking for later versions |
+| A rule for next time | CLAUDE.md rule 90: a change to updating is rehearsed from the previous released version, installed in its own profile, with the new one opened over it |
+
 ## Phase 4 follow-up: what changed (v0.6.1)
 
 A maintenance release after an independent audit of v0.6.0: two findings
@@ -246,6 +258,46 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Phase 4 follow-up QA record (v0.6.2, 2026-09-27)
+
+**Tested in Chromium (headless Edge on Windows), each flow in a fresh,
+isolated profile against a local server that behaves like GitHub Pages
+(`max-age=600`), and in the test harness. Browser emulation does not prove
+physical iPad behavior: Safari's service worker and a Home Screen app
+resuming from the background were not tested on a device.**
+
+| Check | How | Result |
+|---|---|---|
+| The live rollout (v0.6.0 → v0.6.1) | The live v0.6.0 installed with progress in a persistent profile; reopened after v0.6.1 went live | Found the fault: the second open showed v0.6.1 while v0.6.0's worker stayed in charge, with v0.6.1 installed and waiting; only a later launch brought it in |
+| The fault, rehearsed | v0.6.2 installed; v0.6.3 found while a grown-ups page is open; the page then reloaded in the same tab (the new page arrives while the old one is still a client, and finds a waiting worker of its own version) | With v0.6.1's timing (asked at once): still waiting after 20 s in 2 of 3 runs. With v0.6.2's: 7 of 7 fully in by 8 s, with no reload, no worker left waiting and the old cache gone |
+| The rollout from v0.6.1 | v0.6.1 (the commit that is live) installed with progress; v0.6.2 deployed; the app opened | 3 of 3: the v0.6.2 page at once and its worker in by 8 s, with no reload or relaunch; every saved record identical; the world's 8 pictures carried |
+| A held newer version | The old worker kept busy by a request the server holds for 25 s; v0.6.3 found at a quiet moment | Asked at once and held; 8 s later one reload, marked on the tab, into the v0.6.3 page; its worker came in as soon as the held request ended, with no second reload |
+| An installed app updates by itself | v0.6.2 installed with progress and Jupiter kept; v0.6.3 deployed; the app brought to the front | Moved in about 4 s after being found, with one reload; no worker left waiting; every saved record identical; Jupiter carried and the old cache gone; the grown-ups area shows 0.6.3 |
+| Repeated foregrounding | 20 trips to the front after an update; then one check with nothing new | 0 checks and 0 reloads; the empty check reloaded nothing |
+| An update mid-letter | Moon Writer mid-stroke when v0.6.3 is found | Installed and waited through the letter, the rest of the mission and the planet; home on Earth it moved in 4.1 s after landing, with one reload; the mission still recorded |
+| Offline start, and a failed update | Offline reload of v0.6.3; then a broken v0.6.4 (its precache lists a missing file) deployed and opened online, then offline | Offline start works and flies to Jupiter. The broken install failed and never took over; offline afterwards the app starts as v0.6.3, whole |
+| World pictures, again | The three flows of the v0.6.1 record | Unchanged: kept within 10 s of the network returning, then offline at Jupiter; kept by the timer 12 s after the server recovered; a fresh install keeps Jupiter in its first session |
+| Contracts | `npm run verify` | 1418 passed, 0 failed; config verify ok |
+| Mutation check | 36 defects planted one at a time in a copy (preload recovery and keeping; the update lifecycle, including the settle, a held takeover and a first install; the worker; derived decodability): 36 of 36 caught by failing contracts. The eight touching the held takeover were re-run on the final build (8 of 8). One planted defect at first broke the script's syntax rather than its behavior; rewritten, it was caught by contracts | |
+
+**Found and fixed before release** (while building v0.6.2):
+
+1. **A first install blocked the next update check.** On a first install
+   the worker passes straight through "installed"; the settle change took
+   it for a waiting worker of the page's own version and left the page
+   believing a takeover was under way, so the next check was skipped. The
+   held-version browser flow found it. Only a worker actually waiting is
+   considered now, and a contract covers a first install.
+2. **A held same-version takeover would have blocked later checks for the
+   rest of a session.** The page now stops waiting on it after 8 s.
+3. **The net's reload did not wait for the child to be still.** It checked
+   the quiet moment but not "no touch for 2.5 s"; it now keeps the same
+   idle rule as every other reload.
+
+**Not known, and not tested:** why Chromium holds a takeover asked during
+the page's first loads (the live rollout and the rehearsal show that it
+does, and that the settle avoids it); whether Safari does the same.
 
 ## Phase 4 follow-up QA record (v0.6.1, 2026-09-27)
 

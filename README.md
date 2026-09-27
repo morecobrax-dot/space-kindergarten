@@ -10,7 +10,7 @@ its sky signs their words back. Stars earned there dress up the rocket at a
 space station with paint, gear and themes. Learning comes first; the
 adventure is what makes it fun.
 
-**Status: Phase 4 (v0.6.1).** All seven learning areas have a first game,
+**Status: Phase 4 (v0.6.2).** All seven learning areas have a first game,
 and an installed copy picks up each new release by itself at a quiet moment.
 The world is the navigation: one stage, planets as places, and flights that
 are one camera journey. Twenty missions across eight games are built:

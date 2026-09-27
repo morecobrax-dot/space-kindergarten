@@ -2299,6 +2299,18 @@ function validateAppId(id){
    ========================================================= */
 const APP_UPDATES = [
   {
+    id: 'v0-6-2',
+    version: '0.6.2',
+    title: 'Updates move in on time',
+    date: '2026-09-27',
+    summary: 'A new version that had already installed could wait until the app was next opened before moving in. ' +
+             'It now moves in at the first quiet moment on Earth.',
+    fixes: [
+      'A new version asked to move in while the app was still starting could be held back until the next launch; the app now lets itself settle first, and a version still held back gets one reload at a quiet moment',
+      'A new version never moves in while a world\'s pictures are still loading'
+    ]
+  },
+  {
     id: 'v0-6-1',
     version: '0.6.1',
     title: 'Updates arrive by themselves',
@@ -9889,12 +9901,14 @@ Domain.wire = wireProduct;
 /* A quiet moment for a new version to take over: home on Earth, at rest —
    not flying, not in a mission (so never mid-letter or mid-answer), not in
    the space station trying something on, no grown-ups page open, Pip not
-   speaking, nothing still lighting up. A reload comes back to Earth, so
-   nothing is lost there; anywhere else it would take the child somewhere
-   they did not go. */
+   speaking, nothing still lighting up, no picture still loading (so the
+   old worker has nothing in hand when a new one is asked in). A reload
+   comes back to Earth, so nothing is lost there; anywhere else it would
+   take the child somewhere they did not go. */
 Domain.safeToReload = () => (currentScene === 'earth' || currentScene === 'welcome') &&
   !session.busy && !session.travel && !session.run && !overlayOpen() && !Voice.speaking() &&
-  !session.relightHold && !session.revealHold && Date.now() >= session.celebrateReadyAt;
+  !session.relightHold && !session.revealHold && Date.now() >= session.celebrateReadyAt &&
+  !Object.keys(Preload.assets).some(k => Preload.assets[k].state === 'pending');
 
 /* =========================================================
    SETTINGS — data ownership
@@ -10184,12 +10198,20 @@ catch(err){
    UPDATE_EVERY). A new version installs in the background and WAITS: this
    page keeps its own version and its own files until a quiet moment
    (Domain.safeToReload: the product decides — never mid-mission,
-   mid-letter or mid-flight — and no touch for UPDATE_IDLE). Then the
-   waiting worker is asked to take over, and the page reloads once, into
-   the new version. Progress, settings and stars are in local storage and
-   are never touched; a world's pictures are carried into the new cache.
+   mid-letter or mid-flight — no touch for UPDATE_IDLE, and never within
+   UPDATE_SETTLE of the page loading). Then the waiting worker is asked to
+   take over, and the page reloads once, into the new version. Progress,
+   settings and stars are in local storage and are never touched; a
+   world's pictures are carried into the new cache.
+     - asked while the old worker still serves the page's first loads, a
+       browser can hold the new worker waiting until the next navigation
+       (seen in the first real rollout): so never before UPDATE_SETTLE;
+       and a newer version asked but not in after UPDATE_STALL gets one
+       reload at the same quiet moment — a navigation lets it in — marked
+       on this tab's history entry, so it is never forced twice in a row
      - a waiting worker of this page's own version (the page came fresh
-       from the network) takes over at once, with no reload
+       from the network) takes over at the first quiet moment, with no
+       reload
      - one that was already waiting at launch, and one that finishes
        installing later, are both handled
      - one reload per page, and only into a newer version: no loops
@@ -10200,7 +10222,9 @@ catch(err){
 const UPDATE_EVERY = 10 * 60 * 1000;    // coming to the front asks again at most this often
 const UPDATE_IDLE = 2500;               // no touch for this long before a reload
 const UPDATE_POLL = 3000;               // how often a waiting update looks for a quiet moment
-const Updates = { reg: null, checkedAt: 0, waiting: null, moving: false, timer: null, touchedAt: 0 };
+const UPDATE_SETTLE = 4000;             // the page's own first loads, done before any takeover
+const UPDATE_STALL = 8000;              // asked, and still not in: one reload lets it in
+const Updates = { reg: null, checkedAt: 0, waiting: null, same: null, moving: false, timer: null, touchedAt: 0, loadedAt: 0, askedAt: 0 };
 
 /* A question to a worker, answered on a port of its own; null if it does
    not answer in time. */
@@ -10215,10 +10239,13 @@ function askWorker(worker, msg, ms){
 }
 function startUpdates(){
   const sw = navigator.serviceWorker;
+  Updates.loadedAt = Date.now();
   sw.addEventListener('controllerchange', () => {
     /* a worker took over: reload only if this page asked to move to a
-       newer version, and only once */
+       newer version, and only once; a same-version takeover changes
+       nothing on screen */
     if(Updates.moving === 'asked'){ Updates.moving = 'reloading'; location.reload(); }
+    else if(Updates.moving === 'quiet'){ Updates.moving = false; Updates.same = null; }
   });
   document.addEventListener('pointerdown', () => { Updates.touchedAt = Date.now(); }, true);
   document.addEventListener('visibilitychange', () => {
@@ -10246,28 +10273,55 @@ function checkForUpdate(force){
   Promise.resolve().then(() => reg.update()).catch(() => {});
   return true;
 }
-/* A worker has installed and is waiting. Of this page's own version: take
-   over now, nothing changes for the child. Newer: at the next quiet moment. */
+/* A worker has installed and is waiting. Of this page's own version: it
+   takes over at the first quiet moment, and nothing changes for the child.
+   Newer: at the first quiet moment too, and the page reloads into it. Only
+   a worker still waiting ('installed') counts: on a first install the
+   worker passes through 'installed' straight in, and is not waiting. */
 function considerUpdate(worker){
   return askWorker(worker, { type: 'version' }, 4000).then(res => {
-    if(Updates.moving || !worker || worker.state === 'redundant') return;
-    if(res && res.version === APP_VERSION){ worker.postMessage({ type: 'activate' }); return; }
-    Updates.waiting = worker;
+    if(Updates.moving || !worker || worker.state !== 'installed') return;
+    if(res && res.version === APP_VERSION) Updates.same = worker;
+    else Updates.waiting = worker;
     applyUpdate();
   });
 }
 function applyUpdate(){
-  const w = Updates.waiting;
+  const w = Updates.waiting || Updates.same;
   if(!w || Updates.moving) return false;
-  if(w.state === 'redundant'){ Updates.waiting = null; return false; }
+  if(w.state !== 'installed'){ Updates.waiting = null; Updates.same = null; return false; }
+  let quiet = false;
+  try{ quiet = Date.now() - Updates.loadedAt >= UPDATE_SETTLE && !!Domain.safeToReload() && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){}
+  if(!quiet){ pollUpdate(); return false; }
+  Updates.moving = w === Updates.waiting ? 'asked' : 'quiet';
+  Updates.askedAt = Date.now();
+  w.postMessage({ type: 'activate' });
+  pollUpdate();
+  return true;
+}
+function pollUpdate(){
+  if(!Updates.timer) Updates.timer = setTimeout(() => { Updates.timer = null; watchTakeover(); applyUpdate(); }, UPDATE_POLL);
+}
+/* A worker was asked to take over, at a quiet moment, and is still not in:
+   a browser can hold it while the old worker has work in hand. Of this
+   page's own version: nothing on screen would change, so the page stops
+   waiting on it and goes on looking for later versions (the next launch
+   lets it in). Newer: a navigation lets it in, so the page reloads once,
+   still at a quiet moment — marked on this tab's history entry, so a
+   stubborn one is never forced twice in a row (the next launch brings it
+   in). */
+function watchTakeover(){
+  if(Updates.moving !== 'asked' && Updates.moving !== 'quiet') return false;
+  if(Date.now() - Updates.askedAt < UPDATE_STALL){ pollUpdate(); return false; }
+  if(Updates.moving === 'quiet'){ Updates.moving = false; Updates.same = null; return false; }
+  const st = history.state && typeof history.state === 'object' ? history.state : {};
+  if(st.updateReloadAt && Date.now() - st.updateReloadAt < UPDATE_EVERY){ Updates.moving = 'stalled'; return false; }
   let quiet = false;
   try{ quiet = !!Domain.safeToReload() && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){}
-  if(!quiet){
-    if(!Updates.timer) Updates.timer = setTimeout(() => { Updates.timer = null; applyUpdate(); }, UPDATE_POLL);
-    return false;
-  }
-  Updates.moving = 'asked';
-  w.postMessage({ type: 'activate' });
+  if(!quiet){ pollUpdate(); return false; }
+  try{ history.replaceState(Object.assign({}, st, { updateReloadAt: Date.now() }), ''); }catch(e){}
+  Updates.moving = 'reloading';
+  location.reload();
   return true;
 }
 /* Offline support registers only over http(s) — a no-op when the file is

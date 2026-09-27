@@ -449,14 +449,19 @@ words, and so completed the seven learning areas.
 
 ## Releases that arrive by themselves
 
-These came from the v0.6.1 follow-up to an independent audit.
+These came from the v0.6.1 follow-up to an independent audit, and from its
+first real rollout (v0.6.2).
 
 86. **A new version moves in only at a quiet moment.** It installs in the
     background and waits; the page asks it to take over when
     `Domain.safeToReload()` says so — home on Earth, at rest, the child
-    still — and reloads once, only into a newer version. Never mid-mission,
-    mid-letter, mid-flight, in the space station or with a grown-ups page
-    open. A new state that must not be interrupted adds its rule there.
+    still, no picture loading — and never within `UPDATE_SETTLE` of the
+    page loading, and reloads once, only into a newer version. Never
+    mid-mission, mid-letter, mid-flight, in the space station or with a
+    grown-ups page open. A new state that must not be interrupted adds its
+    rule there. A takeover asked while the old worker is busy can be held
+    by the browser until the next navigation (the v0.6.1 rollout): a held
+    newer version gets one reload at a quiet moment, never two in a row.
 87. **A failed install never replaces a working version.** The precache is
     fetched fresh (`cache: 'reload'`) and all-or-nothing; runtime caching
     stores only good answers, never a page, and never overwrites a file the
@@ -470,3 +475,12 @@ These came from the v0.6.1 follow-up to an independent audit.
     while a real finger fell through the slate. A change to input, the
     worker or caching gets a headless-Edge flow with real input or a real
     worker, in a fresh profile.
+90. **Rehearse an update from what is installed.** Flows between two builds
+    of the new code missed what the first real rollout found: the page
+    arrives fresh from the network while the old worker is still in
+    charge, and a same-version takeover asked at load was held until the
+    next launch. A change to updating is also tried from the previous
+    released version, installed in its own profile, with the new one
+    opened over it. The hold shows only on a same-tab reload with the new
+    worker already waiting; closing the app first lets a waiting worker in
+    by the normal lifecycle, and hides it.

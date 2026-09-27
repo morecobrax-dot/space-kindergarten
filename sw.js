@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.6.1';
+const CACHE_NAME = 'space-kindergarten-v0.6.2';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
