@@ -209,7 +209,7 @@ readers; Pip still says everything a pre-reader needs.
 | Letter Explorer | "LETTER EXPLORER" / "Find the letter you hear" | Clear? Never gives the answer away? | Awaiting review |
 | Rhyme Radar | "RHYME RADAR" / "Find the picture that rhymes" | | Awaiting review |
 | Syllable Meteors | "SYLLABLE METEORS" / "Tap the beats" | Is "beats" the right word for syllables at this age? | Awaiting review |
-| What a planet teaches | "MOON" / "Letters"; "MERCURY" / "Rhymes • Syllables". Derived from the missions' skills (`SKILLS[].short`) | "Syllables" is a hard word; would "Beats" be better on screen, since the game says beats? | Awaiting review |
+| What a planet teaches | "MOON" / "Letters"; "MERCURY" / "Rhymes • Beats". Derived from the missions' skills (`SKILLS[].short`) | Decided 2026-09-27: "Beats" on screen, because the game says "Tap the beats". The skill is still Syllables in the learning data, these docs and the grown-ups area ("Counting syllables") | Decided (Beats) |
 | Home | "EARTH" / "Home base" | | Awaiting review |
 | The station | "SPACE STATION" / "Rocket garage"; the Earth button reads "Station" | | Awaiting review |
 

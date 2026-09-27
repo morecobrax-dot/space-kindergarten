@@ -11,11 +11,24 @@ here. Earlier records: [IPAD-QA-PHASE-2.md](IPAD-QA-PHASE-2.md),
 | **Build under test** | v0.4.0 — the commit named in the release report |
 | **Served from** | GitHub Pages: https://morecobrax-dot.github.io/space-kindergarten/ |
 | **Device** | a physical iPad · Safari first, then the Home Screen install |
-| **Tester** | — |
-| **Started** | — |
+| **Tester** | the product owner |
+| **Started** | 2026-09-27, in five batches (below) |
 
 **STATUS:** PASS · DEFECT · QUESTION · NOT TESTED
 **SEVERITY:** BLOCKER · HIGH · MEDIUM · LOW · POLISH
+
+**Batch 1 passed. Batches 2–5 are deferred to the next major device gate:**
+on 2026-09-27 the owner moved physical QA from every phase to milestone
+gates (the Phase 3 brief). The checks below stay the checklist for that
+gate.
+
+The gate runs in five batches, each reported before the next is sent:
+
+1. Earth, the HUD and planet selection (H1, H2, E1, P1)
+2. travel and arrival (T1–T6, A1, SS1, S1, S6)
+3. the learning games (H3, H4, R1, R2, Q1–Q3, T3)
+4. the space station and customization (S2–S5, G1)
+5. stress, rotation, PWA and performance (PF1, O1, O2, OF1, MO1)
 
 ## Before you start
 
@@ -23,8 +36,9 @@ here. Earlier records: [IPAD-QA-PHASE-2.md](IPAD-QA-PHASE-2.md),
   Open the site and reload it twice. The grown-ups area (hold the lock for
   3 seconds) should show **Version 0.4.0**.
 - **Keep your progress** for most checks: the Moon lit and Mercury open.
-  Erase it (Grown-ups → Backup & data → Erase all progress) only for the
-  first-arrival checks (T3).
+  A first arrival (and the light tunnel, T3) happens once per profile:
+  see it in a Safari Private tab, which starts a fresh profile without
+  touching yours, or after Grown-ups → Backup & data → Erase all progress.
 - **Turn the sound on,** and the silent switch off.
 - **Try Reduce Motion last** (section MO), from the grown-ups area.
 
@@ -34,15 +48,15 @@ here. Earlier records: [IPAD-QA-PHASE-2.md](IPAD-QA-PHASE-2.md),
 
 | # | Check | What should happen | Status | Notes |
 |---|---|---|---|---|
-| **H1** | The HUD | Every screen: a small round button top left (the lock on Earth), a short title in a dark pill top centre, the stars top right. Nothing oversized; nothing covers the art | NOT TESTED | |
-| **H2** | Small marks, easy taps | The top-left and top-right buttons look small, but a sloppy tap near them still works | NOT TESTED | |
+| **H1** | The HUD | Every screen: a small round button top left (the lock on Earth), a short title in a dark pill top centre, the stars top right. Nothing oversized; nothing covers the art | PASS (Earth) | Batch 1, Safari: compact, nothing oversized, nothing cut off. The other screens are in Batches 2–4 |
+| **H2** | Small marks, easy taps | The top-left and top-right buttons look small, but a sloppy tap near them still works | PASS (the lock) | Batch 1: the lock's 3-second hold, also slightly off the icon; a quick tap does nothing. Home and Back are in Batches 2–4 |
 | **H3** | Lesson titles | Each game shows its name and what to do: LETTER EXPLORER / Find the letter you hear · RHYME RADAR / Find the picture that rhymes · SYLLABLE METEORS / Tap the beats, with progress stars under them | NOT TESTED | |
-| **H4** | Planet labels | On a planet: MOON / Letters; MERCURY / Rhymes • Syllables | NOT TESTED | |
-| **E1** | Earth | The horizon, the new rocket on its pad, Pip, the planets in the sky; one chosen planet larger and lit, with its name and what it teaches under it, and a glowing route to it. Launch shows that planet on the button | NOT TESTED | |
-| **P1** | Choosing a planet | Tap the other planet: it comes forward and lights up, its label appears, the first one steps back and loses its label, the route lights up along the new path, Launch shows the new planet, and Pip says what is there. Only one chosen at a time. Nothing launches | NOT TESTED | |
+| **H4** | Planet labels | On a planet: MOON / Letters; MERCURY / Rhymes • Syllables in v0.4.0. Decided 2026-09-27: "Rhymes • Beats" from the next build | NOT TESTED | Batch 1 showed the same labels under the chosen planet in Earth's sky. On a planet: Batch 2 |
+| **E1** | Earth | The horizon, the new rocket on its pad, Pip, the planets in the sky; one chosen planet larger and lit, with its name and what it teaches under it, and a glowing route to it. Launch shows that planet on the button | PASS | Batch 1: still feels like a place, not a menu |
+| **P1** | Choosing a planet | Tap the other planet: it comes forward and lights up, its label appears, the first one steps back and loses its label, the route lights up along the new path, Launch shows the new planet, and Pip says what is there. Only one chosen at a time. Nothing launches | PASS | Batch 1: the chosen planet and what it teaches are obvious at once; a child would know where Launch goes. Switching glides, with no blink |
 | **T1** | Leaving Earth | Tap Launch: the button presses in, the controls fade, the engine lights and the rocket trembles, it lifts straight up, Earth falls away, clouds pass the camera, space opens. Say if any part feels like a page change | NOT TESTED | |
 | **T2** | The cruise | Stars stream past (near ones faster), specks rush by; sometimes a shooting star, sometimes friendly rocks drifting past (never toward the rocket). The destination grows ahead | NOT TESTED | |
-| **T3** | First trip to Mercury | After erasing progress and restoring the Moon: the first flight to Mercury passes through rings of soft light (the light tunnel), with one gentle pulse. About 3–4 s in all | NOT TESTED | |
+| **T3** | First trip to Mercury | In a fresh profile (a Private tab), once the Moon is restored: the first flight to Mercury passes through rings of soft light (the light tunnel), with one gentle pulse. About 3–4 s in all | NOT TESTED | |
 | **T4** | Pacing | A common trip feels like 2–3 s; a repeat of the same trip a little shorter; never slow. A tap anywhere skips | NOT TESTED | |
 | **T5** | Coming home | Leaving a planet: the rocket lifts off, space, Earth grows, clouds pass the other way, the Earth horizon rises, the rocket lands on the pad | NOT TESTED | |
 | **T6** | Smoothness | No stutter, no blank or flashing frame, no picture popping in, on any trip. Say which part stutters, if any | NOT TESTED | |
@@ -65,7 +79,7 @@ here. Earlier records: [IPAD-QA-PHASE-2.md](IPAD-QA-PHASE-2.md),
 | **MO1** | Reduce Motion | Grown-ups → Motion → Reduce motion: every trip is a short crossfade (no clouds, rocks, rings, specks or shooting stars); no dust; the HUD just appears | NOT TESTED | |
 | **PF1** | Repeated travel | Ten or more trips, including the station: still smooth, nothing left over in the sky, the rocket always on its pad | NOT TESTED | |
 | **OF1** | Offline | After one full visit to Mercury and the station: airplane mode, close and reopen. Everything loads, including the station and the clouds | NOT TESTED | |
-| **G1** | Grown-ups | Progress shows the rocket's look ("Bumblebee · Star topper · N of 16 unlocked"); About shows "Display checks: All clear" | NOT TESTED | |
+| **G1** | Grown-ups | Progress shows the rocket's look ("Bumblebee · Star topper · N of 16 unlocked"); About shows "Display checks: All clear" | NOT TESTED | Batch 1: About reported fine (Version 0.4.0), but the Display checks value was not given; it is asked again before and after Batch 2's trips. Progress is in Batch 4 |
 
 ## Ratings
 

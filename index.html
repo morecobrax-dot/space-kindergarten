@@ -2903,13 +2903,15 @@ function artImg(id, cls){
    named so a mission can never be filed under a skill nobody planned,
    and so the grown-ups area never lists one that is not real.
    short:    what a child is told a place is for ("Letters") — never a
-             course name. The grown-ups area uses the full label.
+             course name, and in the game's own word: Syllable Meteors
+             asks for beats, so Mercury says Beats. The grown-ups area
+             uses the full label.
    firstTry: what "first try" means for the skill, in a grown-up's words. */
 const SKILLS = {
   'letter-recognition': { label: 'Letter recognition', short: 'Letters',     status: 'active', firstTry: 'found on the first try' },
   'rhyming':            { label: 'Rhyming',            short: 'Rhymes',      status: 'active', firstTry: 'rhyme found on the first try' },
   'beginning-sounds':   { label: 'Beginning sounds',   short: 'Sounds',      status: 'planned' },
-  'syllables':          { label: 'Counting syllables', short: 'Syllables',   status: 'active', firstTry: 'beats counted on the first try' },
+  'syllables':          { label: 'Counting syllables', short: 'Beats',       status: 'active', firstTry: 'beats counted on the first try' },
   'cvc':                { label: 'CVC words',          short: 'Words',       status: 'planned' },
   'sight-words':        { label: 'Sight words',        short: 'Sight words', status: 'planned' },
   'handwriting':        { label: 'Handwriting',        short: 'Writing',     status: 'planned' }
@@ -3936,7 +3938,7 @@ function starterLook(){ const look = {}; COSMETIC_SLOTS.forEach(s => { look[s.id
 function equippedLook(rocket, ledger){ const look = {}; COSMETIC_SLOTS.forEach(s => { look[s.id] = equippedCosmetic(rocket, ledger, s.id); }); return look; }
 
 /* What a place teaches, in a child's words and in the order its missions
-   come: the Moon is Letters; Mercury is Rhymes, then Syllables. Derived,
+   come: the Moon is Letters; Mercury is Rhymes, then Beats. Derived,
    so a mission moved to another planet moves its label with it. */
 function destinationFocus(destId){
   const d = DESTINATIONS[destId];
@@ -4747,7 +4749,7 @@ function launchTarget(){
   if(session.pick && destinationUnlocked(session.pick, journey.completions)) return session.pick;
   return currentDestination(journey.completions);
 }
-/* What a place teaches, in a child's words: "Rhymes • Syllables". */
+/* What a place teaches, in a child's words: "Rhymes • Beats". */
 function focusLabel(placeId){ return destinationFocus(placeId).join(' • '); }
 function skyLabel(id, picked){
   const d = DESTINATIONS[id];

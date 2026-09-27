@@ -61,7 +61,7 @@ rocket → fly home → reload, with everything persisted.
 |---|---|
 | The HUD | One bar over every child scene: the way back top left (the grown-ups lock on Earth), a title and a few words of task top centre, the stars top right. Quiet marks inside full-size targets |
 | Lesson titles | LETTER EXPLORER / Find the letter you hear · RHYME RADAR / Find the picture that rhymes · SYLLABLE METEORS / Tap the beats, with progress stars |
-| Planet labels | MOON / Letters · MERCURY / Rhymes • Syllables, derived from each planet's missions |
+| Planet labels | MOON / Letters · MERCURY / Rhymes • Beats (the game's word; the skill stays Syllables for grown-ups), derived from each planet's missions |
 | Choosing a planet | The chosen planet comes forward (larger, lit, named with what it teaches), the others wait smaller; the route lights up; Launch shows the chosen planet; Pip says what is there |
 | Travel | Five phases (ignite, rise, cruise, approach, touchdown) and a vocabulary of motifs chosen by rule: clouds leaving and reaching Earth, the stellar cruise with rushing specks, a shooting star every other cruise, friendly asteroids one trip in three, a light tunnel on the first trip to Mercury, and the station's bay. About 2.6s with the settle; 3.4s for a first arrival; shorter on a route already flown |
 | Arrival | Touchdown dust or light, the rocket's clay giving a little, Pip settling, the HUD fading in; nothing can be tapped until it has settled |
@@ -107,7 +107,8 @@ These are not built yet:
 - recorded narration
 - final (signed-off) artwork: the current pictures are draft renders
 - more rocket looks: the dinosaur and space-puppy themes, and more gear
-  (Phase 2.2 proved the model with 8 paints, 5 gear and 3 themes)
+  (Phase 2.2 proved the model with 8 paints, 5 gear and 3 themes). The two
+  themes wait until after the voice and audio production phase
 - a spinning turntable, and animated station lights beyond the
   turntable's slow breath
 - ambient music
@@ -209,6 +210,20 @@ marked tested.
 - rapid taps with real fingers, and the dialogue pauses with the device voice
 - the Home Screen install, offline after install, and the v0.3.0 → v0.4.0
   update on a device that already has progress
+
+**Decided at the device gate (2026-09-27):**
+
+- **Mercury's label is "Rhymes • Beats",** the game's own word ("Tap the
+  beats"). Presentation only: the skill is still Syllables in the
+  learning data, the docs and the grown-ups area.
+- **The rocket is not reframed yet.** The star and moon toppers' size is
+  unproven until seen on the iPad; a Rocket score under 7 because the
+  gear is too small is the evidence that would justify it.
+- **Prices stay:** 3 stars a mission, paint and gear 3–6, themes 8–10.
+  The economy is revisited once there is substantial curriculum, not with
+  three missions.
+- **The dinosaur and space-puppy themes wait** until after the voice and
+  audio production phase.
 
 ## Phase 2 QA record (2026-09-26/27)
 

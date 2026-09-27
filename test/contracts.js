@@ -2908,7 +2908,7 @@ async function testHud(){
   T('on a planet, the way back flies home', c.currentScene === 'earth' && c.session.place === 'earth');
   c.pickDestination('mercury');
   await c.launch();
-  T('Mercury teaches two things, named in a child\'s words', hud().title === 'Mercury' && hud().sub === 'Rhymes • Syllables');
+  T('Mercury teaches two things, named in a child\'s words', hud().title === 'Mercury' && hud().sub === 'Rhymes • Beats');
   await c.tapMarker('mercury-1');
   T('Rhyme Radar', hud().title === 'Rhyme Radar' && hud().sub === 'Find the picture that rhymes');
   await playMission(c);
@@ -2925,7 +2925,7 @@ async function testHud(){
   sub('titles and labels are content, and never the answer');
   const ids = Object.keys(c.MISSIONS);
   T('every lesson has a title, and a task of a few words', ids.every(id => c.MISSIONS[id].title && c.MISSIONS[id].task && c.MISSIONS[id].task.split(' ').length <= 6));
-  T('what a place teaches is derived from its missions\' skills', c.destinationFocus('moon').join() === 'Letters' && c.destinationFocus('mercury').join() === 'Rhymes,Syllables');
+  T('what a place teaches is derived from its missions\' skills', c.destinationFocus('moon').join() === 'Letters' && c.destinationFocus('mercury').join() === 'Rhymes,Beats');
   T('so a mission moved to another world takes its label with it', (() => {
     const was = c.MISSIONS['mercury-2'].skillId;
     c.MISSIONS['mercury-2'].skillId = 'letter-recognition';
@@ -2934,8 +2934,10 @@ async function testHud(){
     return moved === 'Rhymes,Letters';
   })());
   T('a child is told what a place is for, never the name of a course', Object.keys(c.SKILLS).every(k => c.SKILLS[k].short && c.SKILLS[k].short.split(' ').length <= 2));
+  T('a planet says what its game says (Beats), while the skill keeps its name for grown-ups',
+    c.SKILLS.syllables.short === 'Beats' && c.SKILLS.syllables.label === 'Counting syllables' && c.MISSIONS['mercury-2'].task === 'Tap the beats');
   T('the scenes never write a lesson title or a planet label themselves',
-    !/'(Letter Explorer|Rhyme Radar|Syllable Meteors|Letters|Rhymes|Syllables|Moon|Mercury|Home base|Space Station|Rocket garage)'/.test(stripComments(js().slice(js().indexOf('SCENES\n')))));
+    !/'(Letter Explorer|Rhyme Radar|Syllable Meteors|Letters|Rhymes|Syllables|Beats|Moon|Mercury|Home base|Space Station|Rocket garage)'/.test(stripComments(js().slice(js().indexOf('SCENES\n')))));
 
   sub('choosing a planet');
   const sp2 = fakeSpeech();
@@ -2962,7 +2964,7 @@ async function testHud(){
     /html\[data-scene="earth"\] \.sky-body\.is-picked \.sky-focus\{ transform: scale\(1\.1\d?\); \}/.test(sheet) &&
     /html\[data-scene="earth"\] \.sky-body\.is-dimmed \.sky-focus\{ transform: scale\(0\.8\d?\);/.test(sheet));
   T('each planet in the sky carries its label, ready to be shown', /class="sky-label-name">Moon</.test(sky()) && /class="sky-label-focus">Letters</.test(sky()) &&
-    /class="sky-label-focus">Rhymes • Syllables</.test(sky()));
+    /class="sky-label-focus">Rhymes • Beats</.test(sky()));
   T('the chosen light is cool: the warm yellow stays Launch\'s', /--focus-glow: rgba\((1[0-9]{2}),(2[0-9]{2}),(2[0-9]{2}),/.test(sheet));
   T('the route is drawn as light under the dots, and lights up when the choice changes',
     /class="route-glow"/.test(fnBody(js(), 'drawFlightPath')) && /drawFlightPath\(changed\)/.test(fnBody(js(), 'pickDestination')));

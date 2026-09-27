@@ -15,7 +15,8 @@ awaiting review.
 - **Almost no reading.** On-screen text is a few words and never necessary.
   Each game shows its name and what to do (LETTER EXPLORER / Find the
   letter you hear), and each planet what it teaches (MERCURY / Rhymes •
-  Syllables): for grown-ups and early readers. Pip says everything a
+  Beats, in the game's own word; the grown-ups area names the skill,
+  Counting syllables): for grown-ups and early readers. Pip says everything a
   pre-reader needs, and nothing on screen gives an answer away.
 - **Big, forgiving targets.** Choice tiles are 130–236px on an iPad (they
   shrink to fit a phone rather than slip off it), and every child control
