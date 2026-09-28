@@ -2299,6 +2299,18 @@ function validateAppId(id){
    ========================================================= */
 const APP_UPDATES = [
   {
+    id: 'v0-6-3',
+    version: '0.6.3',
+    title: 'Updates never interrupt play',
+    date: '2026-09-27',
+    summary: 'A new version that finished moving in after a child had started playing again could restart the app at once. ' +
+             'The restart now waits for the next quiet moment on Earth.',
+    fixes: [
+      'A new version that moved in late, with a child already tracing a letter or flying, or a grown-up in the grown-ups area, restarted the app on the spot; it now waits until the child is home on Earth and still',
+      'A grown-up holding the lock to open the grown-ups area is never interrupted by an update'
+    ]
+  },
+  {
     id: 'v0-6-2',
     version: '0.6.2',
     title: 'Updates move in on time',
@@ -9900,13 +9912,14 @@ Domain.render = renderProduct;
 Domain.wire = wireProduct;
 /* A quiet moment for a new version to take over: home on Earth, at rest —
    not flying, not in a mission (so never mid-letter or mid-answer), not in
-   the space station trying something on, no grown-ups page open, Pip not
-   speaking, nothing still lighting up, no picture still loading (so the
-   old worker has nothing in hand when a new one is asked in). A reload
-   comes back to Earth, so nothing is lost there; anywhere else it would
-   take the child somewhere they did not go. */
+   the space station trying something on, no grown-ups page open and no
+   grown-up holding the lock to open one (a held finger sends no new
+   touch), Pip not speaking, nothing still lighting up, no picture still
+   loading (so the old worker has nothing in hand when a new one is asked
+   in). A reload comes back to Earth, so nothing is lost there; anywhere
+   else it would take the child somewhere they did not go. */
 Domain.safeToReload = () => (currentScene === 'earth' || currentScene === 'welcome') &&
-  !session.busy && !session.travel && !session.run && !overlayOpen() && !Voice.speaking() &&
+  !session.busy && !session.travel && !session.run && !overlayOpen() && !session.holdTimer && !Voice.speaking() &&
   !session.relightHold && !session.revealHold && Date.now() >= session.celebrateReadyAt &&
   !Object.keys(Preload.assets).some(k => Preload.assets[k].state === 'pending');
 
@@ -10200,9 +10213,14 @@ catch(err){
    (Domain.safeToReload: the product decides — never mid-mission,
    mid-letter or mid-flight — no touch for UPDATE_IDLE, and never within
    UPDATE_SETTLE of the page loading). Then the waiting worker is asked to
-   take over, and the page reloads once, into the new version. Progress,
-   settings and stars are in local storage and are never touched; a
-   world's pictures are carried into the new cache.
+   take over; once it has come in, the page reloads once, into the new
+   version. Progress, settings and stars are in local storage and are
+   never touched; a world's pictures are carried into the new cache.
+     - the quiet moment is checked again at the reload itself (quietNow),
+       never trusted from the ask: taking over is asynchronous, and a held
+       worker can come in long after, with the child playing again. A
+       takeover that lands then is recorded ('arrived') and the reload
+       waits, the child's controls live, for the next quiet moment
      - asked while the old worker still serves the page's first loads, a
        browser can hold the new worker waiting until the next navigation
        (seen in the first real rollout): so never before UPDATE_SETTLE;
@@ -10224,6 +10242,10 @@ const UPDATE_IDLE = 2500;               // no touch for this long before a reloa
 const UPDATE_POLL = 3000;               // how often a waiting update looks for a quiet moment
 const UPDATE_SETTLE = 4000;             // the page's own first loads, done before any takeover
 const UPDATE_STALL = 8000;              // asked, and still not in: one reload lets it in
+/* Updates.moving: false (nothing under way) · 'asked' (a newer worker was
+   asked in) · 'quiet' (one of this page's own version was) · 'arrived' (a
+   newer one came in: one reload owed, at a quiet moment) · 'stalled' (a
+   held one was already helped once) · 'reloading' */
 const Updates = { reg: null, checkedAt: 0, waiting: null, same: null, moving: false, timer: null, touchedAt: 0, loadedAt: 0, askedAt: 0 };
 
 /* A question to a worker, answered on a port of its own; null if it does
@@ -10241,10 +10263,11 @@ function startUpdates(){
   const sw = navigator.serviceWorker;
   Updates.loadedAt = Date.now();
   sw.addEventListener('controllerchange', () => {
-    /* a worker took over: reload only if this page asked to move to a
-       newer version, and only once; a same-version takeover changes
-       nothing on screen */
-    if(Updates.moving === 'asked'){ Updates.moving = 'reloading'; location.reload(); }
+    /* a worker took over. A newer one (asked for, or a held one come in
+       late): the page owes one reload into it, made only at a quiet moment
+       checked now — the child may be playing again since it was asked. A
+       same-version takeover changes nothing on screen. */
+    if(Updates.moving === 'asked' || Updates.moving === 'stalled'){ Updates.moving = 'arrived'; Updates.waiting = null; watchTakeover(); }
     else if(Updates.moving === 'quiet'){ Updates.moving = false; Updates.same = null; }
   });
   document.addEventListener('pointerdown', () => { Updates.touchedAt = Date.now(); }, true);
@@ -10286,13 +10309,17 @@ function considerUpdate(worker){
     applyUpdate();
   });
 }
+/* A quiet moment, as of now: the product says so, and no touch for
+   UPDATE_IDLE. Checked at every ask and at every reload, never carried
+   over from an earlier check. */
+function quietNow(){
+  try{ return !!Domain.safeToReload() && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){ return false; }
+}
 function applyUpdate(){
   const w = Updates.waiting || Updates.same;
   if(!w || Updates.moving) return false;
   if(w.state !== 'installed'){ Updates.waiting = null; Updates.same = null; return false; }
-  let quiet = false;
-  try{ quiet = Date.now() - Updates.loadedAt >= UPDATE_SETTLE && !!Domain.safeToReload() && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){}
-  if(!quiet){ pollUpdate(); return false; }
+  if(Date.now() - Updates.loadedAt < UPDATE_SETTLE || !quietNow()){ pollUpdate(); return false; }
   Updates.moving = w === Updates.waiting ? 'asked' : 'quiet';
   Updates.askedAt = Date.now();
   w.postMessage({ type: 'activate' });
@@ -10302,23 +10329,31 @@ function applyUpdate(){
 function pollUpdate(){
   if(!Updates.timer) Updates.timer = setTimeout(() => { Updates.timer = null; watchTakeover(); applyUpdate(); }, UPDATE_POLL);
 }
-/* A worker was asked to take over, at a quiet moment, and is still not in:
-   a browser can hold it while the old worker has work in hand. Of this
-   page's own version: nothing on screen would change, so the page stops
-   waiting on it and goes on looking for later versions (the next launch
-   lets it in). Newer: a navigation lets it in, so the page reloads once,
-   still at a quiet moment — marked on this tab's history entry, so a
-   stubborn one is never forced twice in a row (the next launch brings it
-   in). */
+/* Every reload an update makes happens here, and only at a quiet moment
+   checked here. A newer worker has come in ('arrived'): the page reloads
+   into it once, at the first quiet moment — until then the child plays on
+   with nothing frozen, and looking again (the poll, another takeover
+   event) never reloads twice. A worker asked in, at a quiet moment, and
+   still not in: a browser can hold it while the old worker has work in
+   hand. Of this page's own version: nothing on screen would change, so
+   the page stops waiting on it and goes on looking for later versions
+   (the next launch lets it in). Newer: a navigation lets it in, so the
+   page reloads once, at a quiet moment — marked on this tab's history
+   entry, so a stubborn one is never forced twice in a row (the next launch
+   brings it in; if it comes in first, it is 'arrived' like any other). */
 function watchTakeover(){
+  if(Updates.moving === 'arrived'){
+    if(!quietNow()){ pollUpdate(); return false; }
+    Updates.moving = 'reloading';
+    location.reload();
+    return true;
+  }
   if(Updates.moving !== 'asked' && Updates.moving !== 'quiet') return false;
   if(Date.now() - Updates.askedAt < UPDATE_STALL){ pollUpdate(); return false; }
   if(Updates.moving === 'quiet'){ Updates.moving = false; Updates.same = null; return false; }
   const st = history.state && typeof history.state === 'object' ? history.state : {};
   if(st.updateReloadAt && Date.now() - st.updateReloadAt < UPDATE_EVERY){ Updates.moving = 'stalled'; return false; }
-  let quiet = false;
-  try{ quiet = !!Domain.safeToReload() && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){}
-  if(!quiet){ pollUpdate(); return false; }
+  if(!quietNow()){ pollUpdate(); return false; }
   try{ history.replaceState(Object.assign({}, st, { updateReloadAt: Date.now() }), ''); }catch(e){}
   Updates.moving = 'reloading';
   location.reload();

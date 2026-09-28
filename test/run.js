@@ -80,7 +80,8 @@ const SUITES = [
   C.testGrownupsSeven,
   C.testWorldKeeping,
   C.testUpdates,
-  C.testWorker
+  C.testWorker,
+  C.testLateTakeover
 ];
 
 async function main(){

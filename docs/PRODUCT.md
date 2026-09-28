@@ -49,6 +49,21 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
 
+## The late takeover: what changed (v0.6.3)
+
+A second independent audit found that an update could still restart the app
+in the middle of play. v0.6.2 checked for a quiet moment when it asked a new
+version in, but taking over is asynchronous: when the new worker came in
+later — with the child already tracing a letter or flying — the page
+reloaded on the spot.
+
+| Area | Built |
+|---|---|
+| A takeover is recorded; the reload waits | When the new worker comes in, the page only records it and owes one reload. The reload happens at a quiet moment checked at that instant — home on Earth, at rest, no touch for 2.5 s — found by the same poll that looks for a quiet moment to ask. The child's controls stay live; nothing is frozen, and no delay was added |
+| One owner for every update reload | Both update reloads (a newer version come in; the one helping reload for a held takeover) go through one watcher and one quiet check. A pending reload no longer depends on the worker still waiting |
+| A held one that comes in late | A held newer version that comes in after the page stopped trying now gets its one reload at the next quiet moment, instead of leaving the page on the old version under the new worker until the next launch |
+| The lock held | A grown-up holding the lock to open the grown-ups area counts as grown-up activity. A held finger sends no new touch, so the touch guard alone could pass during the three-second hold |
+
 ## Phase 4 follow-up, first rollout: what changed (v0.6.2)
 
 The first real rollout of v0.6.1 (the live v0.6.0 installed with progress in
@@ -258,6 +273,42 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## The late takeover QA record (v0.6.3, 2026-09-27)
+
+**Tested in the harness, and in Chromium (headless Edge on Windows), each
+browser run in a fresh, isolated profile against a local server that
+behaves like GitHub Pages (`max-age=600`), with touch emulation and real
+touch input. Not tested on a physical iPad.** In the browser, the takeover
+was delayed by the browser itself: the old worker had a request in flight,
+the server held its answer, and Chromium does not let the new worker in
+until that fetch ends. The `controllerchange` came from the new worker's
+own `clients.claim()` when the answer was released; no script dispatched
+one. The harness contracts use a fake worker whose takeover the test
+releases, and a fake `controllerchange`.
+
+| Check | How | Result |
+|---|---|---|
+| The defect, in a real browser (before) | v0.6.2, the previous release, installed with progress and Jupiter kept. v0.6.3 delivered while the old worker had a request in flight; the page asked the new worker in at rest on Earth, and the browser held it. Then Moon Writer opened, and half a letter was traced by real touch, finger down. Then the held request was released | The new worker came in, and v0.6.2 reloaded at once, mid-letter: the trace and the mission run were gone |
+| The fix, the same sequence (after) | v0.6.3 installed; a test v0.6.4 delivered the same way | 3 of 3: the worker came in 0.2 s after the release, mid-letter, with no reload — the finger still down where it was, the mission run intact. The letter was then finished by touch under the new worker, the mission finished, and 4 s on the planet brought no reload. Home on Earth, a real tap on bare ground held the reload off (none in the 2 s after it); it came 3.2–3.3 s after the tap, exactly one, into v0.6.4. Every earlier mission, the new one and the paint were kept, and stars went up. Offline, the app started as v0.6.4 and flew to Jupiter with every picture |
+| Contract 57 (harness) | Asked at rest, the takeover released mid-letter, mid-flight, with a grown-ups page open, with the lock held, and just after a touch; the poll alone; repeated events; a first install; a same-version takeover; the held-takeover reload with play under way; a held one come in after the page stopped trying | Each records the takeover and reloads exactly once, at the next quiet moment; the run, the half-traced letter and the saved journey survive (a second app booted over the same storage has the finished mission); a first install and a same-version takeover never reload |
+| Contracts | `npm run verify` | 1452 passed, 0 failed; config verify ok |
+| Mutation check | 15 defects planted one at a time in a copy of the repo. Eleven target the fix, starting with v0.6.2's own handler restored exactly, which 17 contracts catch; the other ten are the reload trusting the ask's quiet moment, ignoring a touch, never looking again, reloading twice, hanging on the waiting worker, ignoring a late held one, a first install or a same-version takeover owing a reload, the lock hold not counting, and the helping reload trusting the ask. Four target the checks that moved into quietNow(). The eleven, first run: 10 caught. The miss (an owed reload the poll never looks for again) passed because the poll armed at the ask happened to fire after the child went still; a contract now makes the poll survive a look while not quiet, and the rerun caught it. The four, run after: 4 of 4. In all, 15 of 15 | |
+
+**Found in the audit** (beyond the confirmed defect):
+
+1. **A held newer version that came in after the page had stopped trying
+   was ignored**, leaving the page on the old version under the new worker
+   until the next launch. It is now owed its one reload like any other.
+2. **A grown-up's three-second hold on the lock was not activity.** The
+   touch guard counts from the finger going down, so it could pass half a
+   second before the hold completed; a keyboard hold sent no touch at all.
+
+**Not tested:** a physical iPad (Safari's worker lifecycle and a Home
+Screen app resuming); a takeover delayed any other way than by a request
+the old worker holds. A device whose open page is still v0.6.2 when v0.6.3
+arrives moves with v0.6.2's own code, once; a page opened after the deploy
+is v0.6.3 from the network and moves with the fix.
 
 ## Phase 4 follow-up QA record (v0.6.2, 2026-09-27)
 

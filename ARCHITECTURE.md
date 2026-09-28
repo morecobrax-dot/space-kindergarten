@@ -131,9 +131,15 @@ the script; `sw.js`):
 4. **Taking over.** The app sends `activate`; the worker takes over, carries
    the non-precached pictures of older caches into its own
    (`carryPictures()`), deletes only this app's older caches, and claims the
-   page. On `controllerchange` the page reloads **once**, and only if it
-   asked for a newer version (`Updates.moving === 'asked'`): a first
-   install or a same-version takeover never reloads.
+   page. Taking over is asynchronous — a held worker can come in long
+   after the ask, with the child playing again — so `controllerchange`
+   only records it: a newer version the page asked for (or a held one come
+   in late) is `'arrived'`, and the page owes one reload. The reload waits
+   for a quiet moment checked at that instant (`quietNow()`: the
+   product's `safeToReload()` and no touch for `UPDATE_IDLE`), is looked
+   for by the same poll, and happens **once**; until then the child plays
+   on, nothing frozen. It does not depend on the worker still waiting. A
+   first install or a same-version takeover owes no reload.
 5. **A takeover the browser holds.** Asked while the old worker still has
    work in hand, Chromium can keep the new worker waiting until the next
    navigation. The first real rollout (v0.6.0 → v0.6.1) did exactly that:
@@ -144,7 +150,8 @@ the script; `sw.js`):
    a navigation lets it in — marked on this tab's history entry
    (`updateReloadAt`), so a stubborn one is never forced twice within
    `UPDATE_EVERY`: the page stops trying (`'stalled'`) and the next launch
-   brings it in. A held worker of the page's own version would change
+   brings it in — or, if it comes in first, it is `'arrived'` like any
+   other. A held worker of the page's own version would change
    nothing on screen, so the page just stops waiting on it and goes on
    looking for later versions.
 
@@ -546,6 +553,16 @@ The contracts collapse these to zero to run the journey in milliseconds.
   pictures, answer `version`/`activate`/`keep`, never store an error or
   replace an installed file). Real-browser flows for all of it are in
   docs/PRODUCT.md's v0.6.1 and v0.6.2 QA records.
+- **Contract 57** covers v0.6.3: a takeover asked at a quiet moment that
+  comes in late — mid-letter, mid-flight, with a grown-ups page open or
+  the lock held, just after a touch — is recorded, and the page reloads
+  once, at the next quiet moment checked then, found by the poll alone;
+  the mission run, the half-traced letter and the saved journey survive;
+  repeated takeover events and polls never reload twice; a first install
+  and a same-version takeover owe no reload; the held-takeover reload
+  waits for play to stop too, and a held one that comes in after the page
+  stopped trying still gets its one reload. The real-browser flow is in
+  docs/PRODUCT.md's v0.6.3 QA record.
 
 The journey contract (28) plays welcome → Earth → the Moon → the beacon →
 the mission → the world answering → home → Dock → reload through the same

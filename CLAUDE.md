@@ -449,17 +449,18 @@ words, and so completed the seven learning areas.
 
 ## Releases that arrive by themselves
 
-These came from the v0.6.1 follow-up to an independent audit, and from its
-first real rollout (v0.6.2).
+These came from the v0.6.1 follow-up to an independent audit, from its
+first real rollout (v0.6.2), and from a second audit (v0.6.3).
 
 86. **A new version moves in only at a quiet moment.** It installs in the
     background and waits; the page asks it to take over when
     `Domain.safeToReload()` says so — home on Earth, at rest, the child
     still, no picture loading — and never within `UPDATE_SETTLE` of the
-    page loading, and reloads once, only into a newer version. Never
-    mid-mission, mid-letter, mid-flight, in the space station or with a
-    grown-ups page open. A new state that must not be interrupted adds its
-    rule there. A takeover asked while the old worker is busy can be held
+    page loading, and reloads once, only into a newer version, at a quiet
+    moment checked when the reload happens. Never mid-mission, mid-letter,
+    mid-flight, in the space station, with a grown-ups page open or the
+    lock held. A new state that must not be interrupted adds its rule
+    there. A takeover asked while the old worker is busy can be held
     by the browser until the next navigation (the v0.6.1 rollout): a held
     newer version gets one reload at a quiet moment, never two in a row.
 87. **A failed install never replaces a working version.** The precache is
@@ -484,3 +485,9 @@ first real rollout (v0.6.2).
     opened over it. The hold shows only on a same-tab reload with the new
     worker already waiting; closing the app first lets a waiting worker in
     by the normal lifecycle, and hides it.
+91. **Check a reload where it happens.** Asking a worker in is
+    asynchronous: it can land long after the quiet moment that asked for
+    it, with a child tracing or flying again — v0.6.2 reloaded right then.
+    A takeover is only recorded (`'arrived'`); every update reload goes
+    through `watchTakeover()`, which checks `quietNow()` at that instant.
+    A pending reload is a state of its own, never the waiting worker's.

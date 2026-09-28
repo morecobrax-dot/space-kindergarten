@@ -5024,6 +5024,58 @@ async function testWorldKeeping(){
   T('no console errors', [r, h, k, f].every(x => x.app.errors.length === 0), [r, h, k, f].map(x => x.app.errors.join('|')).join(' '));
 }
 
+/* The browser's part of an update, for contracts 55 and 57: a
+   service-worker container, a registration, and workers that answer
+   "version" and take over on "activate" — at once, or, with box.hold, only
+   when the test calls box.takeover(), as a browser does while the old
+   worker still has work in hand. o.sharedStorage lets a second app boot
+   over the same saved records, as a reload would. */
+function updateRig(waitingVersion, o){
+  o = o || {};
+  const box = { reloads: 0, messages: [], updates: 0, failUpdate: false, hold: false, held: null };
+  const listeners = {};
+  const container = { controller: {},
+    addEventListener(t, fn){ (listeners[t] = listeners[t] || []).push(fn); },
+    fire(t){ (listeners[t] || []).forEach(fn => fn({})); } };
+  const reg = { waiting: null, installing: null, active: null, ls: {},
+    addEventListener(t, fn){ (reg.ls[t] = reg.ls[t] || []).push(fn); },
+    update(){ box.updates++; return box.failUpdate ? Promise.reject(new Error('no network')) : Promise.resolve(); } };
+  /* the worker comes in: active, waiting no longer, in charge of the page */
+  box.takeover = w => {
+    w = w || box.held;
+    if(!w) return;
+    box.held = null;
+    w.state = 'activated'; reg.waiting = null; reg.active = w; container.controller = w;
+    setTimeout(() => container.fire('controllerchange'), 0);
+  };
+  const worker = version => {
+    const w = { version: version, state: 'installed', ls: {},
+      addEventListener(t, fn){ (w.ls[t] = w.ls[t] || []).push(fn); },
+      setState(st){ w.state = st; (w.ls.statechange || []).forEach(fn => fn({})); },
+      postMessage(msg, ports){ box.messages.push(msg.type + '@' + w.version);
+        if(msg.type === 'version' && ports) ports[0].postMessage({ version: w.version });
+        if(msg.type === 'activate'){ if(box.hold) box.held = w; else box.takeover(w); } } };
+    return w;
+  };
+  reg.active = worker('before');
+  reg.active.state = 'activated';
+  if(waitingVersion) reg.waiting = worker(waitingVersion);
+  container.register = () => Promise.resolve(reg);
+  container.ready = Promise.resolve(reg);
+  /* a new version finishing its install while the app runs */
+  box.install = version => { const w = worker(version); w.state = 'installing'; reg.installing = w;
+    (reg.ls.updatefound || []).forEach(fn => fn({})); reg.installing = null; reg.waiting = w; w.setState('installed'); return w; };
+  const sp = fakeSpeech();
+  const app = H.loadApp({ windowExtras: sp.extras, sharedStorage: o.sharedStorage });
+  const c = fast(app.ctx);
+  c.MessageChannel = FakeChannel;
+  c.navigator = { serviceWorker: container };
+  c.location.reload = () => { box.reloads++; };
+  if(waitingVersion === 'same') reg.waiting = worker(c.APP_VERSION);
+  box.app = app; box.c = c; box.container = container; box.reg = reg; box.worker = worker;
+  return box;
+}
+
 /* =========================================================
    CONTRACT 55 — UPDATES ARRIVE BY THEMSELVES, AT A QUIET MOMENT
    A new version installs by itself and takes over only at a quiet
@@ -5033,44 +5085,7 @@ async function testWorldKeeping(){
    ========================================================= */
 async function testUpdates(){
   section('CONTRACT 55 — updates arrive by themselves, at a quiet moment');
-  /* the browser's part: a service-worker container, a registration, and
-     workers that answer "version" and take over on "activate" */
-  const rig = waitingVersion => {
-    const box = { reloads: 0, messages: [], updates: 0, failUpdate: false };
-    const listeners = {};
-    const container = { controller: {},
-      addEventListener(t, fn){ (listeners[t] = listeners[t] || []).push(fn); },
-      fire(t){ (listeners[t] || []).forEach(fn => fn({})); } };
-    const reg = { waiting: null, installing: null, active: null, ls: {},
-      addEventListener(t, fn){ (reg.ls[t] = reg.ls[t] || []).push(fn); },
-      update(){ box.updates++; return box.failUpdate ? Promise.reject(new Error('no network')) : Promise.resolve(); } };
-    const worker = version => {
-      const w = { version: version, state: 'installed', ls: {},
-        addEventListener(t, fn){ (w.ls[t] = w.ls[t] || []).push(fn); },
-        setState(st){ w.state = st; (w.ls.statechange || []).forEach(fn => fn({})); },
-        postMessage(msg, ports){ box.messages.push(msg.type + '@' + w.version);
-          if(msg.type === 'version' && ports) ports[0].postMessage({ version: w.version });
-          if(msg.type === 'activate'){ w.state = 'activated'; reg.waiting = null; reg.active = w; setTimeout(() => container.fire('controllerchange'), 0); } } };
-      return w;
-    };
-    reg.active = worker('before');
-    reg.active.state = 'activated';
-    if(waitingVersion) reg.waiting = worker(waitingVersion);
-    container.register = () => Promise.resolve(reg);
-    container.ready = Promise.resolve(reg);
-    /* a new version finishing its install while the app runs */
-    box.install = version => { const w = worker(version); w.state = 'installing'; reg.installing = w;
-      (reg.ls.updatefound || []).forEach(fn => fn({})); reg.installing = null; reg.waiting = w; w.setState('installed'); return w; };
-    const sp = fakeSpeech();
-    const app = H.loadApp({ windowExtras: sp.extras });
-    const c = fast(app.ctx);
-    c.MessageChannel = FakeChannel;
-    c.navigator = { serviceWorker: container };
-    c.location.reload = () => { box.reloads++; };
-    if(waitingVersion === 'same') reg.waiting = worker(c.APP_VERSION);
-    box.app = app; box.c = c; box.container = container; box.reg = reg; box.worker = worker;
-    return box;
-  };
+  const rig = updateRig;
   const activated = (b, v) => b.messages.indexOf('activate@' + v) !== -1;
 
   sub('a waiting worker of this page\'s own version');
@@ -5434,6 +5449,227 @@ async function testWorker(){
   T('a picture this version did not install (a world\'s) is kept when fetched', !!v.stores.get(cacheName).get(world));
 }
 
+/* =========================================================
+   CONTRACT 57 — A TAKEOVER THAT COMES IN LATE WAITS FOR A QUIET MOMENT
+   Asking a worker to take over is asynchronous. v0.6.2 checked for a
+   quiet moment when it asked, then reloaded the moment the worker came in
+   — by then the child could be mid-letter, mid-flight, or a grown-up in
+   the grown-ups area. The takeover is recorded; the reload waits for a
+   quiet moment checked at the reload itself, happens once, and loses
+   nothing. The child's controls stay live throughout.
+   ========================================================= */
+async function testLateTakeover(){
+  section('CONTRACT 57 — a takeover that comes in late waits for a quiet moment');
+  const activated = (b, v) => b.messages.indexOf('activate@' + v) !== -1;
+  const hush = async b => { for(let q = 0; q < 400 && (b.c.Voice.speaking() || b.c.session.busy); q++) await wait(2); };
+  /* a real touch reaches the page's capture listener on the document first */
+  const touch = b => b.app.dom.document.dispatch('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true });
+  const still = b => { b.c.Updates.touchedAt = Date.now() - b.c.UPDATE_IDLE - 1; };
+  /* a newer version (or one of the page's own), asked in at rest on Earth
+     and held by the browser until the test lets it in */
+  const askedAtRest = async o => {
+    o = o || {};
+    const b = updateRig(o.same ? 'same' : null, o);
+    b.hold = true;
+    await b.c.startAdventure();
+    if(o.done){ seedDone(b.c, o.done); b.c.saveCompletions(); }
+    await b.c.startUpdates();
+    b.c.Updates.loadedAt = Date.now() - b.c.UPDATE_SETTLE - 1;
+    await hush(b);
+    if(o.same) b.c.applyUpdate();
+    else b.install('9.9.9');
+    await wait(20);
+    return b;
+  };
+
+  sub('asked at rest; it comes in in the middle of a letter');
+  const shared = new Map();
+  const tr = await askedAtRest({ sharedStorage: shared, done: ['moon-1'] });
+  const nw = tr.held;
+  T('at rest on Earth the newer version is asked in, and the browser holds it', activated(tr, '9.9.9') && tr.c.Updates.moving === 'asked' && !!nw && tr.reloads === 0, tr.messages.join(','));
+  tr.c.pickDestination('moon');
+  await tr.c.launch();
+  await tr.c.tapMarker('slate');
+  const wt = tr.c.session.write, run = tr.c.session.run;
+  touch(tr);
+  tr.c.writeDown(wt.plan[0].pts[0]);
+  const half = Math.floor(wt.plan[0].pts.length / 2);
+  for(let q = 1; q < half; q++) tr.c.writeMove(wt.plan[0].pts[q]);
+  const at = wt.t.at;
+  tr.takeover();
+  await wait(20);
+  T('it comes in mid-letter: the takeover is recorded, and the page does not reload', tr.c.Updates.moving === 'arrived' && tr.reloads === 0 && tr.reg.active === nw);
+  T('the same mission and the same letter, the finger still down where it was', tr.c.currentScene === 'mission' && tr.c.session.run === run && tr.c.session.write === wt && wt.t.down && wt.t.at === at,
+    [tr.c.currentScene, wt.t.down, wt.t.at, at].join(','));
+  tr.c.watchTakeover(); tr.c.applyUpdate(); tr.c.checkForUpdate(true);
+  T('looking again — the poll, an apply, a check — while the letter goes on: no reload, nothing asked twice',
+    tr.reloads === 0 && tr.c.Updates.moving === 'arrived' && tr.messages.filter(m => m === 'activate@9.9.9').length === 1);
+  T('and a poll stays armed, so the owed reload is not forgotten', !!tr.c.Updates.timer);
+  for(let q = half; q < half + 4; q++) tr.c.writeMove(wt.plan[0].pts[q]);
+  T('the letter goes on under the finger', wt.t.down && wt.t.at > at, wt.t.at + ' > ' + at);
+  await traceLetter(tr.c, false);
+  await playMission(tr.c);
+  T('the mission is finished, with nothing reloaded', tr.c.missionDone('writer-1') && tr.reloads === 0);
+  await hush(tr); still(tr);
+  T('on the planet, at rest and still: not a quiet moment, so no reload', tr.c.currentScene === 'planet' && tr.c.watchTakeover() === false && tr.reloads === 0);
+  await tr.c.flyHome();
+  await hush(tr);
+  touch(tr);
+  T('home on Earth, but touched just now: it waits', tr.c.currentScene === 'earth' && tr.c.watchTakeover() === false && tr.reloads === 0);
+  still(tr);
+  T('home on Earth and still: one reload into the new version — owed though the worker waits no longer',
+    nw.state === 'activated' && tr.c.Updates.waiting === null && tr.c.watchTakeover() === true && tr.reloads === 1);
+  for(let q = 0; q < 3; q++){ tr.container.fire('controllerchange'); tr.c.watchTakeover(); }
+  T('then nothing more: one reload in all', tr.reloads === 1 && tr.c.Updates.moving === 'reloading');
+  const back = H.loadApp({ sharedStorage: shared });
+  T('the reloaded app starts from the same saved journey: the finished letter mission is kept',
+    back.errors.length === 0 && back.ctx.missionDone('moon-1') && back.ctx.missionDone('writer-1'), back.errors.join(' | '));
+  clearPreloadTimers(tr.c);
+
+  sub('asked at rest; it comes in during a flight');
+  const fl = await askedAtRest();
+  Object.assign(fl.c.TIMING, { travel: 400, travelFirst: 400, travelRepeat: 400 });
+  fl.c.pickDestination('moon');
+  touch(fl);
+  const flight = fl.c.launch();
+  await wait(40);
+  const flying = !!fl.c.session.travel;
+  fl.takeover();
+  await wait(20);
+  T('it comes in mid-flight: recorded, and the flight is not cut short by a reload',
+    flying && !!fl.c.session.travel && fl.c.Updates.moving === 'arrived' && fl.reloads === 0, String(flying));
+  await flight;
+  await hush(fl); still(fl);
+  T('landed on the Moon, at rest and still: no reload there', fl.c.currentScene === 'planet' && fl.c.watchTakeover() === false && fl.reloads === 0);
+  const homeward = fl.c.flyHome();
+  await wait(40);
+  still(fl);
+  T('flying home: no reload', !!fl.c.session.travel && fl.c.watchTakeover() === false && fl.reloads === 0);
+  await homeward;
+  await hush(fl); still(fl);
+  T('home on Earth and still: one reload', fl.c.currentScene === 'earth' && fl.c.watchTakeover() === true && fl.reloads === 1);
+  clearPreloadTimers(fl.c);
+
+  sub('asked at rest; it comes in with a grown-up in the grown-ups area');
+  const gu = await askedAtRest();
+  gu.c.openGrownups();
+  gu.takeover();
+  await wait(20);
+  still(gu);
+  T('a grown-ups page open, no touch for a while: recorded, no reload', gu.c.Updates.moving === 'arrived' && gu.c.watchTakeover() === false && gu.reloads === 0);
+  gu.c.closeGrownups();
+  await hush(gu);
+  const gate = gu.app.dom.document.getElementById('gateBtn');
+  gate.style.setProperty = (k, v) => { gate.style[k] = v; };      // the hold's ring; this stub alone, so layout code elsewhere keeps its harness path
+  gu.c.startGateHold();
+  still(gu);
+  T('a grown-up holding the lock to open it again, the finger held still: no reload', !!gu.c.session.holdTimer && gu.c.watchTakeover() === false && gu.reloads === 0);
+  gu.c.cancelGateHold();
+  still(gu);
+  T('the lock let go, home on Earth and still: one reload', gu.c.currentScene === 'earth' && gu.c.watchTakeover() === true && gu.reloads === 1);
+  clearPreloadTimers(gu.c);
+
+  sub('asked at rest; the child touches the screen just before it comes in');
+  const tc = await askedAtRest();
+  touch(tc);
+  tc.takeover();
+  await wait(20);
+  T('a touch just now: recorded, no reload', tc.c.Updates.moving === 'arrived' && tc.reloads === 0);
+  still(tc);
+  await wait(tc.c.UPDATE_POLL + 300);
+  T('once the child has been still, the poll finds the quiet moment by itself: one reload', tc.reloads === 1 && tc.c.Updates.moving === 'reloading', String(tc.reloads));
+  clearPreloadTimers(tc.c);
+
+  sub('an owed reload, looked for by the poll alone while the grown-ups area stays open');
+  const pl = await askedAtRest();
+  pl.c.openGrownups();
+  pl.takeover();
+  await wait(20);
+  await wait(pl.c.UPDATE_POLL + 300);
+  T('a poll comes and goes while not quiet: no reload, and the poll looks again', pl.reloads === 0 && pl.c.Updates.moving === 'arrived' && !!pl.c.Updates.timer);
+  pl.c.closeGrownups();
+  await hush(pl); still(pl);
+  await wait(pl.c.UPDATE_POLL + 300);
+  T('once quiet, the poll alone makes the one reload', pl.reloads === 1 && pl.c.Updates.moving === 'reloading', String(pl.reloads));
+  clearPreloadTimers(pl.c);
+
+  sub('the takeover event and the poll, again and again');
+  const rp = await askedAtRest();
+  rp.c.openGrownups();
+  rp.takeover();
+  await wait(20);
+  for(let q = 0; q < 5; q++){ rp.container.fire('controllerchange'); rp.c.watchTakeover(); rp.c.applyUpdate(); rp.c.checkForUpdate(true); }
+  T('not quiet: five more takeover events, polls and checks — no reload', rp.reloads === 0 && rp.c.Updates.moving === 'arrived');
+  rp.c.closeGrownups();
+  await hush(rp); still(rp);
+  for(let q = 0; q < 5; q++){ rp.container.fire('controllerchange'); rp.c.watchTakeover(); }
+  T('quiet: exactly one reload, however many times it is looked at', rp.reloads === 1);
+  clearPreloadTimers(rp.c);
+
+  sub('a first install, and a worker of the page\'s own version, coming in during play');
+  const fi = updateRig(null);
+  await fi.c.startAdventure();
+  await fi.c.startUpdates();
+  fi.container.controller = null;
+  fi.c.pickDestination('moon');
+  await fi.c.launch();
+  fi.container.fire('controllerchange');           // a first install claims the page
+  await wait(5);
+  await fi.c.flyHome();
+  await hush(fi); still(fi);
+  T('a first install claiming the page mid-play: no reload then, and none owed after', fi.c.Updates.moving === false && fi.c.watchTakeover() === false && fi.reloads === 0);
+  const sv = await askedAtRest({ same: true });
+  T('a worker of the page\'s own version is asked in at rest', activated(sv, sv.c.APP_VERSION) && sv.c.Updates.moving === 'quiet', sv.messages.join(','));
+  sv.c.pickDestination('moon');
+  await sv.c.launch();
+  sv.takeover();
+  await wait(20);
+  await sv.c.flyHome();
+  await hush(sv); still(sv);
+  T('it comes in during play: nothing reloads then or after — the page already is that version', sv.c.Updates.moving === false && sv.c.watchTakeover() === false && sv.reloads === 0);
+  clearPreloadTimers(fi.c); clearPreloadTimers(sv.c);
+
+  sub('the helping reload for a held takeover, with the child playing again');
+  const hf = await askedAtRest({ done: ['moon-1'] });
+  hf.c.history = { state: null, replaceState(st){ this.state = st; }, pushState(){}, back(){} };
+  hf.c.pickDestination('moon');
+  await hf.c.launch();
+  await hf.c.tapMarker('slate');
+  const hw = hf.c.session.write;
+  touch(hf);
+  hf.c.writeDown(hw.plan[0].pts[0]);
+  hf.c.writeMove(hw.plan[0].pts[1]);
+  hf.c.Updates.askedAt = Date.now() - hf.c.UPDATE_STALL - 1;
+  still(hf);
+  T('its one helping reload is due, but the child is tracing: it waits, the finger still down, the tab not marked',
+    hf.c.watchTakeover() === false && hf.reloads === 0 && hf.c.Updates.moving === 'asked' && hw.t.down && !(hf.c.history.state && hf.c.history.state.updateReloadAt));
+  await traceLetter(hf.c, false);
+  await playMission(hf.c);
+  await hf.c.flyHome();
+  await hush(hf); still(hf);
+  T('home on Earth and still: the helping reload, once, marked on the tab',
+    hf.c.watchTakeover() === true && hf.reloads === 1 && !!(hf.c.history.state && hf.c.history.state.updateReloadAt));
+  clearPreloadTimers(hf.c);
+
+  sub('a held one, already helped once, that comes in late anyway');
+  const sb = await askedAtRest();
+  sb.c.history = { state: { updateReloadAt: Date.now() - 1000 }, replaceState(st){ this.state = st; }, pushState(){}, back(){} };
+  sb.c.Updates.askedAt = Date.now() - sb.c.UPDATE_STALL - 1;
+  sb.c.watchTakeover();
+  T('helped once already in this tab: the page stops trying, and nothing reloads', sb.c.Updates.moving === 'stalled' && sb.reloads === 0);
+  sb.c.openGrownups();
+  sb.takeover();
+  await wait(20);
+  T('it comes in late, with a grown-ups page open: the reload is owed, not made', sb.c.Updates.moving === 'arrived' && sb.reloads === 0);
+  sb.c.closeGrownups();
+  await hush(sb); still(sb);
+  T('home on Earth and still: one reload into it — the page is not left on the old version under the new worker', sb.c.watchTakeover() === true && sb.reloads === 1);
+  clearPreloadTimers(sb.c);
+
+  const rigs = [tr, fl, gu, tc, pl, rp, fi, sv, hf, sb];
+  T('no console errors', rigs.every(b => b.app.errors.length === 0) && back.errors.length === 0, rigs.map(b => b.app.errors.join('|')).join(' '));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -5446,5 +5682,5 @@ module.exports = {
   testHud, testTravel, testInput, testPlayfield, testStation,
   testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign,
   testLetterforms, testLetterCases, testSightWords, testTracing, testMoonWriter, testJupiter, testAssetLoading, testGrownupsSeven,
-  testWorldKeeping, testUpdates, testWorker
+  testWorldKeeping, testUpdates, testWorker, testLateTakeover
 };
