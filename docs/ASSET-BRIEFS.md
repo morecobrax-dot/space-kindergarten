@@ -324,18 +324,26 @@ drift past as scenery, never toward the rocket.
 `tomato`, `tree`; and from Phase 3 (`tools/art/scenes/picture-p3.js`, the same
 camera) `map`, `sun`, `fish`, `fan`, `net`, `rug`, `hat`, `cat`, `cap`, `pan`,
 `cup`, `bus`, `bug` (a ladybug), `nut` (an acorn-like nut), `pumpkin`,
-`umbrella`, `cupcake`.
+`umbrella`, `cupcake`; and from Phase 5 (`picture-p5a.js`, `picture-p5b.js`,
+`picture-p5c.js`, the same camera) `bat` (the animal, wings spread), `bun`
+(a sesame bun), `pup` (a sitting puppy), `hut` (a round thatched hut),
+`fox`, `box` (an open cardboard box), `mouse`, `nest` (with three blue
+eggs), `seal`, `robot` (a teal toy robot) and `butterfly`.
 
 - **One set:** the same camera for every picture, a gentle three-quarter
   view from slightly above; each object centred and filling about 80% of the
   frame's larger dimension.
 - **Instantly recognisable at 120 px** by a five-year-old: exaggerate the
   defining feature (a banana's curve, a car's wheels, a bee's stripes).
-- Only the snake, the bee, the fish, the cat and the bug have faces: two
+- The animals have faces — the snake, the bee, the fish, the cat, the bug,
+  and from Phase 5 the bat, the pup, the fox, the mouse and the seal: two
   bead eyes each (the ladybug's are white with dark pupils, because dark
-  beads disappear on its dark head). Nothing else has a face.
+  beads disappear on its dark head). The robot has round eye discs with
+  bead pupils. Nothing else has a face.
 - Pairs a child could mix up must differ at a glance: the sun hat and the
-  baseball cap, the cupcake and the cake, the fan and a flower.
+  baseball cap, the cupcake and the cake, the fan and a flower, the bun and
+  a cake (no icing), the hut and a house (a round thatched roof), the mouse
+  and a rat (round ears, a small round body), the pup and the fox.
 - Friendly, saturated colours, never neon. No text.
 
 ## The rocket and the guide
@@ -368,8 +376,8 @@ camera) `map`, `sun`, `fish`, `fan`, `net`, `rug`, `hat`, `cat`, `cap`, `pan`,
 
 ### Gear — `assets/rocket/gear-*.webp` · 640×800 each · transparent
 
-`star`, `moon`, `antenna`, `lights`, `booster`, and `wings` (the
-Bumblebee theme's).
+`star`, `moon`, `antenna`, `lights`, `booster`, `wings` (the
+Bumblebee theme's), and from Phase 5 `ring`, `dish` and `flags`.
 
 - **Framing:** the **rocket's own frame and camera**. Each picture holds
   only the piece, exactly where it sits on the rocket, with the shadow it
@@ -377,8 +385,14 @@ Bumblebee theme's).
   it. The rocket itself is not in the picture.
 - **Fixed colours**, never painted: a warm yellow star, a lavender moon, a
   lavender-grey antenna with a coral ball, warm lamps in lavender-grey
-  bezels, pale cream-white wings, cream boosters with a coral band. Each
-  must read on a red, blue, yellow or purple rocket.
+  bezels, pale cream-white wings, cream boosters with a coral band, a
+  gold ring with a cream band, a cream dish with a coral horn on a
+  lavender-grey arm, and flags in the house brights on a cream string. Each
+  must read on a red, blue, yellow or purple rocket, a dark or a silver one,
+  and on the patterned themes, at play size (a rocket about 100 to 230 px
+  tall): a piece that reads only up close is not shipped.
+- **Clear of the face and the flame:** nothing covers the window, and
+  nothing is drawn in the flame's box below the nozzle.
 
 ### Flame — `assets/rocket/flame.webp` · 256×384 · transparent
 

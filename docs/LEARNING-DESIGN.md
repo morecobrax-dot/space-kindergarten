@@ -198,6 +198,44 @@ reviews, `jupiter-4` with one, and `writer-2` with one letter to trace. The
 same evidence always picks the same thing, and a grown-up could follow the
 rule on paper.
 
+## Replays, by rule (Phase 5)
+
+A mission played again used to ask its written rounds word for word; only
+the answers' places moved. Now:
+
+1. **The first play is always the mission as written**: its introductions
+   and its teaching order, which a grown-up can read in the content.
+2. **Once it has been finished, a replay keeps its shape**: as many rounds,
+   the guided round where it was, each review round with its rule, the same
+   case (big or little) and, for a pair, the same direction. Only the item
+   changes, drawn from the mission's own list (`replay` in `MISSIONS`):
+   a letter the mission teaches, another rhyme, a word with as many beats,
+   another picture that starts with the same sound, a word with the same
+   vowel and the same kind of first sound (Word Builder's level).
+3. **A replay teaches nothing new.** A mission's list holds its own items and
+   more of the same kind, never a letter or a sound it does not teach. A
+   Word Builder word may use only the sounds its mission already asks for:
+   "bat" waits for a short-a mission that asks for /b/. The content check
+   refuses a list that breaks this, and the sounds taught are still derived
+   from the missions as written.
+4. **Chosen by a seed, so it can be followed.** Which item is the run's
+   seeded choice: the same seed, content and history always give the same
+   sequence. Within a run an item comes back only when every other item
+   that fits its round has been asked as often. What the mission asked last
+   time (its completion keeps a short `shown` list) comes after what it did
+   not, and a replay never starts with the question the last one started
+   with. A small list repeats honestly; nothing is invented.
+5. **Review still decides what needs practice.** A replay's review rounds
+   ask what the evidence says, exactly as before; the seed only chooses
+   among suitable pictures for a review of a sound.
+6. **Moon Writer is never shuffled**: its letters come in stroke order.
+
+On a planet, once the visit's mission is played, **a lit marker plays its
+game again** — its finished missions in turn — and says so ("Let's play it
+again!"). Nothing pulses and the yellow way home stays the next thing to
+do; a game not yet played waits for a visit of its own. A replay pays the
+same 3 stars.
+
 ## The school print
 
 The letters a child reads are **drawn, not typed**. Each letter is a list of
@@ -241,10 +279,11 @@ the clay, and the plate is as plain as a tile (7:1 contrast or better).
 5. **Second wrong tap:** that stone steps aside too, and the answer glows:
    *"Here it is! This is the letter em. Tap it!"* The only stone left is the
    answer, so **every round can be finished**.
-6. If nothing is tapped for 10 seconds, Pip nudges (*"Listen. Find the
+6. If nothing is tapped for 14 seconds, Pip nudges (*"Listen. Find the
    letter em."*), then once more (*"Take your time…"*), then waits. This
    never counts against the child. The Repeat button says the question
-   again in the same words.
+   again in the same words. A question cut off from outside — the screen
+   turned, or the app left and come back to — is asked again.
 
 **The guided first round.** The first round of every mission teaches the tap
 itself: after the question, a ring pulses around the answer. It is not

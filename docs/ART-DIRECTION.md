@@ -226,13 +226,19 @@ painted parts (the cap and the fins) in white clay. Those parts are also
 exported as a mask (`rocket.paintMask`). In the app, the paint colour (a
 `--paint-*` token) is cut to the mask and multiplied over the render.
 Multiplying is how a matte surface takes a colour, so the render's shading
-and shadows all survive every paint. There are eight.
+and shadows all survive every paint. There are ten (Phase 5 added Midnight
+blue and Moon silver: a dark and a light one, unlike any of the eight).
 
 **A theme is a pattern through the same mask:** Bumblebee's stripes (with
-pale wings), Rainbow's bands, Galaxy's speckled purple. Still one render.
+pale wings), Rainbow's bands, Galaxy's speckled purple, Polka dots' cream
+dots on sky blue, and Race checkers' dark and cream squares, square in the
+rocket's frame. Still one render.
 
 **Gear is clay laid on the rocket:** a star or a moon topper, a tiny
-antenna, warm side lights, little boosters. Each is rendered in the
+antenna, warm side lights, little boosters, and from Phase 5 a gold planet
+ring around the cap, a little satellite dish and a string of party flags
+across the cap. (Party streamers tied to the fins were tried first and
+dropped: at play size they read as squiggles, and in flight as legs.) Each is rendered in the
 rocket's own frame and camera, with the shadow it casts on the rocket, so
 it sits exactly in place over any paint. Gear keeps its own colours.
 
@@ -241,10 +247,14 @@ own, as it looks now.
 
 ## The game pictures and props
 
-- **Pictures** (`picture.*`, 384×384): eleven small clay objects under one
-  camera — a gentle three-quarter view from slightly above — each filling
-  about 80% of its frame, so they read as one set. Only the snake and the
-  bee have faces. No text is ever baked into a picture.
+- **Pictures** (`picture.*`, 384×384): thirty-nine small clay objects
+  under one camera — a gentle three-quarter view from slightly above — each
+  filling about 80% of its frame, so they read as one set. Animals have
+  small bead eyes (the robot has round eye discs); an object never has a
+  face. No text is ever baked into a picture. Phase 5 added eleven for
+  replays: bat, bun, pup, hut, fox, box, mouse, nest, seal, robot and
+  butterfly, each chosen so its name is the one a child would say, or the
+  one Pip says as it is shown.
 - **Letter stones** (`prop.letterStone`): a Moon stone with a flat front
   face. The letter is drawn by the app on a clean plate laid over that face.
 - **The meteor stone** (`prop.beatStone`): a round, drum-like rock with a

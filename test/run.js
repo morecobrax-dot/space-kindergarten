@@ -82,7 +82,11 @@ const SUITES = [
   C.testUpdates,
   C.testWorker,
   C.testLateTakeover,
-  C.testFindsReleases
+  C.testFindsReleases,
+  C.testReplays,
+  C.testSpeechPace,
+  C.testPhone,
+  C.testComeBack
 ];
 
 async function main(){

@@ -73,7 +73,7 @@ rules for when Pip speaks at all are in
 |---|---|---|
 | Question, first of a mission | "Find the letter em." (bubble: "Find the letter!") | Awaiting review |
 | Question, later rounds | "Now find the letter em." / "Can you find the letter em?" / "Where is the letter em?" | Awaiting review |
-| Nudge, after 10 seconds of no tap | "Listen. Find the letter em.", then "Take your time. Find the letter em.", then nothing more | Awaiting review |
+| Nudge, after 14 seconds of no tap | "Listen. Find the letter em.", then "Take your time. Find the letter em.", then nothing more | Awaiting review |
 | Correct | "Yes! That's the letter em." / "Great job! You found the letter em." / "You got it! The letter em." / "Wonderful! That's the letter em." / "Super! You found the letter em." | Awaiting review |
 | First miss | "Almost! Listen again." / "Good try! Listen again." / "So close! Listen again.", then "Find the letter em." | Awaiting review |
 | Second miss | "Here it is! This is the letter em. Tap it!" | Awaiting review |
@@ -131,7 +131,7 @@ rocket; star: spoon), because "starts the same" is the usual mix-up with
 | Correct | "Yes! Cake, snake. They rhyme!" / "Cake and snake. You found the rhyme!" / "Great listening! Cake, snake!" / "You got it! Cake rhymes with snake!" | Awaiting review |
 | First miss | the rotating "almost", then "What rhymes with cake?" and the pictures left, named again | Awaiting review |
 | Second miss | "Here it is! cake, snake. Tap the snake!" | Awaiting review |
-| Nudge, after 10 seconds | "Listen. What rhymes with cake?", then "Take your time. What rhymes with cake?" | Awaiting review |
+| Nudge, after 14 seconds | "Listen. What rhymes with cake?", then "Take your time. What rhymes with cake?" | Awaiting review |
 
 ## 7. Syllable Meteors (`mercury-2`) — development content
 
@@ -192,6 +192,17 @@ yet. A contract checks these against a second, hand-typed list.
 | pumpkin | 2 | Awaiting review |
 | umbrella | 3 | Awaiting review |
 | cupcake | 2 | Awaiting review |
+| bat | 1 | Awaiting review |
+| bun | 1 | Awaiting review |
+| pup | 1 | Awaiting review |
+| hut | 1 | Awaiting review |
+| fox | 1 | Awaiting review |
+| box | 1 | Awaiting review |
+| mouse | 1 | Awaiting review |
+| nest | 1 | Awaiting review |
+| seal | 1 | Awaiting review |
+| robot | 2 ("roe!" "bot!") | Awaiting review |
+| butterfly | 3 ("but!" "ter!" "fly!") | Awaiting review |
 
 | Line | Script | Status |
 |---|---|---|
@@ -200,7 +211,7 @@ yet. A contract checks these against a second, hand-typed list.
 | Correct | "Yes! Banana has three beats!" / "You got it! Three beats!" / "Great tapping! Banana, three beats!" | Awaiting review |
 | First miss | the rotating "almost", then the word again and the question | Awaiting review |
 | Second miss, and the guided first round | "Let's tap it together. Listen!", each beat as a meteor lights, then "Now you! Three beats. Tap the stone!" — after this, only that many taps count | Awaiting review |
-| Nudge, after 10 seconds | "Listen. banana. Tap each beat!", then "Take your time. banana. Tap each beat!" | Awaiting review |
+| Nudge, after 14 seconds | "Listen. banana. Tap each beat!", then "Take your time. banana. Tap each beat!" | Awaiting review |
 | Pause length | 1.5 seconds ends a count. Long enough for a slow tapper, short enough not to feel stuck? | Awaiting review |
 
 ## 8. Mercury and the world
@@ -240,15 +251,18 @@ readers; Pip still says everything a pre-reader needs.
 | Flying up to the station | "Up we go, to the space station!" | Awaiting review |
 | Flying home from it | "Back down to Earth!" | Awaiting review |
 | A tab | "Paint!" / "Rocket gear!" / "Rocket themes!" | Awaiting review |
-| Trying something on | its name: "Grape purple!", "Star topper!", "Bumblebee!" | Awaiting review |
+| Trying something on | its name: "Grape purple!", "Star topper!", "Bumblebee!", "Planet ring!", "Polka dots!" | Awaiting review |
+| Turning the screen upright | "Turn the screen sideways" (it said "iPad", which is wrong on a phone) | Awaiting review |
+| Playing a finished game again, at its lit marker | "Let's play it again!" / "One more time!" / "Here we go again!" | Awaiting review |
+| Coming back to the app in the middle of a question | the question is asked again | Awaiting review |
 | Unlocking | "Ta-da! It's on your rocket!" | Awaiting review |
 | Wearing one already owned | "Looking good!" | Awaiting review |
 
 | Things to wear | Names and prices | Status |
 |---|---|---|
-| Paint | Classic red (free), Sky blue 3★, Grape purple 4★, Tangerine orange 4★, Sunny yellow 5★, Bubblegum pink 5★, Lime green 6★, Ocean teal 6★ | Awaiting review |
-| Gear | No gear (free), Tiny antenna 3★, Star topper 4★, Moon topper 4★, Side lights 5★, Boosters 6★ | Awaiting review |
-| Themes | No theme (free), Bumblebee 8★ (stripes and wings), Rainbow explorer 9★, Galaxy explorer 10★ | Are the prices fair? A mission pays 3★ | Awaiting review |
+| Paint | Classic red (free), Sky blue 3★, Grape purple 4★, Tangerine orange 4★, Moon silver 4★, Sunny yellow 5★, Bubblegum pink 5★, Midnight blue 5★, Lime green 6★, Ocean teal 6★ | Awaiting review |
+| Gear | No gear (free), Tiny antenna 3★, Star topper 4★, Moon topper 4★, Satellite dish 4★, Side lights 5★, Party flags 5★, Boosters 6★, Planet ring 6★ | Awaiting review |
+| Themes | No theme (free), Bumblebee 8★ (stripes and wings), Polka dots 8★, Rainbow explorer 9★, Race checkers 9★, Galaxy explorer 10★ | Are the prices fair? A mission pays 3★, and so does every replay | Awaiting review |
 
 ## 10. Grown-ups area wording
 
@@ -261,7 +275,8 @@ readers; Pip still says everything a pre-reader needs.
 | The journey, place by place: "Restored · 1 of 3 missions done", "2 of 4 missions done", "Not reached yet" | Awaiting review |
 | "Letter sounds: Development audio, awaiting recordings", and the note that explains it | Awaiting review |
 | The note that answers given with the voice off are not counted | Awaiting review |
-| The rocket: "Bumblebee · Star topper · 5 of 16 unlocked" | Awaiting review |
+| The rocket: "Bumblebee · Star topper · 5 of 23 unlocked" | Awaiting review |
+| Speaking pace: "Calm" and "A little quicker", with "Calm speaks slowly, with time to listen between lines. A little quicker suits a child who knows the games. Letter sounds keep their own timing either way." | Awaiting review |
 | "Display checks: All clear" (or "Redrawn N times this session"): useful to a grown-up testing the app, or noise? | Awaiting review |
 
 ## 11. Letter sounds: the development phonics voice (Phase 3)
@@ -340,7 +355,7 @@ same at the end" is the mix-up to hear past.
 | Correct | the sound, then "Moon!" / "Yes! Moon!" / "You found it! Moon!" / "Great listening! Moon!" | Awaiting review |
 | First miss | the rotating "almost", the sound again, then the pictures left, named again | Awaiting review |
 | Second miss | "Here it is! Moon starts with…" /m/ "Tap the moon!" | Awaiting review |
-| Nudge, after 10 seconds | "Listen again." then the sound; then "Take your time. Listen." then the sound | Awaiting review |
+| Nudge, after 14 seconds | "Listen again." then the sound; then "Take your time. Listen." then the sound | Awaiting review |
 | With no sound at all | the bubble shows "Find the picture that starts with M!", and the answer is not counted as practice | Awaiting review |
 
 ## 13. Word Builder (`mars-2`, `mars-4`) — CVC words, development content
@@ -395,7 +410,7 @@ example F or S beside M, A, P).
 | Correct | the word blended slowly ("mmm-aaa-p"), then "Map! You built it!" / "Map! You made the word!" / "Great building! Map!", and the picture | Awaiting review |
 | First miss | the rotating "almost", then the word sound by sound again | Awaiting review |
 | Second miss, and the guided first round | "Let's build it together. Listen.", each letter hopping in with its sound, the blend, then "Now you! Build map." | Awaiting review |
-| Nudge, after 10 seconds | "Listen again." then the word sound by sound; then "Take your time. Listen." | Awaiting review |
+| Nudge, after 14 seconds | "Listen again." then the word sound by sound; then "Take your time. Listen." | Awaiting review |
 
 ## 14. More letters on the Moon (`moon-2`, `moon-3`)
 
@@ -706,6 +721,85 @@ help, then the one practiced longest ago:
 | A child who had already restored Mars before Jupiter existed | on Earth, once: Jupiter appears in the sky with the reveal line and "Next stop, Jupiter!" | Awaiting review |
 | The Moon's writing slate | "Tap the writing slate. Let's write!" — offered in the same visit that relights the Moon | Awaiting review |
 | On screen | "JUPITER" / "Sight words"; "MOON" / "Letters • Writing" | Awaiting review |
+
+## 26. Replays: a finished mission asks afresh (Phase 5)
+
+A mission's **first play is always as written** in the sections above. Once
+it has been finished, playing it again keeps its shape and asks each round
+afresh from the mission's own list below, chosen by a seed (so the same run
+can be repeated exactly): as many rounds, the guided round where it was, the
+same case (big or little) and, for a pair, the same direction, the same
+sound in Sound Scout, the same vowel and level in Word Builder, the same
+number of beats in Syllable Meteors. Review rounds keep their own rule
+(section 17). Within a run nothing comes back while the list has more; what
+the last run asked comes after what it did not, and a replay never starts
+with the question the last one started with. **Moon Writer is never
+shuffled**: its letters come in stroke order. On a planet, once the visit's
+mission is played, a lit marker plays its game again ("Let's play it
+again!"), and the yellow way home stays the next thing to do. A replay pays
+3 stars, like any mission.
+
+A replay never adds a sound: a Word Builder word may use only the sounds its
+own mission already asks for, and the content check refuses one that does
+not.
+
+| Mission | A replay may ask | Question for the reviewer | Status |
+|---|---|---|---|
+| moon-1 | M, S, O, T | | Awaiting review |
+| moon-2 | A, P, F, N | | Awaiting review |
+| moon-3 | C, H, U, B, then the two reviews | | Awaiting review |
+| moon-4 | little o, s, c, m, a, t | The first play goes "same shape first"; a replay mixes them. Fine once the mission has been played? | Awaiting review |
+| moon-5 | N, P, F, H, B, each round keeping its direction, then the review | | Awaiting review |
+| mercury-1 | cake / snake, bee / tree, rock / sock, moon / spoon, star / car, fox / box — either way round | Is asking a pair the other way (snake, then cake) fair? | Awaiting review |
+| mercury-3 | cat / hat, bat / cat, hat / bat, map / cap, fan / pan, bug / rug, sock / rock, cup / pup, nut / hut, sun / bun — either way round; one rhyme ending per run | | Awaiting review |
+| mercury-2, mercury-4 | one beat: bee, car, sun, fish, cake, moon, star, tree, sock, fox, mouse, seal, nest · two: rocket, apple, pumpkin, cupcake, robot · three: banana, tomato, umbrella, butterfly | | Awaiting review |
+| mars-1 | /m/ moon, map, mouse · /s/ sun, sock, seal · /f/ fish, fan, fox | | Awaiting review |
+| mars-3 | /n/ net, nut, nest · /r/ rug, rock, rocket, robot, then the two reviews (their picture is also chosen by the seed, among the pictures that start with the sound) | | Awaiting review |
+| mars-2 | map, fan, hat (level 1) · cat, cap, pan (level 2). "bat" waits: /b/ is not a sound this mission asks for | | Awaiting review |
+| mars-4 | sun, nut, hut (level 1) · cup, bus, bug, bun (level 2), then the review | | Awaiting review |
+| jupiter-1 | the, and, see, you | | Awaiting review |
+| jupiter-3 | to, go, is, it, then the two reviews | | Awaiting review |
+| jupiter-2 | the, see, you, and, to, go | | Awaiting review |
+| jupiter-4 | in, can, we, my, is, then the review | | Awaiting review |
+
+| Item | Question for the reviewer | Status |
+|---|---|---|
+| A replay's guided round shows whichever item it drew | Fine, or should a replay's guided round always be the first play's? | Awaiting review |
+| A small list repeats: moon-1 has four letters for six rounds | Is a repeat within a mission acceptable when the list is short? | Awaiting review |
+
+## 27. The Phase 5 pictures
+
+Eleven new pictures, rendered for this app like the rest (DRAFT). Pip names
+every picture aloud in Rhyme Radar and Sound Scout, says the word before
+Syllable Meteors counts it, and shows Word Builder's picture only after the
+word is built, so a child who would call the nest "eggs" still hears "nest".
+
+| Word | Picture | Used in | Possible ambiguity | Status |
+|---|---|---|---|---|
+| bat | a small lavender bat, wings spread | Rhyme Radar (with cat and hat) | a baseball bat is also "bat" | Awaiting review |
+| bun | a golden bun with sesame seeds | Word Builder (short u, level 2); Rhyme Radar (sun) | "bread", "roll" | Awaiting review |
+| pup | a sitting puppy | Rhyme Radar (cup) | "dog", "puppy" | Awaiting review |
+| hut | a round hut with a thatched roof | Word Builder (short u, level 1); Rhyme Radar (nut) | "house" | Awaiting review |
+| fox | a sitting fox, tail curled | Sound Scout (/f/); Rhyme Radar (box) | low | Awaiting review |
+| box | an open cardboard box | Rhyme Radar (fox) | "package", "parcel" | Awaiting review |
+| mouse | a small grey mouse | Sound Scout (/m/); Syllable Meteors | "rat" (round ears make it unlikely) | Awaiting review |
+| nest | a twig nest holding three blue eggs | Sound Scout (/n/); Syllable Meteors | "eggs", "bird's nest" (/b/) | Awaiting review |
+| seal | a grey seal on its belly, head up | Sound Scout (/s/); Syllable Meteors | "sea lion" (still /s/, more beats) | Awaiting review |
+| robot | a teal toy robot, waving | Sound Scout (/r/); Syllable Meteors (2) | low | Awaiting review |
+| butterfly | an orange and yellow butterfly | Syllable Meteors (3) | "moth" (unlikely in these colours) | Awaiting review |
+
+## 28. Pace (Phase 5)
+
+| Item | Current | Question for the reviewer | Status |
+|---|---|---|---|
+| The default pace, "Calm" | the device voice at 86% of its own speed; an instruction settles about half a second before the question; the three pictures are named a breath apart; "almost" is followed by a pause before the question again | Easy to follow at 4 to 6? Too slow for some? | Awaiting review |
+| The grown-up choice, "A little quicker" | 94% of the voice's speed, pauses a quarter shorter (close to the pace before Phase 5) | Useful? | Awaiting review |
+| The nudge | a question is asked again after 14 seconds of quiet (it was 10), twice at most | Patient enough, or too long? | Awaiting review |
+| Letter sounds | the development voice's sounds keep their own timing at either pace | | Awaiting review |
+
+The voice is still the device's built-in speech voice, a temporary stand-in
+for recorded narration: a slower pace makes it easier to follow, not more
+natural. See [AUDIO.md](AUDIO.md).
 
 ---
 

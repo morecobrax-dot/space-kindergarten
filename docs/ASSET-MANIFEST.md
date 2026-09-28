@@ -13,7 +13,7 @@ direction, not material; see `references/README.md`.
 <!-- ASSET-TABLE-BEGIN
  — derived from ASSET_REGISTRY by `npm run config:sync`. Do not hand-edit. -->
 
-**88 registered assets: 88 DRAFT.**
+**102 registered assets: 102 DRAFT.**
 
 | Id | Path | State | Format | Size | Kept offline | Purpose | Source | Licence |
 |---|---|---|---|---|---|---|---|---|
@@ -85,6 +85,17 @@ direction, not material; see `references/README.md`.
 | `picture.pumpkin` | `assets/pictures/pumpkin.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "pumpkin" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `picture.umbrella` | `assets/pictures/umbrella.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "umbrella" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `picture.cupcake` | `assets/pictures/cupcake.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "cupcake" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.bat` | `assets/pictures/bat.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "bat" (the animal) | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.bun` | `assets/pictures/bun.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "bun" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.pup` | `assets/pictures/pup.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "pup" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.hut` | `assets/pictures/hut.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "hut" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.fox` | `assets/pictures/fox.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "fox" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.box` | `assets/pictures/box.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "box" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.mouse` | `assets/pictures/mouse.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "mouse" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.nest` | `assets/pictures/nest.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "nest" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.seal` | `assets/pictures/seal.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "seal" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.robot` | `assets/pictures/robot.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "robot" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `picture.butterfly` | `assets/pictures/butterfly.webp` | DRAFT | webp | 384×384 | with the app | A picture for the word "butterfly" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.body` | `assets/rocket/rocket.webp` | DRAFT | webp | 640×800 | with the app | The rocket, with its painted parts in white clay; also the picture for "rocket" | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.paintMask` | `assets/rocket/rocket-paint.webp` | DRAFT | webp | 640×800 | with the app | Where paint goes on the rocket: every paint colour is multiplied through it | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.flame` | `assets/rocket/flame.webp` | DRAFT | webp | 256×384 | with the app | Engine flame while flying | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
@@ -94,6 +105,9 @@ direction, not material; see `references/README.md`.
 | `rocket.gearLights` | `assets/rocket/gear-lights.webp` | DRAFT | webp | 640×800 | with the app | Gear: two warm side lights on the fins | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.gearBooster` | `assets/rocket/gear-booster.webp` | DRAFT | webp | 640×800 | with the app | Gear: two small side boosters | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `rocket.gearWings` | `assets/rocket/gear-wings.webp` | DRAFT | webp | 640×800 | with the app | The bumblebee theme's pale wings | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `rocket.gearRing` | `assets/rocket/gear-ring.webp` | DRAFT | webp | 640×800 | with the app | Gear: a gold planet ring around the nose | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `rocket.gearFlags` | `assets/rocket/gear-flags.webp` | DRAFT | webp | 640×800 | with the app | Gear: a string of party flags across the nose | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
+| `rocket.gearDish` | `assets/rocket/gear-dish.webp` | DRAFT | webp | 640×800 | with the app | Gear: a little satellite dish on the side | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `character.pip` | `assets/characters/pip.webp` | DRAFT | webp | 720×660 | with the app | Pip, the guide — an original satellite-buddy design | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `icon.192` | `icon-192.png` | DRAFT | png | 192×192 | at install only | Home-screen icon | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |
 | `icon.512` | `icon-512.png` | DRAFT | png | 512×512 | at install only | Install and splash icon | Rendered in this repository by tools/art (procedural clay renderer), 2026-09-26 | Project-owned |

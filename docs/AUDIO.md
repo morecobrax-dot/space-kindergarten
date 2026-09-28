@@ -3,7 +3,11 @@
 How Space Kindergarten speaks, plays sounds a child learns from, and makes
 its sound effects. The code is the `AUDIO` section of `index.html`.
 [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md) is the list of recordings a
-voice actor will make; it is generated from the content.
+voice actor will make; it is generated from the content. It lists every
+sound and word said sound by sound, every authored line, and — since
+Phase 5 — every family of lines built from a template (a letter's
+questions and praise, each rhyme pair's, each word's beats, and so on),
+each phrasing as written with every item it is said for, replays included.
 
 ## One owner, one cue at a time
 
@@ -35,34 +39,65 @@ phonics cue that means the development voice, never the device voice.
 
 | Type | Example | Before | After | Minimum hold | A tap may cut it | Device voice |
 |---|---|---|---|---|---|---|
-| story | "We made it to Mars!" | 150 | 450 | — | yes | yes |
-| instruction | "Listen." / how to play | 100 | 250 | — | yes | yes |
-| question | "Which picture starts with…" | 100 | 0 | — | yes | yes |
-| praise | "Yes! Moon!" | 0 | 250 | 950 | **no** | yes |
-| correction | "Almost! Listen again." / "Here it is!" | 0 | 200 | — | **no** | yes |
-| hint | "Tap the sound scanner to start!" | 100 | 0 | — | yes | yes |
+| story | "We made it to Mars!" | 200 | 500 | — | yes | yes |
+| instruction | "Listen." / how to play | 150 | 400 | — | yes | yes |
+| question | "Which picture starts with…" | 150 | 0 | — | yes | yes |
+| praise | "Yes! Moon!" | 100 | 350 | 1000 | **no** | yes |
+| correction | "Almost! Listen again." / "Here it is!" | 100 | 350 | — | **no** | yes |
+| hint | "Tap the sound scanner to start!" | 150 | 0 | — | yes | yes |
 | reaction | "Blast off!" | 0 | 0 | — | yes | yes |
-| word | "Moon." (a picture named) | 80 | 220 | — | yes | yes |
-| letterName | "em" (the letter M's NAME) | 0 | 150 | — | yes | yes |
-| **phoneme** | /m/ (the letter M's SOUND) | 150 | 300 | — | yes | **never** |
-| **segmented** | "map", sound by sound: /m/ … /æ/ … /p/ | 150 | 350 | — | yes | **never** |
-| **blended** | "map", blended slowly: "mmm-aaa-p" | 100 | 250 | — | **no** | **never** |
+| word | "Moon." (a picture named) | 120 | 330 | — | yes | yes |
+| letterName | "em" (the letter M's NAME) | 0 | 220 | — | yes | yes |
+| **phoneme** | /m/ (the letter M's SOUND) | 200 | 400 | — | yes | **never** |
+| **segmented** | "map", sound by sound: /m/ … /æ/ … /p/ | 200 | 450 | — | yes | **never** |
+| **blended** | "map", blended slowly: "mmm-aaa-p" | 150 | 350 | — | **no** | **never** |
 | sfx | sound effects: the `Sfx` family, not spoken | — | — | — | — | — |
 
-Times are in milliseconds. The pause between two cues is the first cue's
-"after" plus the next one's "before". So the teaching rhythm is:
+Times are in milliseconds, at the calm pace (below). The pause between two
+cues is the first cue's "after" plus the next one's "before". So the
+teaching rhythm is:
 
-> "Listen." · (0.4 s) · /m/ · (0.4 s) · "Which picture starts with…" ·
-> (0.15 s) · /m/
+> "Listen." · (0.6 s) · /m/ · (0.55 s) · "Which picture starts with…" ·
+> (0.2 s) · /m/
 
 It is never three lines fired back to back. A question never follows a
-story line at once (at least 0.55 s), and no pause is longer than 0.6 s, so
-there are no dead spaces.
+story line at once (at least 0.65 s), an instruction settles half a second
+before the question, and no pause reaches 0.7 s, so there are no dead
+spaces.
 
 **Punctuation.** The device voice runs sentences together ("Yes! That's
 the letter em."). A line of several sentences is said sentence by sentence
 (`speechChunks()`). The pause after each depends on its punctuation: `!`
-180 ms, `.` 200 ms, `?` 260 ms, `…` 380 ms.
+240 ms, `.` 260 ms, `?` 300 ms, `…` 420 ms.
+
+## Pace (Phase 5)
+
+Pip speaks at a **calm** pace by default, and a grown-up may choose **a
+little quicker** (the grown-ups area, "Speaking pace"; saved with the other
+sound settings on this device). The pace is `SPEECH_STYLE.paces`, read
+through `speechPace()`:
+
+| Pace | Device voice rate | Pauses (AUDIO_TYPES, punctuation) |
+|---|---|---|
+| Calm (the default) | 0.86 of the voice's own speed | as the tables above |
+| A little quicker | 0.94 (close to the pace before Phase 5) | a quarter shorter |
+
+The pace never touches the sounds a child learns from: a phoneme, a word
+said sound by sound and a blended word keep their own timing, so they are
+heard exactly. Around the lines, a round waits 0.36 s after praise before
+the next question, a question is asked again only after **14 seconds** of
+quiet (it was 10), twice at most, and the first moment of a mission (0.45 s)
+takes no answer — a double tap on a marker once answered the first question
+with its second tap.
+
+**Honestly:** this makes the device voice easier to follow, not more
+natural. It is still the device's built-in speech voice — the best one
+installed (a Premium voice, then an Enhanced one, then any US English
+voice; a tie is settled by name, so the order a device lists its voices in
+never decides). No recordings exist, and no authorized way to make natural
+narration was available, so Pip's voice naturalness is still limited. The
+recording list is complete enough to hand to a voice actor; recordings, not
+a slower synthesizer, are the way to a warm, human Pip.
 
 **Delayed visuals.** In Sound Scout the pictures appear only as Pip names
 them, so the sound is heard before there is anything to look at. In Word

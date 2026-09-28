@@ -657,4 +657,6 @@ function build(variant){
 function post(buf, W, H, CH, variant){
   if(variant === 'sun') C.addHalo(buf, W, H, CH, { radius: W * 0.045, strength: 0.3, color: hex('#FFCB5A') });
 }
-module.exports = { build: build, post: post };
+module.exports = { build: build, post: post,
+                   helpers: { seg2: seg2, line2: line2, ell2: ell2, spline: spline, makeTube: makeTube, tubeDist: tubeDist,
+                              turnY: turnY, towardCamera: towardCamera, beadEyes: beadEyes, EYE: EYE } };

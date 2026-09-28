@@ -505,3 +505,46 @@ installed phone that still did not update (v0.6.4).
     network or the app comes back. Throttling keeps a wanted check for
     later instead of dropping it. The grown-ups area says "up to date" only
     after a check that succeeded, and says plainly when it could not check.
+
+## Playing again, and a calmer voice
+
+These came from Phase 5, which made replays ask afresh, added pictures and
+rocket gear, and slowed Pip down.
+
+94. **A first play is the mission as written; a replay keeps its shape.**
+    Once a mission has a completion, its run's `plan` swaps each non-review
+    round for one drawn from the mission's own `replay` pool by the run's
+    seed, keeping its guided flag, case, direction, sound, vowel, level and
+    number of beats. Review rounds keep their rule, and Moon Writer has no
+    pool. A round is read from `run.plan`, never from `m.activities`.
+95. **A replay never teaches something new.** A pool holds the mission's
+    own items and more of the same kind. A Word Builder word may use only
+    the sounds its own mission already asks for, and `taughtSounds()` stays
+    derived from the activities as written; `validateContent()` refuses a
+    pool that breaks either. Artwork never widens what a mission teaches.
+96. **What a run showed is kept on its completion, and only the latest is
+    read.** `shown` lets the next replay avoid it. A completion without one
+    avoids nothing, and is never reinterpreted from today's content.
+97. **The pace is one grown-up choice; phonics keep their timing.**
+    `speechPace()` sets the device voice's rate and scales every pause
+    (`dialogueScale()`). The development phonics voice is never slowed or
+    hurried. A slower device voice is easier to follow, not a better voice:
+    never describe it as natural.
+98. **A mission's first moment takes no answer** (`TIMING.startHold`): the
+    second tap of a double tap on a marker once landed on the new mission's
+    answer tile.
+99. **On a short screen, a list that cannot fit scrolls sideways, and the
+    next thing always half shows.** A target never shrinks to fit, and
+    drawing the list again keeps where it was scrolled. The station's paint
+    shelf showed four of eight paints on a phone, with no sign of the rest.
+100. **A headless browser for QA or encoding runs as a throwaway guest with
+     sync off** (`--guest --disable-sync`, its profile deleted after). A
+     fresh ordinary Edge profile signed itself into the computer's account
+     and started syncing. Another session may be using port 8397: never
+     stop what you did not start.
+101. **A question cut off from outside the game is asked again.** Turning
+     the screen, or the app going to the background and coming back, runs
+     `askAgain()`: the question again, and the nudge armed afresh. Going
+     to the background once left a silent round that would never be asked
+     again. A planet in the sky, like everything a child taps, is a whole
+     `--touch-kid` target however small it is drawn.

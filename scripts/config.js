@@ -115,14 +115,96 @@ function assetTable(c){
   ].concat(rows).join('\n');
 }
 
+/* The narration built from templates, family by family: its cue ids, each
+   phrasing as written and its type, and every item the content asks it
+   for — a mission's replays included (missionRounds()). A phrasing with
+   no {placeholder} is one line, said the same for every item. */
+function templateFamilies(x){
+  const rounds = [].concat.apply([], Object.keys(x.MISSIONS).map(id => x.missionRounds(x.MISSIONS[id])));
+  const uniq = a => a.filter((v, i) => a.indexOf(v) === i);
+  const flat = a => [].concat.apply([], a);
+  const of = (type, pred) => rounds.filter(a => a.type === type && (!pred || pred(a)));
+  const withReview = a => [a.target].concat(a.review || []);
+  const letterName = L => L + ' (' + x.LETTERS[L].speak + ')';
+  const sounds = uniq(flat(of('sound-pick').map(a => [a.sound].concat(a.review || []))));
+  const traced = uniq(flat(of('letter-trace').map(a => withReview(a).map(L => (a.form === 'lower' ? L.toLowerCase() : L)))));
+  return [
+    { title: 'Letters asked by name', lines: x.LETTER_LINES, kinds: [['find', 'find.{L}.{k}'], ['again', 'again.{L}.{k}'], ['found', 'found.{L}.{k}'], ['show', 'show.{L}']],
+      sample: 'M', items: uniq(flat(of('find-letter', a => !a.from && a.form === 'upper').map(withReview))), label: letterName,
+      key: '{L} is the letter\'s name' },
+    { title: 'Little letters asked by name', lines: x.LETTER_LINES,
+      kinds: [['little', 'little.{L}.{k}'], ['littleAgain', 'littleAgain.{L}.{k}'], ['littleFound', 'littleFound.{L}.{k}'], ['littleShow', 'littleShow.{L}']],
+      sample: 'M', items: uniq(flat(of('find-letter', a => !a.from && a.form === 'lower').map(withReview))), label: letterName,
+      key: '{L} is the letter\'s name' },
+    { title: 'Big and little letters in pairs', lines: x.LETTER_LINES,
+      kinds: [['pairLower', 'pair.{L}.lower.{k}'], ['pairUpper', 'pair.{L}.upper.{k}'], ['pairAgainLower', 'pairAgain.{L}.lower.{k}'],
+              ['pairAgainUpper', 'pairAgain.{L}.upper.{k}'], ['pairFound', 'pairFound.{L}.lower.{k}'], ['pairShow', 'pairShow.{L}.lower']],
+      sample: 'N', items: uniq(of('find-letter', a => !!a.from).map(a => a.target)), label: letterName,
+      key: '{L} is the letter\'s name; "lower" finds the little letter, "upper" the big one' },
+    { title: 'Picture names (Rhyme Radar, Sound Scout, Syllable Meteors)', lines: { name: ['{W}.'] }, kinds: [['name', 'word.{W}']],
+      sample: 'cake', items: Object.keys(x.WORDS).filter(x.hasPicture), key: '{W} is the word, as a name: "Cake."' },
+    { title: 'Rhyme Radar', lines: x.RHYME_LINES,
+      kinds: [['ask', 'rhyme.ask.{W}.{k}'], ['again', 'rhyme.again.{W}.{k}'], ['found', 'rhyme.found.{W}.{R}.{k}'], ['show', 'rhyme.show.{W}.{R}']],
+      sample: 'cake/snake', items: uniq(of('rhyme-pick').map(a => a.target + '/' + a.answer)), key: '{W} is the word heard, {R} the one that rhymes with it' },
+    { title: 'Syllable Meteors', lines: x.BEAT_LINES,
+      kinds: [['ask', 'beats.ask.{W}.{k}'], ['again', 'beats.again.{W}.{k}'], ['found', 'beats.found.{W}.{k}'], ['show', 'beats.show.{W}'], ['yourTurn', 'beats.turn.{W}']],
+      sample: 'banana', items: uniq(of('syllable-tap').map(a => a.target)),
+      label: w => w + ' (' + x.WORDS[w].beats.join('-') + ')',
+      key: '{W} is the word, {N} its count ("three beats"); each beat is also said on its own (beat.{W}.i: "ba!", "na!", "na!")' },
+    { title: 'Sound Scout', lines: x.SOUND_LINES,
+      kinds: [['listen', 'sound.listen'], ['ask', 'sound.ask.{S}.{k}'], ['again', 'sound.again.{S}.{k}'], ['found', 'sound.found.{W}.{k}'], ['show', 'sound.show.{W}'], ['tap', 'sound.tap.{W}']],
+      sample: 'moon', items: Object.keys(x.WORDS).filter(w => x.hasPicture(w) && x.singleOnset(w) && sounds.indexOf(x.WORDS[w].onset) !== -1),
+      key: '{W} is the picture; a question ending "…" is followed by the sound itself (phoneme.{S}, listed above), for the sounds ' + sounds.map(p => '/' + x.PHONEMES[p].ipa + '/').join(' ') },
+    { title: 'Word Builder', lines: x.BUILD_LINES,
+      kinds: [['listen', 'build.listen'], ['ask', 'build.ask.{W}.{k}'], ['again', 'build.again.{W}.{k}'], ['found', 'build.found.{W}.{k}'], ['show', 'build.show.{W}'], ['turn', 'build.turn.{W}']],
+      sample: 'map', items: uniq(flat(of('word-build').map(withReview))), key: '{W} is the word; it is heard sound by sound and blended first (above)' },
+    { title: 'Star Words and Word Orbit', lines: x.SIGHT_LINES,
+      kinds: [['word', 'sight.word.{W}'], ['ask', 'sight.ask.{W}.{k}'], ['again', 'sight.again.{W}.{k}'], ['found', 'sight.found.{W}.{k}'], ['show', 'sight.show.{W}'], ['tap', 'sight.tap'],
+              ['look', 'sight.look.{W}'], ['match', 'sight.match.{W}.{k}'], ['matchAgain', 'sight.matchAgain.{W}.{k}'], ['matched', 'sight.matched.{W}.{k}'], ['matchShow', 'sight.matchShow.{W}']],
+      sample: 'the', items: x.sightWords(), extra: { word: ['{W}.'] },
+      key: '{W} is the sight word; a line ending "…" is followed by the word said on its own (sight.word.{W})' },
+    { title: 'Moon Writer', lines: x.WRITE_LINES,
+      kinds: [['watch', 'write.watch.{L}.{case}.{k}'], ['trace', 'write.trace.{L}.{case}.{k}'], ['light', 'write.light.{L}.{case}.{k}'], ['done', 'write.done.{L}.{case}.{k}'],
+              ['again', 'write.again.{k}'], ['start', 'write.start'], ['retry', 'write.retry.{k}'], ['watchAgain', 'write.watchAgain']],
+      sample: 'L', items: traced, label: l => l + ' (the ' + (l === l.toLowerCase() ? 'little' : 'big') + ' letter ' + x.LETTERS[l.toUpperCase()].speak + ')',
+      key: '{L} is the letter\'s name and {C} "big" or "little"' }
+  ];
+}
+function templateSection(x){
+  const out = [], counts = [];
+  templateFamilies(x).forEach(f => {
+    let total = 0;
+    const rows = [];
+    f.kinds.forEach(([kind, pattern]) => {
+      const list = (f.extra && f.extra[kind]) || f.lines[kind] || [];
+      list.forEach((t, k) => {
+        const each = /\{[WLRNC]\}/.test(t);
+        total += each ? f.items.length : 1;
+        const id = pattern.split('{k}').join(String(k));
+        const sampleId = id.split('{L}').join(f.sample).split('{W}').join(f.sample.split('/')[0]).split('{R}').join(f.sample.split('/')[1] || '')
+                           .split('{S}').join('m').split('{case}').join('upper');
+        const cue = x.voiceCue(sampleId.replace(/\.$/, ''));
+        rows.push('| `' + id + '` | ' + (cue ? cue.type : '') + ' | ' + mdCell(t) + ' |');
+      });
+    });
+    counts.push(total);
+    out.push('', '### ' + f.title + ' — ' + total + ' lines', '',
+             'Said for ' + f.items.length + ': ' + f.items.map(f.label || (i => i)).join(', ') + '. ' + f.key + '.', '',
+             '| Cue | Type | Script |', '|---|---|---|');
+    out.push.apply(out, rows);
+  });
+  return { lines: out, total: counts.reduce((a, b) => a + b, 0) };
+}
+
 /* The recording script, from the content: every sound, word said sound
    by sound and blended word the games use (development audio today, so
-   these are required), then every authored narration line. */
+   these are required), then every authored narration line and every line
+   built from a template. */
 function recordingsDoc(c){
   const x = c.ctx;
   const sounds = {}, words = {};
   const use = (map, key, game) => { map[key] = map[key] || []; if(map[key].indexOf(game) === -1) map[key].push(game); };
-  Object.keys(x.MISSIONS).forEach(id => x.MISSIONS[id].activities.forEach(a => {
+  Object.keys(x.MISSIONS).forEach(id => x.missionRounds(x.MISSIONS[id]).forEach(a => {
     if(a.type === 'sound-pick') [a.sound].concat(a.review || []).forEach(p => use(sounds, p, 'Sound Scout'));
     if(a.type === 'word-build') [a.target].concat(a.review || []).forEach(w => {
       use(words, w, 'Word Builder');
@@ -138,11 +220,12 @@ function recordingsDoc(c){
     wordRows.push('| ' + w + ' | `' + k + '.' + w + '` | ' + mdCell(x.voiceCue(k + '.' + w).speak) + ' |');
   }));
   const lines = Object.keys(x.VOICE_CUES).map(id => '| `' + id + '` | ' + x.VOICE_CUES[id].type + ' | ' + mdCell(x.VOICE_CUES[id].speak) + ' |');
+  const built = templateSection(x);
   return [
     ' — derived from the content by `npm run config:sync`. Do not hand-edit. -->',
     '',
     '**' + (soundRows.length + wordRows.length) + ' recordings replace development audio (' + soundRows.length + ' sounds, ' + wordRows.length +
-      ' words said sound by sound or blended); ' + lines.length + ' authored lines replace the device voice.**',
+      ' words said sound by sound or blended); ' + lines.length + ' authored lines and ' + built.total + ' lines built from templates replace the device voice.**',
     '',
     '## Sounds (required)',
     '',
@@ -160,15 +243,21 @@ function recordingsDoc(c){
     '',
     '## Narration (the device voice until recorded)',
     '',
-    'Also recorded: the lines built from templates — each letter\'s questions and praise, big, little and in pairs (`LETTER_LINES`), ' +
-      'each rhyme pair\'s (`RHYME_LINES`), each word\'s beats (`BEAT_LINES`), each Sound Scout and Word Builder word\'s ' +
-      '(`SOUND_LINES`, `BUILD_LINES`), each sight word\'s (`SIGHT_LINES`, with the word said on its own) and each traced letter\'s ' +
-      '(`WRITE_LINES`). Their cue ids are listed in index.html beside `voiceCue()`, `letterCaseCue()`, `sightCue()`, `writeCue()`, ' +
-      '`wordCue()` and `phonicsCue()`. Sight words and handwriting add no sounds to the required list: a sight word is said whole.',
+    'Sight words and handwriting add no sounds to the required list: a sight word is said whole.',
     '',
     '| Cue | Type | Script |',
     '|---|---|---|'
-  ], lines).join('\n');
+  ], lines, [
+    '',
+    '## Narration built from templates (the device voice until recorded)',
+    '',
+    'Each family is one set of phrasings said for many items: record every phrasing for every item listed. A phrasing with ' +
+      'a placeholder is one line per item; one without is a single line. A cue id without its last number is its first ' +
+      'phrasing (`find.M` is `find.M.0`). Stars and the station add the lines `stars.found.3` ("You found 3 stars!"), ' +
+      '`stars.have.N` ("You have N stars!", and for none "You don\'t have any stars yet. Let\'s find some!"), ' +
+      '`dock.needMore.N` ("You need N more stars. Keep exploring!"), `item.<id>` (each rocket item\'s name) and ' +
+      '`dock.tab.<slot>` (each tab\'s name).'
+  ], built.lines).join('\n');
 }
 
 /* ---------- what each static file should contain ---------- */

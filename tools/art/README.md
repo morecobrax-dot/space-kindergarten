@@ -17,7 +17,8 @@ WebP files, and it never runs this code.
 npm run art:render                 # every job → tools/art/out/*.png (lossless masters)
 node tools/art/render.js earth     # only one job, or a list
 npm run art:encode                 # then open http://127.0.0.1:8397/ in Chrome or Edge
-                                   # (…/?only=rocket,gear- encodes only jobs whose names start so)
+                                   # (…/?only=rocket,gear- encodes only jobs whose names start so;
+                                   #  PORT=8420 npm run art:encode if 8397 is in use)
 npm run config:sync                # refresh the precache list and docs/ASSET-MANIFEST.md
 npm run verify
 ```
@@ -29,12 +30,15 @@ anything else.
 
 - **Rendering:** a full render of every job takes a few minutes on a
   20-core machine, because rows are shared across worker threads. A single
-  horizon takes about 20 seconds; the eleven pictures together about 30.
+  horizon takes about 20 seconds; a word picture 1 to 10.
 - **Encoding:** it uses the browser's own WebP encoder. Node has none, and a
   dependency would be the only alternative. The page writes each file to its
   job's target, lists the sizes, and sets its title to `DONE`. Safari cannot
   encode WebP, and the page says so rather than writing a PNG under a
-  `.webp` name.
+  `.webp` name. To drive the page from a headless browser, use a
+  throwaway guest session with sync off (`msedge --headless=new --guest
+  --disable-sync`): a fresh ordinary profile can sign itself into the
+  computer's account and start syncing.
 
 ## Files
 
@@ -42,7 +46,8 @@ anything else.
 |---|---|
 | `clay.js` | The renderer: shapes, noise, the camera, the **light rig (`RIG`)**, the house clay material (`clay()`), soft shadows, ambient occlusion, bloom, halos, the tone curve and the PNG writer |
 | `scenes/*.js` | One file per picture or family: `build(variant)` returns the scene, and `post()` adds glow or atmosphere |
-| `jobs.js` | Every picture made: its scene, variant, target path in `assets/` and WebP quality. It appends `jobs-phase2.js` (the game pictures and props), `jobs-rocket22.js` (the rocket's gear) and `jobs-world22.js` (the space station, travel clouds and asteroids) |
+| `jobs.js` | Every picture made: its scene, variant, target path in `assets/` and WebP quality. It appends `jobs-phase2.js` (the game pictures and props), `jobs-rocket22.js` (the rocket's gear), `jobs-world22.js` (the space station, travel clouds and asteroids), `jobs-mars3.js` and `jobs-pictures3.js` (Mars and its word pictures), `jobs-jupiter4.js` and `jobs-moon4.js` (Jupiter, the writing slate), `jobs-p5a.js`, `jobs-p5b.js`, `jobs-p5c.js` (the Phase 5 word pictures) and `jobs-gear5.js` (the Phase 5 gear) |
+| `scenes/picture*.js` | The word pictures, one camera for all (`picture.js` `buildObject`). `picture-p3.js` exports its shared shapes and bead eyes (`helpers`), which the Phase 5 files use |
 | `scenes/rocketgear.js` | Gear rendered in the rocket's own frame and camera: the rocket is present as an invisible occluder, so only the piece and the shadow it casts on the rocket reach the picture |
 | `scenes/station.js`, `scenes/spacefx.js` | The space station (outside, and the garage room with a clear window), and what a flight passes (clouds, asteroids) |
 | `render.js` | Renders jobs into `out/`, and warns if a transparent picture touches its frame edge |

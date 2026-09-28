@@ -49,6 +49,27 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
 
+## Phase 5: what is built (v0.7.0)
+
+Phase 5 made the app worth coming back to: a mission played again asks
+afresh, the rocket has more to earn, the pictures that make that possible
+are drawn, and Pip speaks more calmly. Complexity stays behind the scenes;
+the child's choices are the same taps as before.
+
+| Area | Built |
+|---|---|
+| Replays ask afresh | A mission's first play is always as written. Once finished, a replay keeps its shape — as many rounds, the guided round in place, the same case and direction, sound, vowel, level and number of beats, and every review round with its own rule — and draws each other round from the mission's own list, by the run's seed. Within a run nothing comes back while the list has more; what the last run asked waits its turn, and a replay never starts as the last one did. A list too small repeats honestly. Moon Writer keeps its stroke order. A replay never adds a letter or a sound the mission does not teach |
+| Replay from a marker | Once the visit's mission is played, a lit marker plays its game again ("Let's play it again!"), its finished missions in turn. The way home stays the yellow next step, and a game not yet played waits for a visit of its own. It used to say "Tap it to play again!" and do nothing |
+| What a replay records | Its answers and evidence are for what it asked, and its completion keeps a short list of what that was (`shown`), so the next replay can avoid it. Older completions have none, and nothing is guessed for them |
+| Eleven new pictures | bat, bun, pup, hut, fox, box, mouse, nest, seal, robot and butterfly, rendered by the same clay renderer and light: new rhyme pairs (fox/box, hat/bat, cup/pup, nut/hut, sun/bun), a third picture for each held sound in Sound Scout, two more short-u words to build (bun, hut), and more beats (robot, butterfly). All core pictures: 1.12 MB of the 1.2 MB budget (91%) |
+| More for the rocket | Two paints (Midnight blue, Moon silver), two themes (Polka dots, Race checkers: patterns through the same paint mask) and three pieces of gear (a planet ring, a satellite dish, party flags), each rendered in the rocket's own frame. 22 things cost 123 stars: a first pass through the 20 missions unlocks about 13, and everything takes 41 missions, 21 of them replays |
+| A calmer voice | Pip speaks at a calm pace by default (0.86 of the device voice's speed, and longer pauses where a child listens: after an instruction, between the pictures named, after "almost"), and asks a question again only after 14 seconds. Grown-ups can choose "A little quicker". Letter sounds keep their own timing. The voice is still the device's own: easier to follow, not more natural |
+| The recording list | [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md) now lists every line built from a template, family by family, with each phrasing and every item it is said for (870 lines), not just the authored ones |
+| On a phone | The space station's things are a shelf that scrolls sideways, with the next one half showing (four of eight paints showed before, with no sign of the rest); the prompt to turn the screen no longer says "iPad" |
+| Rapid taps | A double tap on a marker no longer answers the new mission's first question with its second tap |
+| Back from the background | A question the app was in the middle of when it went to the background is asked again when it comes back, and Pip's nudge waits afresh; before, the round sat silent and was never asked again |
+| Planets on a phone | A planet in Earth's sky is a whole child-sized target however small it is drawn (Mars was a 41 px target on a small phone) |
+
 ## Reliable updates: what changed (v0.6.4)
 
 A user's installed phone app still showed an older release. The website
@@ -225,9 +246,12 @@ These are not built yet:
 - a review mission
 - student profiles
 - final (signed-off) artwork: the current pictures are draft renders
-- more rocket looks: the dinosaur and space-puppy themes, and more gear
-  (Phase 2.2 proved the model with 8 paints, 5 gear and 3 themes). The two
-  themes wait until after the voice and audio production phase
+- the dinosaur and space-puppy themes, which still wait until after the
+  voice and audio production phase (Phase 5 added two paints, two themes
+  and three pieces of gear: 10, 8 and 5 now)
+- short-a words to build with /b/ (bat is drawn, for rhymes, but no short-a
+  mission asks for /b/ yet), and replays that mix earlier missions' items
+  (review rounds do that, by rule)
 - a spinning turntable, and animated station lights beyond the
   turntable's slow breath
 - ambient music
@@ -259,8 +283,10 @@ These are never planned:
     [ASSET-BRIEFS.md](ASSET-BRIEFS.md) says what a final version of each must
     match, so final art can replace the drafts one file at a time.
 - **The voice:** the device's built-in speech synthesiser, labelled as a
-  temporary stand-in in the grown-ups area and in code. Every line already has
-  a script (`VOICE_CUES`) ready for a voice actor.
+  temporary stand-in in the grown-ups area and in code. Phase 5 slowed it to
+  a calm pace; that makes it easier to follow, not more natural. Every line
+  already has a script ready for a voice actor, the lines built from
+  templates included ([AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)).
 - **Letter sounds, words said sound by sound, and blended words** are
   DEVELOPMENT AUDIO: a formant synthesiser in the app, never the device voice,
   labelled in the code, the grown-ups area and [AUDIO.md](AUDIO.md). The 35
@@ -292,6 +318,41 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Phase 5 QA record (v0.7.0, 2026-09-28)
+
+**Tested in the harness, and in Chromium (headless Edge on Windows, every
+run a throwaway guest session with sync off) against a local server, with
+real touch and mouse input, at 1180×820 (iPad landscape), 874×402 with
+62 px side insets (an iPhone 17 in landscape), 667×375 (a small phone) and
+402×874 (portrait). The upgrade used the real v0.6.4 build (e19769c). No
+WebKit build was available on this machine, no physical iPhone or iPad was
+tested, and no person listened to the audio: the pace was measured, not
+heard.**
+
+| Check | Result |
+|---|---|
+| Replays, in the engine | 240 seeded replays of each of the 17 missions with a pool, under four histories: every round a valid round of its own game, in its place, with its guided flag, case, direction, sound, vowel, level and beats; review rounds untouched; nothing outside the pool; the 13 taught sounds unchanged; every answer, at every level, beside wrong choices that are really wrong; the same seed and history the same sequence, in a fresh copy too; at least 5 different sequences in 50 seeds for every mission; across six replays in a row, none started as the last one did, and what was not asked came first |
+| Small and broken pools | Two letters for six rounds: three each; one letter: the mission whole; an empty pool or unusable items: the rounds as written; the content check names each problem |
+| A replay, played through | From a lit marker, two fast taps: one run, "Let's play it again!", then its own first question; the next replay said so another way; evidence written for exactly the letters asked; 3 stars, once; the completion keeps what it asked |
+| In the browser | The Moon's visit, then the lit beacon: one start for two fast taps, the first question asked normally (before the fix, the second tap answered it: "Almost!"). Mercury and Mars visits drew fresh sequences, with the fox, box, mouse, seal, nest and butterfly at play size |
+| The station | iPad: 10 paints in three rows, 9 gear chips each zoomed onto its piece, 6 themes; try-ons on the rocket and gone on leaving; a purchase and a paint worn by touch (29 → 19 stars). iPhone 17 by touch: a shelf of 3 things and half the next, scrolled by a swipe, the tenth paint tapped kept in sight, an unlock refused without enough stars ("2 more stars"). 667×375: the same, and the thing picked kept in sight after the screen grew to an iPad's and back |
+| The look everywhere | The planet ring, party flags and polka dots on Earth, in flight and on the Moon; every new gear piece and theme on Earth at iPad and phone size. Party streamers failed this check (squiggles at play size, legs in flight) and were replaced by the flags |
+| Sky targets | At 667×375 Mars is drawn 41 px; a touch 36 px from any planet's centre reached it, 8 of 8 points, every planet |
+| Moon Writer by touch | Pip's demo, "watch again", a stroke lifted half-way and carried on to its end, "start again" clearing the ink, the letter traced; the page never scrolled |
+| The replay-audio button, and the background | The button said the question and named the pictures. Sent to the background mid-question (a real `visibilitychange`), the voice and the nudge stopped; brought back, the question was asked again and the nudge re-armed (before the fix, nothing) |
+| Grown-ups | The pace choice in landscape and by touch in portrait: chosen, saved, still chosen after a reload |
+| Layout audit | Every game, the station and the grown-ups area at the four sizes: nothing off screen and no small target, beyond pages that scroll and the station's shelf |
+| Upgrade | v0.6.4 played (the Moon and Mercury restored, a paint and a star topper bought and worn, effects off). v0.7.0 deployed on the same origin: v0.6.4's own updater brought it in 2.1 s later with one reload; every saved record byte-identical; the pace read as calm. Mercury's third mission played as written, then the lit radar replayed `mercury-1` afresh (fox/box in it); the planet ring bought |
+| Offline | The network cut and the server stopped: v0.7.0 started, all 14 new pictures and gear were cached, and Mars was played |
+| Contracts | `npm run verify`: 1570 passed, 0 failed; config verify ok. New: contract 59 (replays), 60 (pace), 61 (the phone), 62 (back from the background) |
+| Mutation | 27 defects planted one at a time on a copy of the repo, in two batches: 25 caught by failing contracts. One first crashed the test runner instead of misbehaving; rewritten, it was caught (one of the 25). One could not be caught because it changed nothing: Sound Scout's 'same sound' replay rule only repeated what validate() already refuses, so the rule was removed |
+| Budgets and economy | Core pictures 1.12 MB of 1.2 MB (91%); Jupiter 64% of its own 300 KB. 22 things cost 123 stars: 13 on a first pass, everything after 41 missions |
+
+**Not tested:** a physical iPhone or iPad; Safari; how the calm pace
+actually sounds, and whether Pip's device voice is easy to follow for a
+child (nobody listened); a child's finger on the shelf; whether children
+name the new pictures as intended.
 
 ## Reliable updates QA record (v0.6.4, 2026-09-27)
 

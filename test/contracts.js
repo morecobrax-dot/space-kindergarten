@@ -74,7 +74,7 @@ function imageSize(file){
 function fast(c){
   Object.assign(c.TIMING, {
     travel: 0, travelFirst: 0, travelRepeat: 0, travelDock: 0, travelDockRepeat: 0, travelReduced: 0, travelSettle: 0,
-    uiClear: 0, arriveSettle: 0, wrongHold: 0, dialogueScale: 0, shootingStarEvery: 1e9, shootingStarJitter: 0,
+    uiClear: 0, arriveSettle: 0, wrongHold: 0, startHold: 0, dialogueScale: 0, shootingStarEvery: 1e9, shootingStarJitter: 0,
     betweenRounds: 0, celebrateGuard: 0, starEvery: 0, starFirst: 0, starFlight: 0,
     reprompt: 1e9, idleHint: 1e9, captionBase: 0, captionPerChar: 0,
     speechStartGrace: 5, speechSafetyBase: 40, speechSafetyPerChar: 0,
@@ -1087,7 +1087,7 @@ async function testStress(){
   /* everything these missions could ask — a review round asks one of its
      candidates — and one record for each at most */
   const items = new Set();
-  played.forEach(id => c.MISSIONS[id].activities.filter(a => !a.guided).forEach(a => {
+  played.forEach(id => c.missionRounds(c.MISSIONS[id]).filter(a => !a.guided).forEach(a => {
     const type = c.ACTIVITY_TYPES[a.type];
     const asks = [a].concat((a.review || []).map(x => a.type === 'sound-pick' ? Object.assign({}, a, { sound: x }) : Object.assign({}, a, { target: x })));
     asks.forEach(x => { const k = type.evidenceKey(x); items.add(c.evidenceId(type.skillId, k.item, k.form)); });
@@ -1899,7 +1899,7 @@ async function testAudio(){
     await v0.ctx.Voice.say('guide.welcome');
     const u0 = sp0.utterances[0];
     T('the speech engine is actually given that style and voice',
-      !!u0 && u0.pitch === 1 && u0.rate === v0.ctx.SPEECH_STYLE.rate && u0.voice && u0.voice.name === 'Test');
+      !!u0 && u0.pitch === 1 && u0.rate === v0.ctx.SPEECH_STYLE.paces.calm.rate && u0.voice && u0.voice.name === 'Test');
   }
   {
     /* The advice in the grown-ups area is to download a Premium voice. One
@@ -2370,10 +2370,11 @@ async function testDialogue(){
   /* the Moon's other missions done, so its four visits are big letters:
      moon-1 to moon-3, then moon-1 again */
   seedDone(c, ['writer-1', 'writer-2', 'writer-3', 'moon-4', 'moon-5']);
-  const missions = [], trips = [], ran = [];
+  const missions = [], trips = [], ran = [], firsts = [];
   for(let i = 0; i < 4; i++){
     const at = sp.said.length;
     ran.push(await launchAndStart(c, 'moon'));
+    firsts.push(c.session.run && c.session.run.plan[0].target);
     await playMission(c, { wrongRounds: i === 1 ? [1, 3] : [] });
     const home = sp.said.length;
     await c.flyHome();
@@ -2408,7 +2409,7 @@ async function testDialogue(){
   const almosts = missions[1].filter(isAlmost);
   T('"almost"', almosts.length === 2 && noRepeats(almosts), almosts.join(' / '));
   T('but the first question of a mission is always the plainest',
-    missions.every((m, i) => m.find(isQuestion) === line('find.' + c.MISSIONS[ran[i]].activities[0].target)), ran.join(','));
+    missions.every((m, i) => m.find(isQuestion) === line('find.' + firsts[i])), ran.join(','));
   T('and after "almost", the question comes again in its plainest words',
     reasked(missions[1]).length === 2 && reasked(missions[1]).every(s => phrasing('find')(s) === 0));
   T('every question and every praise says "the letter ___", so a letter name is never heard as a word',
@@ -2782,7 +2783,7 @@ async function testNewGames(){
   sub('rhyme rounds are fair');
   let bad = 0, total = 0, sameStartMissing = 0, sameStartEarly = 0;
   const rhymes = [];
-  Object.keys(c.MISSIONS).forEach(id => c.MISSIONS[id].activities.filter(a => a.type === 'rhyme-pick').forEach(a => rhymes.push(a)));
+  Object.keys(c.MISSIONS).forEach(id => c.missionRounds(c.MISSIONS[id]).filter(a => a.type === 'rhyme-pick').forEach(a => rhymes.push(a)));
   rhymes.forEach(a => {
     const pools = c.rhymeDistractorPools(a);
     [1, 2].forEach(tier => {
@@ -2841,16 +2842,22 @@ async function testNewGames(){
   const BEATS = { cake: 1, snake: 1, bee: 1, tree: 1, rock: 1, sock: 1, moon: 1, spoon: 1, star: 1, car: 1, apple: 2, rocket: 2, banana: 3, tomato: 3,
                   map: 1, fan: 1, hat: 1, cat: 1, cap: 1, pan: 1, sun: 1, nut: 1, rug: 1, cup: 1, bus: 1, bug: 1, net: 1, fish: 1,
                   pumpkin: 2, umbrella: 3, cupcake: 2,
+                  bat: 1, bun: 1, pup: 1, hut: 1, fox: 1, box: 1, mouse: 1, nest: 1, seal: 1, robot: 2, butterfly: 3,
                   the: 1, and: 1, see: 1, you: 1, to: 1, go: 1, is: 1, it: 1, in: 1, can: 1, we: 1, my: 1 };
   T('every word has a checked beat count', Object.keys(c.WORDS).every(w => BEATS[w] === c.WORDS[w].beats.length),
     Object.keys(c.WORDS).filter(w => BEATS[w] !== c.WORDS[w].beats.length).join(','));
-  const PAIRS = [['cake', 'snake'], ['bee', 'tree'], ['rock', 'sock'], ['moon', 'spoon'], ['star', 'car'],
-                 ['cat', 'hat'], ['map', 'cap'], ['fan', 'pan'], ['bug', 'rug'], ['sock', 'rock']];
-  T('every rhyme asked for is one of the checked pairs', rhymes.every(a => PAIRS.some(p => p[0] === a.target && p[1] === a.answer)));
+  /* A pair is checked once, whichever way a round asks it (cake for
+     snake, or snake for cake): a replay may ask either. */
+  const PAIRS = [['cake', 'snake'], ['bee', 'tree'], ['rock', 'sock'], ['moon', 'spoon'], ['star', 'car'], ['fox', 'box'],
+                 ['cat', 'hat'], ['bat', 'cat'], ['hat', 'bat'], ['map', 'cap'], ['fan', 'pan'], ['bug', 'rug'],
+                 ['cup', 'pup'], ['nut', 'hut'], ['sun', 'bun']];
+  const either = (p, a, b) => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a);
+  T('every rhyme asked for, replays included, is one of the checked pairs', rhymes.every(a => PAIRS.some(p => either(p, a.target, a.answer))),
+    rhymes.filter(a => !PAIRS.some(p => either(p, a.target, a.answer))).map(a => a.target + '/' + a.answer).join(','));
   T('and every checked pair rhymes in the data', PAIRS.every(p => c.WORDS[p[0]].rime === c.WORDS[p[1]].rime));
   const review = fs.readFileSync(path.join(H.ROOT, 'docs', 'CONTENT-REVIEW.md'), 'utf8');
-  T('CONTENT-REVIEW.md lists every rhyme pair', PAIRS.every(p => new RegExp(p[0] + '\\s*/\\s*' + p[1], 'i').test(review)),
-    PAIRS.filter(p => !new RegExp(p[0] + '\\s*/\\s*' + p[1], 'i').test(review)).map(p => p.join('/')).join(','));
+  const listed = p => new RegExp(p[0] + '\\s*/\\s*' + p[1] + '|' + p[1] + '\\s*/\\s*' + p[0], 'i').test(review);
+  T('CONTENT-REVIEW.md lists every rhyme pair', PAIRS.every(listed), PAIRS.filter(p => !listed(p)).map(p => p.join('/')).join(','));
   T('and every picture word\'s beat count', Object.keys(BEATS).filter(c.hasPicture).every(w => new RegExp('\\b' + w + '\\b[^\\n]*\\b' + BEATS[w] + '\\b', 'i').test(review)),
     Object.keys(BEATS).filter(w => !new RegExp('\\b' + w + '\\b[^\\n]*\\b' + BEATS[w] + '\\b', 'i').test(review)).join(','));
   const learning = fs.readFileSync(path.join(H.ROOT, 'docs', 'LEARNING-DESIGN.md'), 'utf8');
@@ -3424,13 +3431,14 @@ async function testStation(){
 
   sub('three kinds of thing to wear, proved with a small set');
   const of = slot => c.COSMETICS.filter(x => x.slot === slot);
-  T('eight paints, each a colour token', of('paint').length === 8 && of('paint').every(p => new RegExp('--' + p.tint + ':\\s*#').test(sheet)));
-  T('gear: a star topper, a tiny antenna, a moon topper, side lights and boosters',
-    ['gear-star', 'gear-antenna', 'gear-moon', 'gear-lights', 'gear-booster'].every(id => c.cosmeticById(id) && c.cosmeticById(id).slot === 'gear'));
+  T('ten paints, each a colour token', of('paint').length === 10 && of('paint').every(p => new RegExp('--' + p.tint + ':\\s*#').test(sheet)));
+  T('gear: a star topper, a tiny antenna, a moon topper, side lights, boosters, a satellite dish, party flags and a planet ring',
+    ['gear-star', 'gear-antenna', 'gear-moon', 'gear-lights', 'gear-booster', 'gear-dish', 'gear-flags', 'gear-ring'].every(id => c.cosmeticById(id) && c.cosmeticById(id).slot === 'gear') &&
+    of('gear').length === 9);
   T('each gear piece is a picture in the rocket\'s own frame, laid over it — never a second rocket',
     of('gear').filter(g => g.art).every(g => c.assetEntry(g.art) && c.assetEntry(g.art).dimensions === c.assetEntry('rocket.body').dimensions));
   const themes = of('theme').filter(t => !t.starter);
-  T('three themes, each a pattern of colour tokens through the one paint mask', themes.length === 3 &&
+  T('five themes, each a pattern of colour tokens through the one paint mask', themes.length === 5 &&
     themes.every(t => new RegExp('\\[data-pattern="' + t.pattern + '"\\] \\.rocket-paint\\{').test(sheet)));
   T('every kind starts with a free thing a rocket already wears, so a look is never empty',
     c.COSMETIC_SLOTS.map(s => s.id).join() === 'paint,gear,theme' && c.COSMETIC_SLOTS.every(s => c.starterCosmetic(s.id) && c.starterCosmetic(s.id).cost === 0));
@@ -3480,9 +3488,9 @@ async function testStation(){
   T('Pip welcomes the child to it', sp.said.some(s => /Welcome to the space station/.test(s)));
   T('a panel with three tabs, the things to try, and one action',
     (d.getElementById('dockTabs').innerHTML.match(/role="tab"/g) || []).length === 3 &&
-    (d.getElementById('dockItems').innerHTML.match(/role="radio"/g) || []).length === 8 && !!d.getElementById('dockAction').getAttribute('aria-label'));
+    (d.getElementById('dockItems').innerHTML.match(/role="radio"/g) || []).length === 10 && !!d.getElementById('dockAction').getAttribute('aria-label'));
   p.pickDockTab('gear');
-  T('each tab shows its own things', (d.getElementById('dockItems').innerHTML.match(/role="radio"/g) || []).length === 6 &&
+  T('each tab shows its own things', (d.getElementById('dockItems').innerHTML.match(/role="radio"/g) || []).length === 9 &&
     /aria-label="No gear, on your rocket"/.test(d.getElementById('dockItems').innerHTML));
   const before = {};
   shared.forEach((v, k) => { before[k] = v; });
@@ -5903,6 +5911,488 @@ async function testFindsReleases(){
   T('no console errors', rigs.every(b => b.app.errors.length === 0), rigs.map(b => b.app.errors.join('|')).join(' '));
 }
 
+/* =========================================================
+   CONTRACT 59 — A REPLAY ASKS AFRESH, AND STILL TEACHES WHAT THE MISSION TEACHES
+   A mission played again asked its written rounds word for word, in the
+   same order: only the answers' places moved, and a finished place's
+   markers promised "tap it to play again" and did nothing. A replay now
+   keeps its mission's shape and draws each round from the mission's own
+   pool, by the run's seed; a lit marker plays its game again. These
+   prevent a replay that breaks the teaching (a new sound, a moved guided
+   round, a changed review), repeats itself needlessly, cannot be
+   reproduced, or records something the child was not shown.
+   ========================================================= */
+async function testReplays(){
+  section('CONTRACT 59 — a replay asks afresh, and still teaches what the mission teaches');
+  const c = H.loadApp().ctx;
+  const ids = Object.keys(c.MISSIONS);
+  const pooled = ids.filter(id => c.MISSIONS[id].replay);
+  const NOW = new Date('2026-09-27T10:00:00Z');
+  const done = (id, shown, at) => ({ id: 'run_done_' + id + '_' + (at || 'a'), missionId: id, destinationId: c.MISSIONS[id].destinationId,
+    completedAt: at || '2026-09-27T09:00:00.000Z', shown: shown });
+  const plan = (id, seed, completions, ctx) => (ctx || c).startRun(id, NOW, seed, completions).plan;
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const keysOf = p => p.map(c.roundKey);
+  const poolOf = (ctx, id) => { const m = ctx.MISSIONS[id]; return m.replay[ctx.REPLAY_SHAPES[m.activities[0].type].list]; };
+
+  sub('a first play is the mission as written');
+  T('before a mission has been finished it plays exactly as written, whatever else has been done',
+    ids.every(id => same(plan(id, 'run_first', []), c.MISSIONS[id].activities) &&
+      same(plan(id, 'run_first', ids.filter(x => x !== id).map(x => done(x))), c.MISSIONS[id].activities)));
+  T('every game but Moon Writer has a replay pool; Moon Writer keeps its stroke order when played again',
+    ids.every(id => !!c.MISSIONS[id].replay === (c.MISSIONS[id].activities[0].type !== 'letter-trace')) &&
+    ids.filter(id => !c.MISSIONS[id].replay).every(id => same(plan(id, 'run_again', [done(id, ['L'])]), c.MISSIONS[id].activities)));
+  T('the content, pools included, validates', c.validateContent().length === 0, c.validateContent().slice(0, 3).join(' | '));
+
+  sub('replays across many seeds and histories');
+  const histories = id => [
+    [done(id)],                                                                  /* finished before a run kept what it showed */
+    [done(id, keysOf(c.MISSIONS[id].activities))],                               /* finished as written */
+    [done(id, ['Ω', 'zz', 7, null]), done(id, keysOf(c.MISSIONS[id].activities), '2026-09-27T09:30:00.000Z')],
+    [done(id, 'not a list')]
+  ];
+  const problems = [], plans = {};
+  pooled.forEach(id => {
+    const m = c.MISSIONS[id];
+    const pool = poolOf(c, id).map(x => JSON.stringify(x));
+    const sounds = new Set();
+    m.activities.forEach(a => { if(a.type === 'word-build') [a.target].concat(a.review || []).forEach(w => c.WORDS[w].phonemes.forEach(p => sounds.add(p))); });
+    plans[id] = [];
+    histories(id).forEach((h, hi) => {
+      for(let s = 0; s < 60; s++){
+        const p = plan(id, 'run_' + id + '_' + hi + '_' + s, h);
+        plans[id].push(p);
+        if(p.length !== m.activities.length){ problems.push(id + ': ' + p.length + ' rounds'); continue; }
+        p.forEach((b, i) => {
+          const a = m.activities[i];
+          let why = null;
+          if(a.review) why = b === a ? null : 'a review round changed';
+          else if(b.type !== a.type) why = 'another game';
+          else if(!!b.guided !== !!a.guided) why = 'the guided round moved';
+          else if(['form', 'from', 'help'].some(k => b[k] !== a[k])) why = 'the case or the direction changed';
+          else if(c.ACTIVITY_TYPES[b.type].validate(b) !== null) why = c.ACTIVITY_TYPES[b.type].validate(b);
+          else if(pool.indexOf(JSON.stringify(c.replayItem(b))) === -1) why = 'not in its pool: ' + JSON.stringify(c.replayItem(b));
+          else if(b.type === 'syllable-tap' && c.WORDS[b.target].beats.length !== c.WORDS[a.target].beats.length) why = 'another number of beats';
+          else if(b.type === 'sound-pick' && (b.sound !== a.sound || c.WORDS[b.answer].onset !== a.sound)) why = 'another sound';
+          else if(b.type === 'word-build' && (c.WORDS[b.target].phonemes[1] !== c.WORDS[a.target].phonemes[1] ||
+                  (c.WORDS[b.target].level || 1) !== (c.WORDS[a.target].level || 1))) why = 'another vowel or level';
+          else if(b.type === 'word-build' && c.WORDS[b.target].phonemes.some(x => !sounds.has(x))) why = 'a sound this mission does not teach';
+          if(why) problems.push(id + ' round ' + i + ': ' + why);
+        });
+      }
+    });
+  });
+  T('every round of 240 replays of each mission is a round of its own game: the same place, guided round, case and review, from its pool',
+    problems.length === 0, [...new Set(problems)].slice(0, 5).join(' | '));
+  T('the sounds taught are still derived from the missions as written, and no replay adds one', (() => {
+    const t = c.taughtSounds();
+    return t.size === 13 && ['m', 's', 'f', 'n', 'r', 'a', 'u', 'p', 't', 'k', 'b', 'g', 'h'].every(p => t.has(p));
+  })());
+  const overused = [];
+  pooled.forEach(id => plans[id].forEach(p => {
+    const used = {};
+    p.forEach((b, i) => {
+      const a = c.MISSIONS[id].activities[i];
+      if(a.review) return;
+      const least = Math.min.apply(null, c.replayChoices(c.MISSIONS[id], a).map(x => used[c.roundKey(x)] || 0));
+      if((used[c.roundKey(b)] || 0) !== least) overused.push(id + ' ' + keysOf(p).join(','));
+      used[c.roundKey(b)] = (used[c.roundKey(b)] || 0) + 1;
+    });
+  }));
+  T('within a run, an item comes back only when everything else that fits its round has been asked as often', overused.length === 0, overused.slice(0, 3).join(' | '));
+
+  sub('what stands beside each answer');
+  const badOptions = [];
+  pooled.forEach(id => {
+    const m = c.MISSIONS[id];
+    plans[id].slice(0, 40).forEach((p, k) => p.forEach((a, i) => {
+      for(let tier = m.difficulty.min; tier <= m.difficulty.max; tier++){
+        const built = c.ACTIVITY_TYPES[a.type].buildRound(a, { tier: tier, choices: m.choices, rand: c.seededRandom('opts_' + id + '_' + k + '_' + i + '_' + tier) });
+        const o = built.options;
+        const unique = new Set(o.map(x => JSON.stringify(x))).size === o.length;
+        let ok = true;
+        if(a.type === 'find-letter') ok = unique && o.length === m.choices && o[built.answer] === a.target && o.filter(x => x === a.target).length === 1;
+        if(a.type === 'rhyme-pick') ok = unique && o.length === m.choices && o[built.answer] === a.answer && o.indexOf(a.target) === -1 &&
+          o.every(c.hasPicture) && o.filter(w => c.WORDS[w].rime === c.WORDS[a.target].rime).length === 1;
+        if(a.type === 'sound-pick') ok = unique && o.length === m.choices && o[built.answer] === a.answer && o.every(c.hasPicture) &&
+          o.filter(w => c.WORDS[w].onset === a.sound).length === 1;
+        if(a.type === 'sight-find' || a.type === 'sight-match') ok = unique && o.length === m.choices && o[built.answer] === a.target &&
+          o.every(w => c.WORDS[w].sight) && o.filter(w => w === a.target).length === 1;
+        if(a.type === 'syllable-tap') ok = o[built.answer] === c.WORDS[a.target].beats.length;
+        if(a.type === 'word-build'){
+          const letters = a.target.toUpperCase().split('');
+          ok = letters.every(L => o.indexOf(L) !== -1) && built.answer.map(j => o[j]).join('') === letters.join('') &&
+            o.filter(L => letters.indexOf(L) === -1).every(L => c.WORDS[a.target].phonemes.indexOf(c.LETTERS[L].sound) === -1) &&
+            (o.length === 3 || (tier >= 2 && o.length === 4));
+        }
+        if(!ok) badOptions.push(id + ' ' + JSON.stringify(c.replayItem(a) || a.target) + ' at level ' + tier + ': ' + o.join(','));
+      }
+    }));
+  });
+  T('every replayed round, at every level, offers its answer once beside wrong choices that are really wrong', badOptions.length === 0, badOptions.slice(0, 3).join(' | '));
+
+  sub('the same seed, content and history give the same replay; other seeds give others');
+  T('the same seed and history always give the same sequence', pooled.every(id => histories(id).every(h => same(plan(id, 'run_same', h), plan(id, 'run_same', h)))));
+  const fresh = H.loadApp().ctx;
+  T('in a fresh copy of the app too, as after a reload', pooled.every(id => histories(id).every(h => same(plan(id, 'run_same', h), plan(id, 'run_same', h, fresh)))));
+  const variety = pooled.map(id => {
+    const seqs = new Set(), firsts = new Set();
+    for(let s = 0; s < 50; s++){ const p = plan(id, 'run_var_' + s, [done(id)]); seqs.add(keysOf(p).join(',')); firsts.add(c.roundKey(p[0])); }
+    return { id: id, seqs: seqs.size, firsts: firsts.size };
+  });
+  T('every mission with a pool is replayed in many different sequences (50 seeds)', variety.every(v => v.seqs >= 5), variety.map(v => v.id + ' ' + v.seqs).join(', '));
+  T('and does not always start with the same question', variety.every(v => v.firsts >= 2), variety.filter(v => v.firsts < 2).map(v => v.id).join(','));
+
+  sub('what was just asked waits its turn');
+  const chain = [];
+  pooled.forEach(id => {
+    const m = c.MISSIONS[id];
+    const bare = !c.REPLAY_SHAPES[m.activities[0].type].fits;
+    for(let s = 0; s < 20; s++){
+      let last = keysOf(m.activities);
+      const comps = [done(id, last, '2026-09-27T09:00:00.000Z')];
+      for(let k = 1; k <= 6; k++){
+        const p = keysOf(plan(id, 'run_chain_' + s + '_' + k, comps));
+        if(p[0] === last[0]) chain.push(id + ': began as last time, ' + p[0]);
+        if(p.join(',') === last.join(',')) chain.push(id + ': the same sequence twice');
+        if(bare){
+          /* a game whose every round can ask any item: what was not asked
+             last time comes first */
+          const rounds = m.activities.filter(a => !a.review).length;
+          const first = m.activities.find(a => !a.review);
+          const unasked = [...new Set(poolOf(c, id).map(x => c.replayRound(first, x)).filter(Boolean).map(c.roundKey))].filter(x => last.indexOf(x) === -1);
+          const asked = p.filter((x, i) => !m.activities[i].review);
+          if(unasked.length >= rounds ? asked.some(x => last.indexOf(x) !== -1) : unasked.some(x => asked.indexOf(x) === -1)) chain.push(id + ': an item asked last time came before one not asked');
+        }
+        comps.push(done(id, p, '2026-09-27T1' + k + ':00:00.000Z'));
+        last = p;
+      }
+    }
+  });
+  T('across six replays in a row, none starts as the last one did or repeats it, and what was not asked comes first', chain.length === 0, [...new Set(chain)].slice(0, 3).join(' | '));
+  T('only the latest run is read, and what an old run kept that the pool no longer holds changes nothing',
+    pooled.every(id => same(plan(id, 'run_old', [done(id, ['Ω', 'zz'])]), plan(id, 'run_old', [done(id)])) &&
+      same(plan(id, 'run_old', [done(id, keysOf(c.MISSIONS[id].activities), '2026-09-27T08:00:00.000Z'), done(id, undefined, '2026-09-27T09:00:00.000Z')]), plan(id, 'run_old', [done(id)]))));
+
+  sub('a small pool repeats honestly, and never invents');
+  const t = H.loadApp().ctx;
+  const m1 = t.MISSIONS['moon-1'];
+  m1.replay = { letters: ['M', 'S'] };
+  const p2 = plan('moon-1', 'run_tiny', [done('moon-1')], t);
+  T('two letters for six rounds: each asked three times, and nothing else', p2.length === 6 && p2.every(a => a.target === 'M' || a.target === 'S') &&
+    p2.filter(a => a.target === 'M').length === 3, p2.map(a => a.target).join(''));
+  m1.replay = { letters: ['T'] };
+  const p1 = plan('moon-1', 'run_one', [done('moon-1')], t);
+  T('one letter: asked in every round, and the mission is still whole', p1.length === 6 && p1.every(a => a.target === 'T') && p1[0].guided === true);
+  m1.replay = { letters: [] };
+  T('an empty pool: the rounds as written', same(plan('moon-1', 'run_none', [done('moon-1')], t), m1.activities));
+  m1.replay = { letters: ['Ω', 'm', 'MM'] };
+  T('letters that cannot be asked are never asked: the rounds as written', same(plan('moon-1', 'run_bad', [done('moon-1')], t), m1.activities));
+  const says = re => t.validateContent().some(x => re.test(x));
+  T('and the content check names it: an item that fits no round', says(/moon-1 replay item "Ω" fits none of its rounds/));
+  T('a round whose own item is not in the pool', says(/moon-1 activity 1 cannot come back in a replay/));
+  m1.replay = { letters: ['M', 'S', 'O', 'T', 'M'] };
+  T('an item listed twice', says(/moon-1 lists a replay item twice/));
+  m1.replay = { words: ['M', 'S', 'O', 'T'] };
+  T('a pool of the wrong kind', says(/moon-1 has a replay pool its game cannot draw from/));
+  m1.replay = { letters: ['M', 'S', 'O', 'T'] };
+  t.MISSIONS['writer-1'].replay = { letters: ['L', 'T', 'H'] };
+  T('a pool for Moon Writer, whose letters keep their stroke order', says(/writer-1 has a replay pool its game cannot draw from/));
+  delete t.MISSIONS['writer-1'].replay;
+  T('put right, the content validates again', t.validateContent().length === 0, t.validateContent().join(' | '));
+  t.WORDS.gap = { speak: 'gap', picture: 'picture.map', rime: 'ap', onset: 'g', beats: ['gap'], phonemes: ['g', 'a', 'p'], level: 2 };
+  t.MISSIONS['mars-2'].replay.words = t.MISSIONS['mars-2'].replay.words.concat(['gap']);
+  T('a Word Builder word with a sound its mission does not teach (g, in the short-a mission)', says(/mars-2 replay word gap needs a sound this mission does not ask for/));
+
+  sub('review still decides what needs practice');
+  const ev = [{ id: 'beginning-sounds.f.initial', skillId: 'beginning-sounds', item: 'f', form: 'initial', seen: 3, firstTry: 0, recent: [0, 0, 0], lastPracticed: 't1' }];
+  const reviewed = [], pictures = new Set();
+  for(let s = 0; s < 30; s++){
+    const run = c.startRun('mars-3', NOW, 'run_rv_' + s, [done('mars-3')]);
+    for(let i = 0; i < run.plan.length; i++){ run.index = i; c.beginRound(run, ev); if(run.plan[i].review){ reviewed.push(run.round.activity.sound); if(i === 4) pictures.add(run.round.activity.answer); } }
+  }
+  T('in every replay the first review asks the sound that needed help, /f/ — the evidence\'s choice, never the seed\'s',
+    reviewed.filter((x, i) => i % 2 === 0).every(x => x === 'f'), reviewed.slice(0, 6).join(','));
+  T('while which /f/ picture asks it is the seed\'s choice among the suitable ones', pictures.size >= 2 && [...pictures].every(w => c.WORDS[w].onset === 'f' && c.singleOnset(w)), [...pictures].join(','));
+  T('and the same run always asks with the same picture', (() => {
+    const pick = () => { const r = c.startRun('mars-3', NOW, 'run_rv_same', [done('mars-3')]); r.index = 4; c.beginRound(r, ev); return r.round.activity.answer; };
+    return pick() === pick();
+  })());
+
+  sub('what a replay records is what the child was asked');
+  const recorded = [];
+  pooled.forEach(id => {
+    const run = c.startRun(id, NOW, 'run_rec_' + id, [done(id, keysOf(c.MISSIONS[id].activities))]);
+    const asked = [];
+    while(!run.complete){
+      const r = c.beginRound(run, []);
+      asked.push(r.activity);
+      c.answerRound(run, r.answer);
+      c.advanceRun(run);
+    }
+    const rec = c.completionRecord(run, NOW);
+    const type = a => c.ACTIVITY_TYPES[a.type];
+    const ok = run.results.length === asked.length &&
+      run.results.every((x, i) => x.target === type(asked[i]).evidenceKey(asked[i]).item && x.form === type(asked[i]).evidenceKey(asked[i]).form) &&
+      asked.every((a, i) => a.review ? true : same(a, run.plan[i])) && same(rec.shown, keysOf(asked));
+    if(!ok) recorded.push(id);
+  });
+  T('each result names the round the child was asked, and the completion keeps exactly those, in order', recorded.length === 0, recorded.join(','));
+
+  sub('a lit marker plays its game again');
+  const sp = fakeSpeech();
+  const app = H.loadApp({ windowExtras: sp.extras });
+  const g = fast(app.ctx);
+  const line = id => g.voiceCue(id).speak;
+  await g.startAdventure();
+  seedDone(g, ['writer-1', 'writer-2', 'writer-3', 'moon-2', 'moon-3', 'moon-4', 'moon-5']);
+  await launchAndStart(g, 'moon');
+  await playMission(g, {});
+  T('the visit\'s mission is played: nothing pulses, and the way home is the yellow button', g.currentScene === 'planet' && g.markerNext('moon') === null);
+  const beacon = g.markerOf('moon-1');
+  const starts = spy(g, 'startRun');
+  const at = sp.said.length;
+  const tapping = g.tapMarker(beacon);
+  g.tapMarker(beacon);
+  const run = g.session.run;
+  T('tapping the lit beacon plays one of its missions again, once however fast it is tapped', !!run && starts.length === 1 && g.currentScene === 'mission' &&
+    g.MISSIONS[run.missionId].destinationId === 'moon' && g.markerOf(run.missionId) === beacon, starts.length + ' ' + (run && run.missionId));
+  T('it is a replay, drawn from what the child has finished', !!run && same(run.plan, g.runPlan(g.MISSIONS[run.missionId], run.id, g.journey.completions)) &&
+    g.journey.completions.some(x => x.missionId === run.missionId));
+  await tapping;
+  const intro = sp.said.slice(at);
+  const againLines = [1, 2, 3].map(k => line('mission.again.' + k));
+  T('Pip says it is playing again, then asks the first question', againLines.indexOf(intro[0]) !== -1 && intro.length >= 2, intro.slice(0, 2).join(' / '));
+  const before = JSON.parse(JSON.stringify(g.journey.evidence)), earns = g.journey.stars.filter(e => e.kind === 'earn').length;
+  const plannedFirst = run.plan[0].target;
+  await playMission(g, { wrongRounds: [1, 3] });
+  const rec = g.journey.completions[g.journey.completions.length - 1];
+  T('the replay is recorded once, with what it asked', rec.id === run.id && same(rec.shown, run.shown) && rec.shown.length === run.plan.length &&
+    g.journey.completions.filter(x => x.id === run.id).length === 1);
+  T('its first question was the one it planned', intro.slice(1).some(s => s === line('find.' + plannedFirst)));
+  const changed = g.journey.evidence.filter(e => { const b = before.find(x => x.id === e.id); return !b || b.seen !== e.seen; }).map(e => e.id).sort();
+  const expected = [...new Set(run.plan.filter(a => !a.guided).map(a => g.evidenceId('letter-recognition', a.target, 'upper')))].sort();
+  T('evidence is written for exactly the letters it asked, the guided round aside', same(changed, expected), changed.join(',') + ' vs ' + expected.join(','));
+  T('three stars for taking part, mistakes and all — once', g.journey.stars.filter(e => e.kind === 'earn').length === earns + 1 &&
+    g.journey.stars.filter(e => e.runId === run.id).length === 1 && g.journey.stars.find(e => e.runId === run.id).amount === 3);
+  T('finishing the same run again adds nothing', !g.addCompletion(g.journey.completions, rec).added && !g.awardStars(g.journey.stars, run.id, 3, rec.completedAt).awarded);
+  T('back on the planet, the way home is still the next thing to do', g.currentScene === 'planet' && g.markerNext('moon') === null);
+  const at2 = sp.said.length;
+  await g.tapMarker(beacon);
+  const again = g.session.run;
+  T('and says so another way the next time: a moment that recurs is never said the same way twice in a row',
+    againLines.indexOf(sp.said[at2]) !== -1 && sp.said[at2] !== intro[0], sp.said[at2] + ' / ' + intro[0]);
+  T('tapped again, the beacon plays the next of its missions', !!again && again.missionId !== run.missionId && g.markerOf(again.missionId) === beacon, again && again.missionId);
+  await playMission(g, {});
+  T('no mission is left running', g.session.run === null);
+
+  sub('a double tap on a marker is one start, never an answer');
+  /* Found in browser QA: the second tap of a double tap landed on the
+     mission just opened, on an answer tile — "Almost!", and a miss
+     recorded against the child. */
+  g.TIMING.startHold = 450;
+  await g.tapMarker(beacon);
+  const dbl = g.session.run;
+  await (async () => { for(let i = 0; i < 200 && !(dbl.round && g.session.input === 'open'); i++) await wait(2); })();
+  const wrongTile = dbl.round.options.map((_, i) => i).find(i => i !== dbl.round.answer);
+  await g.choose(wrongTile);
+  T('a tap in the mission\'s first moment, on a wrong tile, is not an answer', dbl.round.misses === 0 && dbl.round.out.length === 0 && !dbl.round.resolved,
+    dbl.round.misses + ' misses');
+  g.session.inputHeldUntil = 0;
+  await g.choose(wrongTile);
+  T('after it, a tap answers as before', dbl.round.misses === 1);
+  g.TIMING.startHold = 0;
+  await playMission(g, {});
+
+  sub('a game not yet played waits for a visit of its own');
+  const sp2 = fakeSpeech();
+  const uApp = H.loadApp({ windowExtras: sp2.extras });
+  const u = fast(uApp.ctx);
+  await u.startAdventure();
+  seedDone(u, ['moon-1']);
+  u.pickDestination('moon');
+  await u.launch();
+  u.session.visit.played = true;
+  const was = sp2.said.length;
+  await u.tapMarker(u.markerOf('writer-1'));
+  T('an unlit marker, once the visit is played, starts nothing and points at the way home', !u.session.run && u.currentScene === 'planet' &&
+    sp2.said.slice(was).indexOf(u.voiceCue('planet.homeHint').speak) !== -1, sp2.said.slice(was).join(' / '));
+  T('no console errors', app.errors.length === 0 && uApp.errors.length === 0, app.errors.concat(uApp.errors).join(' | '));
+}
+
+/* =========================================================
+   CONTRACT 60 — PIP SPEAKS AT A CHILD'S PACE, AND A GROWN-UP MAY QUICKEN IT
+   Narration ran at nearly the device's own pace, with the pauses a
+   grown-up would leave, and a question was asked again after ten seconds.
+   The default is now calm — a slower voice, time between lines — and one
+   grown-up choice makes it a little quicker. These prevent the calm pace
+   being lost, the choice not reaching the voice or not being kept, the
+   sounds a child learns from being slowed or hurried, and the recording
+   script pointing at the source instead of listing what to record.
+   ========================================================= */
+async function testSpeechPace(){
+  section('CONTRACT 60 — Pip speaks at a child\'s pace, and a grown-up may quicken it');
+  const c = H.loadApp().ctx;
+  const paces = c.SPEECH_STYLE.paces;
+
+  sub('calm by default');
+  T('a new device speaks at the calm pace', c.soundPrefs.pace === 'calm' && c.speechPace() === paces.calm);
+  T('calm is slower than the device\'s own voice and than the pace before it (0.92); quicker is a little faster, never hurried',
+    paces.calm.rate < 0.9 && paces.calm.rate < paces.quicker.rate && paces.quicker.rate <= 1 &&
+    paces.quicker.pauses < paces.calm.pauses && paces.quicker.pauses >= 0.5);
+  const gap = (a, z) => c.AUDIO_TYPES[a].post + c.AUDIO_TYPES[z].pre;
+  T('an instruction settles before the question: half a second or more', gap('instruction', 'question') >= 500);
+  T('the three pictures are named a breath apart', gap('word', 'word') >= 400);
+  T('"almost" is followed by a pause before the question comes again', gap('correction', 'question') >= 450);
+  T('praise is heard out: it holds a second, then a breath before whatever follows', c.AUDIO_TYPES.praise.hold >= 1000 && c.AUDIO_TYPES.praise.post >= 300);
+  T('a question is asked again only after 12 seconds or more of quiet, and twice at most', c.TIMING.reprompt >= 12000 && c.TIMING.maxReprompts <= 2);
+
+  sub('the choice reaches the voice, and only the voice');
+  for(const pace of ['calm', 'quicker']){
+    const sp = fakeSpeech();
+    const v = fast(H.loadApp({ windowExtras: sp.extras }).ctx);
+    v.soundPrefs.pace = pace;
+    await v.Voice.say('guide.welcome');
+    T('at the ' + pace + ' pace the device voice is given the ' + pace + ' rate', sp.utterances.length > 0 && sp.utterances.every(u => u.rate === paces[pace].rate));
+  }
+  const rig = fakeSpeech();
+  const pc = fast(H.loadApp({ windowExtras: rig.extras }).ctx);
+  pc.TIMING.dialogueScale = 1;
+  pc.TIMING.speechSafetyBase = 2000;
+  const timed = async pace => { pc.soundPrefs.pace = pace; const t0 = Date.now(); await pc.Voice.sequence(['story.moon.arrive.1', 'marker.beacon']); return Date.now() - t0; };
+  const pauses = pc.AUDIO_TYPES.story.pre + pc.AUDIO_TYPES.story.post + pc.AUDIO_TYPES.hint.pre;
+  const calmMs = await timed('calm'), quickMs = await timed('quicker');
+  T('its pauses follow the pace: calm leaves every pause AUDIO_TYPES sets, quicker a quarter less',
+    calmMs >= pauses - 30 && quickMs >= pauses * paces.quicker.pauses - 30 && quickMs <= calmMs - pauses * (1 - paces.quicker.pauses) + 60, calmMs + 'ms vs ' + quickMs + 'ms');
+  const sr = 22050;
+  const made = pace => { c.soundPrefs.pace = pace; return ['phoneme.m', 'seg.map', 'blend.sun'].map(id => c.phonicsRender(c.voiceCue(id), sr).length).join(','); };
+  T('the sounds a child learns from keep their own timing at either pace', made('calm') === made('quicker'), made('calm'));
+  c.soundPrefs.pace = 'calm';
+
+  sub('the choice is a grown-up\'s, and it is kept');
+  const shared = new Map();
+  const g = H.loadApp({ sharedStorage: shared });
+  const keysBefore = [...shared.keys()].sort().join(',');
+  /* the harness has no descendant selectors, so which button shows as
+     chosen is checked in the browser; here, the markup and the owner */
+  const page = H.readApp();
+  T('the grown-ups area offers Calm and A little quicker, beside the other sound settings, and marks the one chosen',
+    page.indexOf(`data-pace="calm" onclick="setSpeechPace('calm')">Calm<`) !== -1 &&
+    page.indexOf(`data-pace="quicker" onclick="setSpeechPace('quicker')">A little quicker<`) !== -1 &&
+    /#paceSeg button/.test(fnBody(js(), 'renderGrownups')) && page.indexOf('id="paceSeg"') > page.indexOf('id="voiceNote"'));
+  g.ctx.openGrownups();
+  g.ctx.setSpeechPace('quicker');
+  T('choosing quicker is heard from the next line on', g.ctx.soundPrefs.pace === 'quicker' && g.ctx.speechPace() === g.ctx.SPEECH_STYLE.paces.quicker);
+  const saved = JSON.parse(shared.get(g.ctx.STORAGE_NAMESPACE + g.ctx.KEYS.sound) || '{}');
+  T('it is saved with the other sound settings, and nothing else is written', saved.pace === 'quicker' && saved.voice === true && saved.effects === true &&
+    [...shared.keys()].filter(k => keysBefore.split(',').indexOf(k) === -1).join(',') === g.ctx.STORAGE_NAMESPACE + g.ctx.KEYS.sound, [...shared.keys()].join(','));
+  const g2 = H.loadApp({ sharedStorage: shared });
+  T('and still chosen after a reload', g2.ctx.soundPrefs.pace === 'quicker' && g2.ctx.speechPace() === g2.ctx.SPEECH_STYLE.paces.quicker);
+  g2.ctx.setSpeechPace('turbo');
+  T('a pace that does not exist is refused', g2.ctx.soundPrefs.pace === 'quicker');
+  const old = new Map();
+  const probe = H.loadApp({ sharedStorage: old });
+  old.set(probe.ctx.STORAGE_NAMESPACE + probe.ctx.KEYS.sound, JSON.stringify({ voice: true, effects: false }));
+  const o = H.loadApp({ sharedStorage: old });
+  T('sound settings saved before the pace existed read as calm, and keep what they said', o.ctx.soundPrefs.pace === 'calm' && o.ctx.soundPrefs.effects === false && o.ctx.soundPrefs.voice === true);
+  old.set(probe.ctx.STORAGE_NAMESPACE + probe.ctx.KEYS.sound, JSON.stringify({ voice: true, effects: true, pace: 'warp' }));
+  T('an unknown saved pace reads as calm', H.loadApp({ sharedStorage: old }).ctx.soundPrefs.pace === 'calm');
+
+  sub('the voice');
+  const V = (name, lang, uri) => ({ name: name, lang: lang, voiceURI: uri, localService: true });
+  const allison = V('Allison', 'en-US', 'com.apple.voice.compact.en-US.Allison'), samantha = V('Samantha', 'en-US', 'com.apple.voice.compact.en-US.Samantha');
+  T('two equally good voices are settled by name, whatever order the device lists them in',
+    c.bestVoice([samantha, allison]) === allison && c.bestVoice([allison, samantha]) === allison);
+
+  sub('the recording script lists what to record');
+  const recs = fs.readFileSync(path.join(H.ROOT, 'docs', 'AUDIO-RECORDINGS.md'), 'utf8');
+  const families = ['Letters asked by name', 'Little letters asked by name', 'Big and little letters in pairs', 'Picture names', 'Rhyme Radar',
+                    'Syllable Meteors', 'Sound Scout', 'Word Builder', 'Star Words and Word Orbit', 'Moon Writer'];
+  T('every family of lines built from a template has its own section, with its phrasings as written', families.every(f => new RegExp('^### ' + f, 'm').test(recs)) &&
+    c.LETTER_LINES.find.every(t => recs.indexOf(t) !== -1) && c.RHYME_LINES.found.every(t => recs.indexOf(t) !== -1) && c.WRITE_LINES.watch.every(t => recs.indexOf(t) !== -1));
+  const rounds = [].concat.apply([], Object.keys(c.MISSIONS).map(id => c.missionRounds(c.MISSIONS[id])));
+  const pairs = [...new Set(rounds.filter(a => a.type === 'rhyme-pick').map(a => a.target + '/' + a.answer))];
+  const builds = [...new Set(rounds.filter(a => a.type === 'word-build').map(a => a.target))];
+  T('and says every item it is said for: each rhyme pair, sight word and Word Builder word a replay may ask', pairs.every(p => recs.indexOf(p) !== -1) &&
+    c.sightWords().every(w => new RegExp('\\b' + w + '\\b').test(recs.slice(recs.indexOf('### Star Words')))) &&
+    builds.every(w => recs.indexOf('`seg.' + w + '`') !== -1 && new RegExp('\\b' + w + '\\b').test(recs.slice(recs.indexOf('### Word Builder')))),
+    pairs.filter(p => recs.indexOf(p) === -1).join(','));
+  T('it no longer sends a recording session to the source code', !/listed in index\.html/.test(recs));
+}
+
+/* =========================================================
+   CONTRACT 61 — ON A PHONE, EVERYTHING A CHILD NEEDS IS REACHABLE AND BIG ENOUGH
+   Found in Phase 5's phone QA: the station showed four of eight paints on
+   an iPhone in landscape, with no sign of the rest; a planet in Earth's
+   sky was only as big to a finger as it was drawn (Mars came out 41 px on
+   a small phone); and the shelf's snapping pulled a thing just tried back
+   out of sight. Browser QA proves these by real touch; this holds the
+   rules that fixed them.
+   ========================================================= */
+function testPhone(){
+  section('CONTRACT 61 — on a phone, everything a child needs is reachable and big enough');
+  const app = H.loadApp();
+  const c = app.ctx, sheet = css();
+  const at = sheet.indexOf('@media (orientation: landscape) and (max-height: 500px){');
+  let depth = 0, end = at;
+  for(let i = sheet.indexOf('{', at); i < sheet.length; i++){ if(sheet[i] === '{') depth++; else if(sheet[i] === '}'){ depth--; if(depth === 0){ end = i; break; } } }
+  const phone = at === -1 ? '' : sheet.slice(at, end + 1);
+  const shelf = cssRule(phone, '  .dock-items');
+  T('on a short landscape screen the station\'s things are one shelf that scrolls sideways', /grid-auto-flow:\s*column/.test(shelf) && /overflow-x:\s*auto/.test(shelf), shelf.slice(0, 200));
+  T('sized so the next one always shows half of itself', /grid-auto-columns:\s*calc\(\(100% - 3 \* var\(--space-xs\)\) \/ 3\.5\)/.test(shelf));
+  T('and it does not snap: snapping pulled a thing just tried back out of sight', !/scroll-snap/.test(phone));
+  T('a thing on the shelf is still a whole child-sized target', /min-width:\s*var\(--touch-kid\)/.test(cssRule(sheet, '.item-chip')) && /min-height:\s*var\(--touch-kid\)/.test(cssRule(sheet, '.item-chip')));
+  T('a planet in the sky is a whole child-sized target however small it is drawn',
+    /inset:\s*min\(0px,\s*calc\(\(var\(--ss\) - var\(--touch-kid\)\) \/ 2\)\)/.test(cssRule(sheet, 'button.sky-body::after')));
+
+  sub('trying things on keeps the shelf where it was');
+  const d = app.dom.document;
+  c.session.dockTab = 'paint';
+  c.currentScene = 'dock';
+  c.renderDockScene();
+  const items = d.getElementById('dockItems');
+  items.scrollLeft = 300;
+  c.session.dockPick = 'paint-ocean';
+  c.renderDockScene();
+  T('drawn again for the same tab, it stays scrolled where it was', items.scrollLeft === 300, String(items.scrollLeft));
+  c.session.dockTab = 'gear';
+  c.renderDockScene();
+  T('a new tab starts at its beginning', items.scrollLeft === 0, String(items.scrollLeft));
+  T('every chip can be found by the thing it shows, to keep it in sight', c.COSMETICS.filter(x => x.slot === 'gear').every(x => items.innerHTML.indexOf('id="item-' + x.id + '"') !== -1));
+  T('no console errors', app.errors.length === 0, app.errors.join(' | '));
+}
+/* Found in the same audit: a phone that goes to the background stops the
+   question mid-word and disarms the nudge; coming back asked nothing, so
+   the round sat silent, and would never be asked again. */
+async function testComeBack(){
+  section('CONTRACT 62 — back from the background mid-question, the question is asked again');
+  const sp = fakeSpeech();
+  const app = H.loadApp({ windowExtras: sp.extras });
+  const c = fast(app.ctx), d = app.dom.document;
+  await c.startAdventure();
+  await launchAndStart(c, 'moon');
+  for(let i = 0; i < 200 && !(c.session.run && c.session.run.round && c.session.input === 'open'); i++) await wait(2);
+  c.TIMING.reprompt = 60000;
+  c.armReprompt(c.session.run);
+  const first = c.session.run.round.askLines.filter(x => typeof x === 'string')[0];
+  const question = c.voiceCue(first).speak;
+  d.visibilityState = 'hidden'; d.dispatch('visibilitychange');
+  T('going to the background stops the voice and the nudge', !c.session.idleTimer);
+  const at = sp.said.length;
+  d.visibilityState = 'visible'; d.dispatch('visibilitychange');
+  await wait(20);
+  T('coming back asks the question again', sp.said.slice(at).indexOf(question) !== -1, sp.said.slice(at).join(' / '));
+  T('and the nudge waits afresh', !!c.session.idleTimer);
+  c.TIMING.reprompt = 1e9; c.disarmReprompt();
+  d.visibilityState = 'hidden'; d.dispatch('visibilitychange');
+  const at2 = sp.said.length;
+  await c.goHomeFromMission();
+  d.visibilityState = 'visible'; d.dispatch('visibilitychange');
+  await wait(20);
+  T('nothing is asked when no question is waiting', !sp.said.slice(at2).some(s => s === question));
+  T('no console errors', app.errors.length === 0, app.errors.join(' | '));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -5915,5 +6405,5 @@ module.exports = {
   testHud, testTravel, testInput, testPlayfield, testStation,
   testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign,
   testLetterforms, testLetterCases, testSightWords, testTracing, testMoonWriter, testJupiter, testAssetLoading, testGrownupsSeven,
-  testWorldKeeping, testUpdates, testWorker, testLateTakeover, testFindsReleases
+  testWorldKeeping, testUpdates, testWorker, testLateTakeover, testFindsReleases, testReplays, testSpeechPace, testPhone, testComeBack
 };

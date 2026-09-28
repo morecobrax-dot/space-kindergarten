@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.6.4';
+const CACHE_NAME = 'space-kindergarten-v0.7.0';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -97,6 +97,17 @@ const ASSETS = [
   './assets/pictures/pumpkin.webp',
   './assets/pictures/umbrella.webp',
   './assets/pictures/cupcake.webp',
+  './assets/pictures/bat.webp',
+  './assets/pictures/bun.webp',
+  './assets/pictures/pup.webp',
+  './assets/pictures/hut.webp',
+  './assets/pictures/fox.webp',
+  './assets/pictures/box.webp',
+  './assets/pictures/mouse.webp',
+  './assets/pictures/nest.webp',
+  './assets/pictures/seal.webp',
+  './assets/pictures/robot.webp',
+  './assets/pictures/butterfly.webp',
   './assets/rocket/rocket.webp',
   './assets/rocket/rocket-paint.webp',
   './assets/rocket/flame.webp',
@@ -106,6 +117,9 @@ const ASSETS = [
   './assets/rocket/gear-lights.webp',
   './assets/rocket/gear-booster.webp',
   './assets/rocket/gear-wings.webp',
+  './assets/rocket/gear-ring.webp',
+  './assets/rocket/gear-flags.webp',
+  './assets/rocket/gear-dish.webp',
   './assets/characters/pip.webp'
 ];
 /* APP-ASSETS-END */

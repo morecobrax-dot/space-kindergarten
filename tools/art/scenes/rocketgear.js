@@ -8,6 +8,13 @@
      wings    a pair of pale bee wings on the upper body sides
      booster  two short cream canisters with a coral band and little
               lavender-grey nozzles, low on the body sides, just above the fins
+     ring     a chunky gold planet ring with a cream band, round the cap just
+              above its lip, tilted like Saturn's and floating clear of it
+     flags    party bunting: a cream cord in a shallow swag round the front of
+              the cap, five little yellow, teal, pink, lavender and orange
+              pennants hanging from it
+     dish     a small cream satellite dish with a coral feed horn, on a short
+              lavender-grey arm from the body's right side, facing out and up
 
    Each picture is ONLY the add-on, rendered through the rocket's own camera
    in the rocket's 640×800 frame, sitting where it belongs on the rocket, so
@@ -217,6 +224,152 @@ function booster(x, y, z, rec){
   return d;
 }
 
+/* RING: a chunky golden planet ring round the cap, tilted toward the
+   camera (in front low, behind high) and rising a little to the right,
+   floating clear of the rocket all round. A cream band runs round its
+   middle between two pressed grooves. */
+const RING_C = [0, 0.415, -0.035], RING_TILT = 13 * DEG, RING_ROLL = 12 * DEG;
+const RING_R = 0.635, RING_W = 0.115, RING_T = 0.046, RING_BAND = [0.615, 0.695];
+const RING_N = [-Math.cos(RING_TILT) * Math.sin(RING_ROLL), Math.cos(RING_TILT) * Math.cos(RING_ROLL), Math.sin(RING_TILT)];
+function ring(x, y, z, rec){
+  const dx = x - RING_C[0], dy = y - RING_C[1], dz = z - RING_C[2];
+  const h = dx * RING_N[0] + dy * RING_N[1] + dz * RING_N[2];
+  const rho = len3(dx - RING_N[0] * h, dy - RING_N[1] * h, dz - RING_N[2] * h);
+  // puffy: a little fuller across the middle of the band
+  const across = (rho - RING_R) / RING_W;
+  const t = RING_T * (0.85 + 0.25 * clamp(1 - across * across, 0, 1));
+  let d = C.SD.extrude(Math.abs(rho - RING_R) - RING_W, h, t, t * 0.95) * 0.9;
+  for(const b of RING_BAND){ const g = (rho - b) / 0.008; d += 0.004 * Math.exp(-g * g); }
+  if(rec) rec.m = rho > RING_BAND[0] && rho < RING_BAND[1] ? 2 : 1;
+  return d;
+}
+/* The gold warms to orange toward both edges, as the reward star does. */
+function ringAlbedo(x, y, z){
+  const dx = x - RING_C[0], dy = y - RING_C[1], dz = z - RING_C[2];
+  const h = dx * RING_N[0] + dy * RING_N[1] + dz * RING_N[2];
+  const rho = len3(dx - RING_N[0] * h, dy - RING_N[1] * h, dz - RING_N[2] * h);
+  return C.mix3(hex('#FFC93A'), hex('#F59A2E'), C.smoothstep(0.55, 1.05, Math.abs(rho - RING_R) / RING_W));
+}
+
+/* FLAGS: party bunting round the cap. A cream cord rests on the cap in a
+   shallow swag, lowest in front and rising to each side, where it wraps
+   round out of sight; five little clay pennants hang from it, each lying
+   against the cap with its top edge along the cord, so they fan out a
+   little as the cord rises. No two hang quite alike.
+   Everything is measured in the cap's own terms. Its side is a circle arc
+   in every plane through its axis (an ogive), so a point's height above
+   the cap is its distance from that circle, and its place up the side is
+   the arc along it: the cord and the flags hug the cap exactly, and the
+   field is smooth everywhere. The circle is found once, from the rocket. */
+const CAP_ARC = (function(){
+  // the cap's radius at a height, averaged round it (the lumps and lean cancel)
+  function across(y){
+    let s = 0;
+    for(let k = 0; k < 16; k++){
+      const a = k * Math.PI / 8, p = onRocket([Math.sin(a) * 1.2, y, Math.cos(a) * 1.2], [-Math.sin(a), 0, -Math.cos(a)]);
+      s += len2(p[0], p[2]);
+    }
+    return s / 16;
+  }
+  // the circle through three points up the side
+  const [a, b, c] = [0.2, 0.42, 0.64].map(y => [across(y), y]);
+  const a2 = a[0] * a[0] + a[1] * a[1], b2 = b[0] * b[0] + b[1] * b[1], c2 = c[0] * c[0] + c[1] * c[1];
+  const k = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+  const q = (a2 * (b[1] - c[1]) + b2 * (c[1] - a[1]) + c2 * (a[1] - b[1])) / k;
+  const y = (a2 * (c[0] - b[0]) + b2 * (a[0] - c[0]) + c2 * (b[0] - a[0])) / k;
+  return { q: q, y: y, r: len2(a[0] - q, a[1] - y) };
+})();
+/* The arc up the cap's side to height y, and the cap's radius at an arc. */
+function capArcAt(y){ return CAP_ARC.r * Math.asin((y - CAP_ARC.y) / CAP_ARC.r); }
+function capRadiusAt(arc){ return CAP_ARC.q + CAP_ARC.r * Math.cos(arc / CAP_ARC.r); }
+// the cord: its middle in front at CORD_Y, rising by CORD_SAG to each side,
+// and hung a touch lower on the right (CORD_TILT, along the arc)
+const CORD_Y = 0.372, CORD_SAG = 0.1, CORD_TILT = -0.012, CORD_R = 0.015, CORD_H = CORD_R * 0.9;
+const CORD_M = capArcAt(CORD_Y), CORD_A = capArcAt(CORD_Y + CORD_SAG) - CORD_M;
+function cordArc(th){ const s = Math.sin(th); return CORD_M + CORD_A * s * s + CORD_TILT * s; }
+/* How fast the cord climbs along the cap at th, where it lies at arc. */
+function cordRise(th, arc){ return (CORD_A * Math.sin(2 * th) + CORD_TILT * Math.cos(th)) / capRadiusAt(arc); }
+// the pennants, left to right: where each hangs round the cap (degrees), a
+// little lean of its own, its size, how far its tip lifts away, and how
+// much more one side of the tip lifts than the other (twist)
+const FLAG_W = 0.178, FLAG_L = 0.215, FLAG_T = 0.011, FLAG_ROUND = 0.018, FLAG_H = FLAG_T + 0.002;
+const FLAGS = [
+  { at: -61, lean: 4,  wide: 1.0,  len: 0.95, lift: 0.01,  twist: 0.012,  m: 2 },     // yellow
+  { at: -31, lean: -6, wide: 0.96, len: 1.04, lift: 0.004, twist: -0.01,  m: 3 },     // teal
+  { at: -2,  lean: 3,  wide: 1.04, len: 1.0,  lift: 0.014, twist: 0.008,  m: 4 },     // pink
+  { at: 28,  lean: -2, wide: 0.98, len: 0.95, lift: 0.006, twist: 0.012,  m: 5 },     // lavender
+  { at: 55,  lean: 5,  wide: 1.0,  len: 1.03, lift: 0.012, twist: -0.012, m: 6 }      // orange
+].map(F => {
+  const th = F.at * DEG, arc = cordArc(th);
+  // the flag's top edge follows the cord
+  const turn = Math.atan(cordRise(th, arc)) + F.lean * DEG;
+  // a triangle hanging from its top edge, pulled in by its rounding
+  const hw = FLAG_W * F.wide / 2, L = FLAG_L * F.len;
+  const rin = hw * L / (hw + len2(hw, L)), k = (rin - FLAG_ROUND) / rin;
+  const poly = [-hw, 0, hw, 0, 0, L].map((v, i) => i % 2 ? rin + (v - rin) * k : v * k);
+  return { th: th, arc: arc, c: Math.cos(turn), s: Math.sin(turn), poly: poly, hw: hw, len: L, rin: rin, lift: F.lift, twist: F.twist, m: F.m };
+});
+function flags(x, y, z, rec){
+  // the point in the cap's terms: height above it, arc up it, angle round it
+  const q = len2(x, z), dq = q - CAP_ARC.q, dy = y - CAP_ARC.y;
+  const h = len2(dq, dy) - CAP_ARC.r, arc = CAP_ARC.r * Math.atan2(dy, dq), th = Math.atan2(x, z);
+  // the cord, resting on the cap; measured across its own slope
+  const ca = cordArc(th), rise = cordRise(th, ca);
+  let d = len2((arc - ca) / Math.sqrt(1 + rise * rise), h - CORD_H) - CORD_R, m = 1;
+  for(const F of FLAGS){
+    let a = th - F.th;
+    if(a > Math.PI) a -= 2 * Math.PI; else if(a < -Math.PI) a += 2 * Math.PI;
+    const su = a * q, sv = F.arc - arc;                                   // across, and down from its top
+    const fu = su * F.c - sv * F.s, fv = su * F.s + sv * F.c;
+    const d2 = C.SD.poly2(fu, fv, F.poly) - FLAG_ROUND;
+    // puffy: a little fuller in the middle; the tip lifts away a touch, one
+    // side more than the other, as cloth that does not lie quite flat
+    const t = FLAG_T * (0.85 + 0.3 * clamp(-d2 / F.rin, 0, 1));
+    const v = clamp(fv / F.len, 0, 1);
+    const df = C.SD.extrude(d2, h - FLAG_H - (F.lift * v + F.twist * fu / F.hw) * v, t, t * 0.9) * 0.85;
+    if(df < d + 0.006){ const b = smin(d, df, 0.006); if(df < d) m = F.m; d = b; }
+  }
+  if(rec) rec.m = m;
+  return d;
+}
+
+/* DISH: a small round satellite dish on a short lavender-grey arm from the
+   body's right side, just under the cap's lip, facing out and up: a cream
+   bowl (a cut hollow sphere) with a coral feed horn held at its middle on
+   a little stalk. */
+const DISH_BASE = (function(){
+  const a = 88 * DEG, y = 0.04;
+  return onRocket([Math.sin(a) * 1.2, y, Math.cos(a) * 1.2], [-Math.sin(a), 0, -Math.cos(a)]);
+})();
+const DISH_ARM = norm3([0.85, 0.5, 0.2]), DISH_ARM_LEN = 0.135, DISH_ARM_R = 0.03;
+const DISH_AXIS = norm3([0.6, 0.62, 0.5]);
+const DISH_W = 0.165, DISH_DEPTH = 0.066, DISH_T = 0.021;
+const DISH_SR = (DISH_W * DISH_W + DISH_DEPTH * DISH_DEPTH) / (2 * DISH_DEPTH), DISH_H = -(DISH_SR - DISH_DEPTH);
+const DISH_BACK = add(DISH_BASE, mul(DISH_ARM, DISH_ARM_LEN));
+const DISH_O = add(DISH_BACK, mul(DISH_AXIS, DISH_SR + DISH_T));          // the bowl's sphere centre
+const DISH_VTX = sub(DISH_O, mul(DISH_AXIS, DISH_SR));                    // the middle of the bowl
+const DISH_FEED = add(DISH_VTX, mul(DISH_AXIS, DISH_SR * 0.5));           // its focus: the horn
+const DISH_HORN = add(DISH_FEED, mul(DISH_AXIS, 0.03));
+const DISH_IN = sub(DISH_BASE, mul(rocketNormal(DISH_BASE), 0.03));
+function dish(x, y, z, rec){
+  // the bowl: a hollow sphere cut by the rim's plane
+  const ox = x - DISH_O[0], oy = y - DISH_O[1], oz = z - DISH_O[2];
+  const qy = ox * DISH_AXIS[0] + oy * DISH_AXIS[1] + oz * DISH_AXIS[2];
+  const qx = len3(ox - DISH_AXIS[0] * qy, oy - DISH_AXIS[1] * qy, oz - DISH_AXIS[2] * qy);
+  let d = (DISH_H * qx < DISH_W * qy ? len2(qx - DISH_W, qy - DISH_H) : Math.abs(len2(qx, qy) - DISH_SR)) - DISH_T, m = 1;
+  // the arm, its collar on the body, and the feed stalk
+  const arm = smin(C.SD.roundCone2(x, y, z, DISH_IN[0], DISH_IN[1], DISH_IN[2], DISH_BACK[0], DISH_BACK[1], DISH_BACK[2], DISH_ARM_R * 1.1, DISH_ARM_R * 0.9),
+                   C.SD.ellipsoid(x - DISH_BASE[0], y - DISH_BASE[1], z - DISH_BASE[2], 0.036, 0.036, 0.036), 0.02);
+  const stalk = C.SD.capsule(x, y, z, DISH_VTX[0], DISH_VTX[1], DISH_VTX[2], DISH_FEED[0], DISH_FEED[1], DISH_FEED[2], 0.009);
+  const grey = Math.min(arm, stalk);
+  if(grey < d + 0.012){ const b = smin(d, grey, 0.012); if(grey < d) m = 2; d = b; }
+  // the horn: a little coral cone, its mouth toward the bowl
+  const horn = C.SD.roundCone2(x, y, z, DISH_FEED[0], DISH_FEED[1], DISH_FEED[2], DISH_HORN[0], DISH_HORN[1], DISH_HORN[2], 0.029, 0.019);
+  if(horn < d + 0.008){ const b = smin(d, horn, 0.008); if(horn < d) m = 3; d = b; }
+  if(rec) rec.m = m;
+  return d;
+}
+
 /* =========================================================
    THE VARIANTS
    ========================================================= */
@@ -233,7 +386,19 @@ const GEAR = {
   wings:   { d: wings, mats: [C.clay({ albedo: hex('#EEF2F9'), sheen: 0.18, spec: 0.1, specPow: 24, grain: 0, stroke: 0 })] },
   booster: { d: booster, mats: [C.clay({ albedo: hex('#F2E4C8') }),                                  // canister: the rocket's cream
                                 C.clay({ albedo: hex('#FF8A76'), rim: 0.45 }),                        // band: coral
-                                C.clay({ albedo: hex('#655E84') })] }                                // nozzle: the engine's lavender-grey
+                                C.clay({ albedo: hex('#655E84') })] },                               // nozzle: the engine's lavender-grey
+  ring:    { d: ring, albedoAt: ringAlbedo,
+             mats: [C.clay({ albedo: hex('#FFC93A'), sss: 0.7, sheen: 0.12, rim: 0.35 }),              // gold, orange toward its edges
+                    C.clay({ albedo: hex('#F6E3C0'), rim: 0.6 })] },                                   // the cream band
+  flags:   { d: flags, mats: [C.clay({ albedo: hex('#F2E4C8'), rim: 0.55 }),                          // cord: the rocket's cream
+                              C.clay({ albedo: hex('#FFC93A'), rim: 0.35 }),                           // yellow
+                              C.clay({ albedo: hex('#2BBFB3') }),                                      // teal
+                              C.clay({ albedo: hex('#FF86C2'), rim: 0.6 }),                            // pink
+                              C.clay({ albedo: hex('#9B72E6') }),                                      // lavender
+                              C.clay({ albedo: hex('#FF9A3D'), rim: 0.4 })] },                         // orange
+  dish:    { d: dish, mats: [C.clay({ albedo: hex('#F2E4C8'), rim: 0.55 }),                           // bowl: the rocket's cream
+                             C.clay({ albedo: hex('#9189B4') }),                                       // arm and stalk: lavender-grey
+                             C.clay({ albedo: hex('#FF8A76'), rim: 0.45, spec: 0.12 })] }              // the feed horn: coral
 };
 
 function build(variant){

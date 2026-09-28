@@ -248,8 +248,10 @@ Destination  { id, kind: 'home' | 'destination' | 'station'  the STORY layer
                story{ lines } }
   station    { room, outside, bay, turntable, window{earth} } the Rocket Dock, as a place
 Mission      { id, destinationId, skillId, title, task,      the LEARNING layer;
-               howTo, choices, difficulty{min,max},          title and task are the HUD's
-               reward{stars}, activities[] }
+               howTo, choices, difficulty{min,max},          title and task are the HUD's;
+               reward{stars}, activities[],                  replay: what a replay may ask
+               replay?{ letters | pairs | words } }          (REPLAY_SHAPES), none for
+                                                             Moon Writer
 CosmeticSlot { id: 'paint' | 'gear' | 'theme', label, speak }
 Cosmetic     { id, slot, name, cost, starter?,               one of each slot is worn;
                tint? | art? | pattern?, focus? }             focus: where a gear chip zooms
@@ -298,11 +300,33 @@ it in Word Builder, a little letter found or matched for the little-letter
 review, a sight word heard or matched for either sight review, a traced
 letter for the tracing review.
 
+**Replays** (`runPlan()`, `replayPlan()`, pure): a run's sequence is
+`run.plan`, which every round, the progress stars and the end of the run
+read — never `m.activities` directly. Until a mission has a completion,
+the plan is its activities as written. After, each non-review round is
+swapped for a round built from one item of the mission's `replay` pool
+that fits its shape (`REPLAY_SHAPES`: the list it draws from, the fields
+the item fills, and what must stay the same — the beats, the sound, the
+vowel and level) and validates. The choice is seeded by the run id: fewest
+uses in this run first, then items the last run did not show, then not at
+the same place as last time. The last run's items come from its completion
+record's `shown` (each round's `roundKey()`: a letter, a word, a rhyme by
+its ending); a record without one is simply not avoided. Review rounds keep
+their rule; a review of a sound picks its picture by the run's seed too.
+`validateContent()` checks every pool: each item fits a round, each round's
+own item is in the pool, and a Word Builder word uses only its mission's
+sounds (`taughtSounds()` stays derived from the activities as written).
+`missionRounds()` lists every round a mission can ask, replays included,
+for the recording list and the contracts.
+
 **Where the child goes next** (`currentDestination()`, pure): the first open
 place not yet restored; else the first with a mission not yet played; else
 the last open one. **The next marker** (`markerNext()`): the story missions
 in order, then — in the visit that restored the place — the first mission
-of any game there not yet played, then one mission a visit.
+of any game there not yet played, then one mission a visit. Once the
+visit's mission is played, a lit marker tapped again plays its game again
+(`markerAgain()`: its finished missions in turn), starting with one of the
+`mission.again` lines, in rotation; an unlit one points at the way home.
 
 ### The school print
 
@@ -454,7 +478,11 @@ One `#stage` sits behind every child scene (`CHILD WORLD` in the CSS, and
 - **Who owns a tap** (`session.input`): `intro` (a tap skips to the
   question), `open` (answers are taken), `wait` (praise, correction,
   between rounds: a tap waits). A wrong answer holds taps for
-  `TIMING.wrongHold`, so a bouncing finger is one answer.
+  `TIMING.wrongHold`, so a bouncing finger is one answer, and a mission's
+  first moment holds them for `TIMING.startHold`, so the second tap of a
+  double tap on a marker is not an answer. A question cut off from outside
+  — the screen turned, the app back from the background — is asked again,
+  with the nudge armed afresh (`askAgain()`).
 - **The play field:** the CSS owns the game's box (below the HUD, right of
   Pip, standing on the ground); `playfieldSizes()` (pure) sizes the tiles,
   the picture, the stone and the meteors to fit it, stacked or, on a short
@@ -478,8 +506,11 @@ The development phonics voice (`synthPhonics()`, `phonicsRender()`,
 the Web Audio output the first tap wakes (`AudioOut`), which `Sfx` shares.
 Recordings will play through one media element woken on the first tap
 (`MediaVoice`), only once one exists. The device voice speaks sentence by
-sentence with punctuation pauses (`speechChunks()`). Everything, with the
-recording list, is in [docs/AUDIO.md](docs/AUDIO.md).
+sentence with punctuation pauses (`speechChunks()`). The pace is a
+grown-up's choice (`soundPrefs.pace`, `speechPace()`): the device voice's
+rate and every pause (`dialogueScale()`), never the phonics voice's own
+timing. Everything, with the recording list, is in
+[docs/AUDIO.md](docs/AUDIO.md).
 
 ### The space station
 
@@ -487,18 +518,22 @@ The Rocket Dock is a place (`DESTINATIONS.station`), reached by a flight
 (`openDock()` → `travelTo('station')`, and `leaveDock()` home). The rocket
 stands on the turntable, larger. The panel holds three tabs (paint, gear,
 themes), the things to try and one action. Trying something on changes
-only the stage rocket (`previewLook()`); the action unlocks or wears it.
+only the stage rocket (`previewLook()`); the action unlocks or wears it. On
+a short landscape screen (a phone) the things are one shelf that scrolls
+sideways, sized so half of the next one always shows; drawing the list
+again keeps where it was scrolled and keeps the thing tried in sight
+(`keepInSight()`).
 
 ### Data model
 
 | Key | Shape | Written by |
 |---|---|---|
 | `data.profile` | `{ id, createdAt, updatedAt, story: { 'arrived.<place>', 'shown.<place>', 'heard.dockHint' } }` | first tap; story moments |
-| `data.completions` | `[{ id: runId, missionId, destinationId, skillId, startedAt, completedAt, rounds, firstTry, helped, unscored }]` | end of a mission |
+| `data.completions` | `[{ id: runId, missionId, destinationId, skillId, startedAt, completedAt, rounds, firstTry, helped, unscored, shown? }]` — `shown` (since v0.7.0): what each round asked, in order (`roundKey()`), so the next replay can avoid it; older records have none, and nothing is guessed for them | end of a mission |
 | `data.stars` | `[{ id: 'earn.<runId>' \| 'spend.<cosmeticId>', kind, amount, runId \| cosmeticId, at }]` | end of a mission (earn); the Dock (spend) |
 | `data.evidence` | `[{ id: '<skill>.<item>.<form>', item, form, seen, firstTry, recent[≤8], lastPracticed }]`: a letter (`letter-recognition.M.upper`, `.M.lower`, `.M.match`), a word (`rhyming.cake.rhyme`), a sound (`beginning-sounds.m.initial`), a built word (`cvc.map.build`), a sight word (`sight-words.the.hear`, `.the.match`), a traced letter (`handwriting.L.upper`) | after each resolved round |
 | `data.rocket` | `{ paint, gear?, theme?, updatedAt }` (a missing slot reads as its free starter, so v0.3.0 records need no migration) | the space station |
-| `ui.sound`, `ui.motion` | device preferences | grown-ups area |
+| `ui.sound`, `ui.motion` | device preferences: `ui.sound` is `{ voice, effects, pace? }` (a record without `pace` reads as calm) | grown-ups area |
 
 **Derived, never stored:**
 
@@ -526,8 +561,9 @@ only the stage rocket (`previewLook()`); the action unlocks or wears it.
 - **Flights:** 2.2s normally, 3.0s on a first arrival, 1.7s on a route
   already flown, 1.9s (1.5s again) to or from the station, 0.32s with
   Reduce Motion; then 0.42s to settle. The controls clear in 0.18s.
-- **Feedback:** the wrong-answer hold (0.45s), the celebration guard, and
-  the reward stars (all landed within about 2s).
+- **Feedback:** the wrong-answer hold (0.45s), a mission's start hold
+  (0.45s), the pause before the next round (0.36s), the celebration guard,
+  and the reward stars (all landed within about 2s).
 - **Ambient:** a shooting star about every 13–23s at rest.
 - **Writing:** Pip's pen moves at `writeDemo` ms per letter height, with a
   `writeDemoGap` between strokes; "Start at the green dot" is said at most
@@ -536,12 +572,13 @@ only the stage rocket (`previewLook()`); the action unlocks or wears it.
 `AUDIO_TYPES` is the other table: for each type of cue (story, instruction,
 question, praise, correction, hint, reaction, word, letter name, phoneme,
 segmented and blended word; sound effects are `Sfx`'s) its breath before
-and after, its minimum hold (praise holds 0.95s), whether a tap may cut it,
-and whether the device voice may say it. `TIMING.dialogueScale` scales all
-of it; the contracts set 0 (and then say each line whole, since there is no
-pause to leave between its sentences).
+and after, its minimum hold (praise holds 1s), whether a tap may cut it,
+and whether the device voice may say it, at the calm pace.
+`TIMING.dialogueScale` times the pace's `pauses` scales all of it
+(`dialogueScale()`); the contracts set 0 (and then say each line whole,
+since there is no pause to leave between its sentences).
 - **Beats:** a 1.5s pause ends a count; taps closer than 0.09s are one.
-- **Prompts:** re-asking after 10s idle, at most twice.
+- **Prompts:** re-asking after 14s idle, at most twice.
 - **Gate:** 3s.
 - **Speech fallbacks:** the speech-start grace (1.2s) and the safety timeout.
 

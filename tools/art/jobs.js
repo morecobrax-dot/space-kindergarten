@@ -34,8 +34,10 @@ const BASE = [
 ];
 
 /* The Phase 2 game pictures and props, the Phase 2.2 rocket gear and
-   world props, the Phase 3 Mars art and word pictures, and the Phase 4
-   Jupiter art and Moon writing slate live in their own lists. */
+   world props, the Phase 3 Mars art and word pictures, the Phase 4
+   Jupiter art and Moon writing slate, and the Phase 5 word pictures and
+   rocket gear live in their own lists. */
 module.exports = BASE.concat(require('./jobs-phase2.js'), require('./jobs-rocket22.js'), require('./jobs-world22.js'),
                            require('./jobs-mars3.js'), require('./jobs-pictures3.js'),
-                           require('./jobs-jupiter4.js'), require('./jobs-moon4.js'));
+                           require('./jobs-jupiter4.js'), require('./jobs-moon4.js'),
+                           require('./jobs-p5a.js'), require('./jobs-p5b.js'), require('./jobs-p5c.js'), require('./jobs-gear5.js'));

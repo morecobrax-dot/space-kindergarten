@@ -274,6 +274,8 @@
   --paint-tangerine: #FF9A3D;
   --paint-bubblegum: #FF86C2;
   --paint-ocean: #2BBFB3;
+  --paint-midnight: #34469C;
+  --paint-silver: #B4BDCC;
   /* Rocket themes: patterns of these colours, through the same paint mask. */
   --theme-bee-a: #FFCB3A;
   --theme-bee-b: #3B3048;
@@ -286,6 +288,10 @@
   --theme-galaxy-a: #3A2A8C;
   --theme-galaxy-b: #7A55D8;
   --theme-galaxy-star: #FFF3C4;
+  --theme-dots-base: #3EA6EE;
+  --theme-dots-dot: #FFF6DC;
+  --theme-checks-a: #2F2A3D;
+  --theme-checks-b: #F7F1E3;
   /* The chosen destination's light, and the route to it: cool, so the
      warm yellow stays the one action (Launch). */
   --focus-glow: rgba(150,215,255,0.42);
@@ -750,6 +756,13 @@ input[type="text"], input[type="number"], input[type="date"], textarea, select{
   padding: 0; border: none; background: none; border-radius: 50%;
 }
 button.sky-body{ cursor: pointer; }
+/* A planet far off is drawn small — on a phone, smaller than a finger — but
+   it is always a whole child-sized target: the mark may be small, the
+   target never is. */
+button.sky-body::after{
+  content: ''; position: absolute; border-radius: 50%;
+  inset: min(0px, calc((var(--ss) - var(--touch-kid)) / 2));
+}
 html[data-scene="earth"] button.sky-body{ pointer-events: auto; }
 .sky-focus{
   position: absolute; inset: 0;
@@ -958,6 +971,14 @@ html[data-scene="mission"] .stage-rocket{ opacity: 0; }
   background: radial-gradient(circle, var(--theme-galaxy-star) 0 7%, transparent 9%) 0 0 / 13% 10%,
               radial-gradient(circle, var(--theme-galaxy-star) 0 5%, transparent 7%) 6% 5% / 19% 14%,
               linear-gradient(160deg, var(--theme-galaxy-a), var(--theme-galaxy-b));
+}
+[data-pattern="dots"] .rocket-paint{
+  background: radial-gradient(circle, var(--theme-dots-dot) 0 30%, transparent 32%) 0 0 / 16% 12.8%,
+              var(--theme-dots-base);
+}
+/* square in the rocket's 640×800 frame: 20% across is 16% down */
+[data-pattern="checks"] .rocket-paint{
+  background: repeating-conic-gradient(var(--theme-checks-a) 0 25%, var(--theme-checks-b) 0 50%) 0 0 / 20% 16%;
 }
 /* Gear sits on the rocket exactly: every piece is rendered in the
    rocket's own frame (tools/art rocketgear.js), so it overlays without
@@ -1732,7 +1753,7 @@ html[data-speaking="true"] .pip-light{
 .kid-sheet .sheet-scroll{ padding: var(--space-2xl) var(--space-xl) calc(var(--space-2xl) + var(--inset-bottom)); }
 .kid-sheet-actions{ display: flex; gap: var(--space-lg); justify-content: center; flex-wrap: wrap; }
 
-/* ---- Turn your iPad ---- */
+/* ---- Turn the screen sideways ---- */
 .rotate-prompt{
   position: fixed; inset: 0; z-index: 50;
   display: none; flex-direction: column; align-items: center; justify-content: center;
@@ -1757,6 +1778,14 @@ html[data-speaking="true"] .pip-light{
 @media (orientation: landscape) and (max-height: 500px){
   .bubble{ padding: var(--space-sm) var(--space-md); }
   .dock-panel{ width: min(calc(42 * var(--vw)), 360px); }
+  /* Three rows of things will not fit under the tabs and above the
+     action, and a target never shrinks: the things become one shelf that
+     scrolls sideways, sized so the next one always shows half of itself —
+     a finger can see there is more. */
+  .dock-items{
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: calc((100% - 3 * var(--space-xs)) / 3.5);
+    overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+  }
   .repeat-btn{ width: var(--touch-kid); height: var(--touch-kid); }
   /* The writing slate stands in front of the ground, down to the bottom
      edge, so a letter is big enough for a finger. Its corridor is never
@@ -2083,7 +2112,7 @@ body.scroll-locked{
 
 <div class="rotate-prompt" id="rotatePrompt">
   <span class="rotate-device" aria-hidden="true"></span>
-  <p class="rotate-text">Turn your iPad sideways</p>
+  <p class="rotate-text">Turn the screen sideways</p>
 </div>
 
 <!-- GO HOME? — a child's decision, so two big pictures, and staying is
@@ -2129,6 +2158,13 @@ body.scroll-locked{
           <button class="toggle" id="effectsToggle" role="switch" aria-checked="true" aria-labelledby="effectsToggleLabel" onclick="toggleEffects()"></button>
         </div>
         <p class="field-hint" id="voiceNote"></p>
+      </div>
+
+      <div class="section-label">Speaking pace</div>
+      <p class="field-hint" style="margin:0 0 var(--space-sm)">Calm speaks slowly, with time to listen between lines. A little quicker suits a child who knows the games. Letter sounds keep their own timing either way.</p>
+      <div class="segmented" role="radiogroup" aria-label="Speaking pace" id="paceSeg">
+        <button role="radio" aria-checked="true" aria-selected="true" data-pace="calm" onclick="setSpeechPace('calm')">Calm</button>
+        <button role="radio" aria-checked="false" aria-selected="false" data-pace="quicker" onclick="setSpeechPace('quicker')">A little quicker</button>
       </div>
 
       <div class="section-label">Motion</div>
@@ -2298,6 +2334,29 @@ function validateAppId(id){
    history starts at its own first flight.
    ========================================================= */
 const APP_UPDATES = [
+  {
+    id: 'v0-7-0',
+    version: '0.7.0',
+    title: 'Play it again, and it changes',
+    date: '2026-09-28',
+    summary: 'A finished mission played again now asks new questions from the same lesson, and a lit marker plays its game again. ' +
+             'Eleven new pictures, more for the rocket, and a calmer speaking voice.',
+    improvements: [
+      'Playing a mission again asks other letters, words, rhymes and pictures from the same lesson, never something it has not taught',
+      'Once a visit\'s mission is done, tapping a lit marker plays its game again',
+      'Eleven new pictures: bat, bun, pup, hut, fox, box, mouse, nest, seal, robot and butterfly',
+      'New for the rocket: Midnight blue and Moon silver paint, a planet ring, a satellite dish and party flags, and polka-dot and race-checker themes',
+      'Pip speaks more slowly, with time to listen between lines, and waits longer before asking again; grown-ups can choose a little quicker pace',
+      'On a phone, the space station\'s paints, gear and themes scroll sideways, so every one can be reached'
+    ],
+    fixes: [
+      'A quick double tap on a marker could answer the first question by mistake',
+      'Tapping a finished marker said "Tap it to play again!", then did nothing',
+      'Coming back to the app in the middle of a question left it unasked; it is now asked again',
+      'On a phone, a small planet in the sky was hard to tap; every planet is now a full-size target',
+      'Turning a phone upright asked to turn the "iPad" sideways'
+    ]
+  },
   {
     id: 'v0-6-4',
     version: '0.6.4',
@@ -3230,6 +3289,18 @@ const ASSET_REGISTRY = [
   renderedAsset('picture.pumpkin',    'assets/pictures/pumpkin.webp',       '384×384',   'A picture for the word "pumpkin"'),
   renderedAsset('picture.umbrella',   'assets/pictures/umbrella.webp',      '384×384',   'A picture for the word "umbrella"'),
   renderedAsset('picture.cupcake',    'assets/pictures/cupcake.webp',       '384×384',   'A picture for the word "cupcake"'),
+  /* pictures for words: what replays draw on */
+  renderedAsset('picture.bat',        'assets/pictures/bat.webp',           '384×384',   'A picture for the word "bat" (the animal)'),
+  renderedAsset('picture.bun',        'assets/pictures/bun.webp',           '384×384',   'A picture for the word "bun"'),
+  renderedAsset('picture.pup',        'assets/pictures/pup.webp',           '384×384',   'A picture for the word "pup"'),
+  renderedAsset('picture.hut',        'assets/pictures/hut.webp',           '384×384',   'A picture for the word "hut"'),
+  renderedAsset('picture.fox',        'assets/pictures/fox.webp',           '384×384',   'A picture for the word "fox"'),
+  renderedAsset('picture.box',        'assets/pictures/box.webp',           '384×384',   'A picture for the word "box"'),
+  renderedAsset('picture.mouse',      'assets/pictures/mouse.webp',         '384×384',   'A picture for the word "mouse"'),
+  renderedAsset('picture.nest',       'assets/pictures/nest.webp',          '384×384',   'A picture for the word "nest"'),
+  renderedAsset('picture.seal',       'assets/pictures/seal.webp',          '384×384',   'A picture for the word "seal"'),
+  renderedAsset('picture.robot',      'assets/pictures/robot.webp',         '384×384',   'A picture for the word "robot"'),
+  renderedAsset('picture.butterfly',  'assets/pictures/butterfly.webp',     '384×384',   'A picture for the word "butterfly"'),
   /* the rocket and the guide */
   renderedAsset('rocket.body',        'assets/rocket/rocket.webp',          '640×800',   'The rocket, with its painted parts in white clay; also the picture for "rocket"'),
   renderedAsset('rocket.paintMask',   'assets/rocket/rocket-paint.webp',    '640×800',   'Where paint goes on the rocket: every paint colour is multiplied through it'),
@@ -3241,6 +3312,9 @@ const ASSET_REGISTRY = [
   renderedAsset('rocket.gearLights',  'assets/rocket/gear-lights.webp',     '640×800',   'Gear: two warm side lights on the fins'),
   renderedAsset('rocket.gearBooster', 'assets/rocket/gear-booster.webp',    '640×800',   'Gear: two small side boosters'),
   renderedAsset('rocket.gearWings',   'assets/rocket/gear-wings.webp',      '640×800',   'The bumblebee theme\'s pale wings'),
+  renderedAsset('rocket.gearRing',    'assets/rocket/gear-ring.webp',       '640×800',   'Gear: a gold planet ring around the nose'),
+  renderedAsset('rocket.gearFlags',   'assets/rocket/gear-flags.webp',      '640×800',   'Gear: a string of party flags across the nose'),
+  renderedAsset('rocket.gearDish',    'assets/rocket/gear-dish.webp',       '640×800',   'Gear: a little satellite dish on the side'),
   renderedAsset('character.pip',      'assets/characters/pip.webp',         '720×660',   'Pip, the guide — an original satellite-buddy design'),
   renderedAsset('icon.192',           'icon-192.png',                       '192×192',   'Home-screen icon', 'install'),
   renderedAsset('icon.512',           'icon-512.png',                       '512×512',   'Install and splash icon', 'install'),
@@ -3603,7 +3677,9 @@ const PHONEMES = {
   dh: { ipa: 'ð',  kind: 'continuous', example: 'the',    spelling: true },
   w:  { ipa: 'w',  kind: 'continuous', example: 'we',     spelling: true },
   y:  { ipa: 'j',  kind: 'continuous', example: 'you',    spelling: true },
-  ie: { ipa: 'aɪ', kind: 'vowel',      example: 'my',     spelling: true }
+  ie: { ipa: 'aɪ', kind: 'vowel',      example: 'my',     spelling: true },
+  ow: { ipa: 'aʊ', kind: 'vowel',      example: 'mouse',  spelling: true },
+  er: { ipa: 'ɚ',  kind: 'vowel',      example: 'butterfly', spelling: true }
 };
 /* A sound a game may ask a child to hear on its own. */
 function teachableSound(p){ return !!PHONEMES[p] && !PHONEMES[p].spelling; }
@@ -3684,6 +3760,22 @@ const WORDS = {
   pumpkin:  { speak: 'pumpkin',  picture: 'picture.pumpkin',  rime: 'umpkin', onset: 'p', beats: ['pump', 'kin'],       phonemes: ['p', 'u', 'm', 'p', 'k', 'i', 'n'] },
   umbrella: { speak: 'umbrella', picture: 'picture.umbrella', rime: 'ella',   onset: 'u', beats: ['um', 'brel', 'la'],  phonemes: ['u', 'm', 'b', 'r', 'e', 'l', 'uh'] },
   cupcake:  { speak: 'cupcake',  picture: 'picture.cupcake',  rime: 'ake',    onset: 'k', beats: ['cup', 'cake'],       phonemes: ['k', 'u', 'p', 'k', 'ay', 'k'] },
+  /* Phase 5: pictures for replays — more rhymes (bat, bun, pup, hut, fox,
+     box), more to build with short u (bun, hut), a third picture for each
+     held sound (mouse, seal, fox, nest, robot), and more beats (robot,
+     butterfly). Every one uses only sounds the app already teaches where a
+     game asks for them. */
+  bat:      { speak: 'bat',      picture: 'picture.bat',      rime: 'at',     onset: 'b', beats: ['bat'],               phonemes: ['b', 'a', 't'], level: 2 },
+  bun:      { speak: 'bun',      picture: 'picture.bun',      rime: 'un',     onset: 'b', beats: ['bun'],               phonemes: ['b', 'u', 'n'], level: 2 },
+  pup:      { speak: 'pup',      picture: 'picture.pup',      rime: 'up',     onset: 'p', beats: ['pup'],               phonemes: ['p', 'u', 'p'] },
+  hut:      { speak: 'hut',      picture: 'picture.hut',      rime: 'ut',     onset: 'h', beats: ['hut'],               phonemes: ['h', 'u', 't'], level: 1 },
+  fox:      { speak: 'fox',      picture: 'picture.fox',      rime: 'ox',     onset: 'f', beats: ['fox'],               phonemes: ['f', 'o', 'k', 's'] },
+  box:      { speak: 'box',      picture: 'picture.box',      rime: 'ox',     onset: 'b', beats: ['box'],               phonemes: ['b', 'o', 'k', 's'] },
+  mouse:    { speak: 'mouse',    picture: 'picture.mouse',    rime: 'ouse',   onset: 'm', beats: ['mouse'],             phonemes: ['m', 'ow', 's'] },
+  nest:     { speak: 'nest',     picture: 'picture.nest',     rime: 'est',    onset: 'n', beats: ['nest'],              phonemes: ['n', 'e', 's', 't'] },
+  seal:     { speak: 'seal',     picture: 'picture.seal',     rime: 'eal',    onset: 's', beats: ['seal'],              phonemes: ['s', 'ee', 'l'] },
+  robot:    { speak: 'robot',    picture: 'picture.robot',    rime: 'obot',   onset: 'r', beats: ['roe', 'bot'],        phonemes: ['r', 'oh', 'b', 'o', 't'] },
+  butterfly: { speak: 'butterfly', picture: 'picture.butterfly', rime: 'utterfly', onset: 'b', beats: ['but', 'ter', 'fly'], phonemes: ['b', 'u', 't', 'er', 'f', 'l', 'ie'] },
   /* sight words: a development set of twelve from the Dolch pre-primer
      list, awaiting review. Single-letter words (a, I) wait: they look like
      the letters a child is finding on the Moon. */
@@ -3924,7 +4016,17 @@ const JOURNEY_ORDER = ['moon', 'mercury', 'mars', 'jupiter'];
    rewriting a mission. The first round of each teaches the interaction
    itself and is not counted as evidence of anything.
    title and task are what the HUD shows: what am I playing, and what do
-   I do. A few words each, and never the answer. */
+   I do. A few words each, and never the answer.
+   replay  what a replay may ask instead (replayPlan()): the mission's own
+           items and, where they fit, a few more of the same kind — never
+           a new sound, a new letter or a harder level. The first play is
+           always the activities as written. Moon Writer has none: its
+           letters come in stroke order. */
+/* Syllable Meteors' words, by what a replay may ask: every round keeps its
+   number of beats, so any of these with as many beats can stand in. */
+const BEAT_WORDS = ['bee', 'car', 'sun', 'fish', 'cake', 'moon', 'star', 'tree', 'sock', 'fox', 'mouse', 'seal', 'nest',
+                    'rocket', 'apple', 'pumpkin', 'cupcake', 'robot',
+                    'banana', 'tomato', 'umbrella', 'butterfly'];
 const MISSIONS = {
   'moon-1': {
     id: 'moon-1', destinationId: 'moon', skillId: 'letter-recognition',
@@ -3933,6 +4035,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 3 },
     reward: { stars: 3 },
+    replay: { letters: ['M', 'S', 'O', 'T'] },
     activities: [
       { type: 'find-letter', target: 'M', form: 'upper', guided: true },
       { type: 'find-letter', target: 'S', form: 'upper' },
@@ -3951,6 +4054,8 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { pairs: [['cake', 'snake'], ['snake', 'cake'], ['bee', 'tree'], ['tree', 'bee'], ['rock', 'sock'], ['sock', 'rock'],
+                     ['moon', 'spoon'], ['spoon', 'moon'], ['star', 'car'], ['car', 'star'], ['fox', 'box'], ['box', 'fox']] },
     activities: [
       { type: 'rhyme-pick', target: 'cake', answer: 'snake', guided: true },
       { type: 'rhyme-pick', target: 'bee',  answer: 'tree' },
@@ -3968,6 +4073,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 1 },
     reward: { stars: 3 },
+    replay: { words: BEAT_WORDS },
     activities: [
       { type: 'syllable-tap', target: 'rocket', guided: true },
       { type: 'syllable-tap', target: 'bee' },
@@ -3989,6 +4095,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 3 },
     reward: { stars: 3 },
+    replay: { letters: ['A', 'P', 'F', 'N'] },
     activities: [
       { type: 'find-letter', target: 'A', form: 'upper' },
       { type: 'find-letter', target: 'P', form: 'upper' },
@@ -4005,6 +4112,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 3 },
     reward: { stars: 3 },
+    replay: { letters: ['C', 'H', 'U', 'B'] },
     activities: [
       { type: 'find-letter', target: 'C', form: 'upper' },
       { type: 'find-letter', target: 'H', form: 'upper' },
@@ -4025,6 +4133,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 3 },
     reward: { stars: 3 },
+    replay: { letters: ['O', 'S', 'C', 'M', 'A', 'T'] },
     activities: [
       { type: 'find-letter', target: 'O', form: 'lower', guided: true },
       { type: 'find-letter', target: 'S', form: 'lower' },
@@ -4045,6 +4154,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 3 },
     reward: { stars: 3 },
+    replay: { letters: ['N', 'P', 'F', 'H', 'B'] },
     activities: [
       { type: 'find-letter', target: 'N', form: 'lower', from: 'upper', guided: true },
       { type: 'find-letter', target: 'P', form: 'lower', from: 'upper' },
@@ -4114,6 +4224,9 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { pairs: [['cat', 'hat'], ['hat', 'cat'], ['bat', 'cat'], ['hat', 'bat'], ['map', 'cap'], ['cap', 'map'], ['fan', 'pan'], ['pan', 'fan'],
+                     ['bug', 'rug'], ['rug', 'bug'], ['sock', 'rock'], ['rock', 'sock'], ['cup', 'pup'], ['pup', 'cup'],
+                     ['nut', 'hut'], ['hut', 'nut'], ['sun', 'bun'], ['bun', 'sun']] },
     activities: [
       { type: 'rhyme-pick', target: 'cat', answer: 'hat' },
       { type: 'rhyme-pick', target: 'map', answer: 'cap' },
@@ -4130,6 +4243,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 1 },
     reward: { stars: 3 },
+    replay: { words: BEAT_WORDS },
     activities: [
       { type: 'syllable-tap', target: 'cupcake' },
       { type: 'syllable-tap', target: 'sun' },
@@ -4151,6 +4265,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['moon', 'map', 'mouse', 'sun', 'sock', 'seal', 'fish', 'fan', 'fox'] },
     activities: [
       { type: 'sound-pick', sound: 'm', answer: 'moon', guided: true },
       { type: 'sound-pick', sound: 's', answer: 'sun' },
@@ -4167,6 +4282,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['net', 'nut', 'nest', 'rug', 'rock', 'rocket', 'robot'] },
     activities: [
       { type: 'sound-pick', sound: 'n', answer: 'net' },
       { type: 'sound-pick', sound: 'r', answer: 'rug' },
@@ -4185,6 +4301,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['map', 'fan', 'hat', 'cat', 'cap', 'pan'] },
     activities: [
       { type: 'word-build', target: 'map', guided: true },
       { type: 'word-build', target: 'fan' },
@@ -4204,6 +4321,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['the', 'and', 'see', 'you'] },
     activities: [
       { type: 'sight-find', target: 'the', guided: true },
       { type: 'sight-find', target: 'and' },
@@ -4220,6 +4338,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['to', 'go', 'is', 'it'] },
     activities: [
       { type: 'sight-find', target: 'to' },
       { type: 'sight-find', target: 'go' },
@@ -4238,6 +4357,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['the', 'see', 'you', 'and', 'to', 'go'] },
     activities: [
       { type: 'sight-match', target: 'the', guided: true },
       { type: 'sight-match', target: 'see' },
@@ -4254,6 +4374,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['in', 'can', 'we', 'my', 'is'] },
     activities: [
       { type: 'sight-match', target: 'in' },
       { type: 'sight-match', target: 'can' },
@@ -4270,6 +4391,7 @@ const MISSIONS = {
     choices: 3,
     difficulty: { min: 1, max: 2 },
     reward: { stars: 3 },
+    replay: { words: ['sun', 'cup', 'nut', 'bus', 'bug', 'bun', 'hut'] },
     activities: [
       { type: 'word-build', target: 'sun' },
       { type: 'word-build', target: 'cup' },
@@ -4318,6 +4440,8 @@ const COSMETICS = [
   { id: 'paint-tangerine', slot: 'paint', name: 'Tangerine orange', cost: 4, tint: 'paint-tangerine' },
   { id: 'paint-bubblegum', slot: 'paint', name: 'Bubblegum pink',   cost: 5, tint: 'paint-bubblegum' },
   { id: 'paint-ocean',     slot: 'paint', name: 'Ocean teal',       cost: 6, tint: 'paint-ocean' },
+  { id: 'paint-midnight',  slot: 'paint', name: 'Midnight blue',    cost: 5, tint: 'paint-midnight' },
+  { id: 'paint-silver',    slot: 'paint', name: 'Moon silver',      cost: 4, tint: 'paint-silver' },
   /* focus: where the piece sits on the rocket (fractions of its frame) and
      how far its chip zooms in on it, so a topper can be seen at chip size */
   { id: 'gear-none',       slot: 'gear',  name: 'No gear',          cost: 0, starter: true },
@@ -4326,10 +4450,15 @@ const COSMETICS = [
   { id: 'gear-moon',       slot: 'gear',  name: 'Moon topper',      cost: 4, art: 'rocket.gearMoon',    focus: [0.5, 0.15, 2.6] },
   { id: 'gear-lights',     slot: 'gear',  name: 'Side lights',      cost: 5, art: 'rocket.gearLights',  focus: [0.5, 0.6, 1.35] },
   { id: 'gear-booster',    slot: 'gear',  name: 'Boosters',         cost: 6, art: 'rocket.gearBooster', focus: [0.5, 0.5, 1.3] },
+  { id: 'gear-dish',       slot: 'gear',  name: 'Satellite dish',   cost: 4, art: 'rocket.gearDish',    focus: [0.8, 0.4, 2.3] },
+  { id: 'gear-flags',      slot: 'gear',  name: 'Party flags',      cost: 5, art: 'rocket.gearFlags',   focus: [0.5, 0.32, 1.7] },
+  { id: 'gear-ring',       slot: 'gear',  name: 'Planet ring',      cost: 6, art: 'rocket.gearRing',    focus: [0.5, 0.29, 1.2] },
   { id: 'theme-none',      slot: 'theme', name: 'No theme',         cost: 0, starter: true },
   { id: 'theme-bee',       slot: 'theme', name: 'Bumblebee',        cost: 8, pattern: 'bee', art: 'rocket.gearWings' },
   { id: 'theme-rainbow',   slot: 'theme', name: 'Rainbow explorer', cost: 9, pattern: 'rainbow' },
-  { id: 'theme-galaxy',    slot: 'theme', name: 'Galaxy explorer',  cost: 10, pattern: 'galaxy' }
+  { id: 'theme-galaxy',    slot: 'theme', name: 'Galaxy explorer',  cost: 10, pattern: 'galaxy' },
+  { id: 'theme-dots',      slot: 'theme', name: 'Polka dots',       cost: 8, pattern: 'dots' },
+  { id: 'theme-checks',    slot: 'theme', name: 'Race checkers',    cost: 9, pattern: 'checks' }
 ];
 
 /* Every spoken line. `text` is what may appear on screen: a few words,
@@ -4414,7 +4543,9 @@ const VOICE_CUES = {
   'marker.skysign':         { type: 'hint', text: 'Tap the sky sign!',     speak: 'Tap the sky sign to start!' },
   'marker.orbit':           { type: 'hint', text: 'Tap the orbit ring!',   speak: 'Now tap the orbit ring!' },
   'planet.homeHint':        { type: 'hint', text: 'Fly home!',             speak: 'Tap the big yellow button to fly home!' },
-  'planet.fixed':           { type: 'hint', text: 'All fixed!',            speak: 'That one is already fixed. Tap it to play again!' },
+  'mission.again.1':        { type: 'instruction', text: 'Again!',                speak: "Let's play it again!" },
+  'mission.again.2':        { type: 'instruction', text: 'One more time!',        speak: 'One more time!' },
+  'mission.again.3':        { type: 'instruction', text: 'Again!',                speak: 'Here we go again!' },
   'mission.howTo':          { type: 'instruction', text: 'Listen, then tap!',     speak: "I'll say a letter. You tap it!" },
   'mission.howTo.little':   { type: 'instruction', text: 'Little letters!',       speak: 'Every letter has a big shape and a little shape. Now we find the little ones!' },
   'mission.howTo.pair':     { type: 'instruction', text: 'Big and little!',       speak: 'Big letters and little letters go together. I show you one. You find its partner!' },
@@ -4438,7 +4569,7 @@ const VOICE_CUES = {
   'dock.equipped':          { type: 'reaction', text: 'Looking good!',         speak: 'Looking good!' },
   /* Off-screen: the rotate prompt carries its own words, and writing them
      into a scene's bubble would leave them there after the iPad turns back. */
-  'rotate':                 { type: 'reaction', text: 'Turn your iPad sideways', speak: 'Turn your iPad sideways.', offscreen: true }
+  'rotate':                 { type: 'reaction', text: 'Turn the screen sideways', speak: 'Turn the screen sideways.', offscreen: true }
 };
 /* Recorded narration, by line id, once it exists. Empty so far: every
    line currently falls back to the device voice. Paths belong in
@@ -4919,6 +5050,37 @@ function validateContent(){
         });
       }
     });
+    /* A replay draws from the pool (replayPlan()): every item there must
+       work as one of the mission's rounds, every round must be able to ask
+       its own item again, and a Word Builder word may use only the sounds
+       this mission already asks for — a replay never teaches a new one. */
+    if(m.replay !== undefined){
+      const acts = m.activities || [];
+      const shape = REPLAY_SHAPES[(acts[0] || {}).type];
+      const pool = shape && m.replay ? m.replay[shape.list] : null;
+      if(!shape || !Array.isArray(pool) || !pool.length || Object.keys(m.replay).length !== 1) flag(where + ' has a replay pool its game cannot draw from');
+      else {
+        const keyOf = it => JSON.stringify(it);
+        if(new Set(pool.map(keyOf)).size !== pool.length) flag(where + ' lists a replay item twice');
+        acts.forEach((a, i) => {
+          if(a.review || a.type !== acts[0].type) return;
+          if(pool.map(keyOf).indexOf(keyOf(replayItem(a))) === -1) flag(where + ' activity ' + i + ' cannot come back in a replay: its own item is not in the pool');
+        });
+        const sounds = new Set();
+        acts.forEach(a => { if(a.type === 'word-build') [a.target].concat(a.review || []).forEach(w => ((WORDS[w] && WORDS[w].phonemes) || []).forEach(p => sounds.add(p))); });
+        pool.forEach(it => {
+          const rounds = acts.map(a => replayRound(a, it)).filter(Boolean);
+          if(!rounds.length){ flag(where + ' replay item ' + keyOf(it) + ' fits none of its rounds'); return; }
+          if(rounds.some(b => [b.target, b.answer].filter(Boolean).some(t => new RegExp('\\b' + t + '\\b', 'i').test(m.task)))) flag(where + ' task gives a replay answer away');
+          rounds.forEach(b => {
+            const q = voiceCue(ACTIVITY_TYPES[b.type].promptCue(b));
+            if(!q) flag(where + ' replay item ' + keyOf(it) + ' has no spoken question');
+            else if(AUDIO_TYPES[q.type] && AUDIO_TYPES[q.type].phonics && !q.file && !(q.sounds || []).every(p => SYNTH_SOUNDS[p])) flag(where + ' replay item ' + keyOf(it) + ' asks with a sound nothing can play');
+          });
+          if(sounds.size && WORDS[it] && (WORDS[it].phonemes || []).some(p => !sounds.has(p))) flag(where + ' replay word ' + it + ' needs a sound this mission does not ask for');
+        });
+      }
+    }
   });
 
   Object.keys(DESTINATIONS).forEach(id => {
@@ -5517,11 +5679,14 @@ function reviewPick(of, candidates, evidence, avoid){
   });
   return best ? best.item : null;
 }
-/* The word a review of a sound asks with: the first picture that starts
-   with it on its own, not already used in this run. */
-function soundWord(sound, avoid){
+/* The word a review of a sound asks with: a picture that starts with it
+   on its own, not already used in this run. Which of those is the run's
+   seeded choice (`rand`); the sound itself is the evidence's. */
+function soundWord(sound, avoid, rand){
   const ok = Object.keys(WORDS).filter(w => hasPicture(w) && WORDS[w].onset === sound && singleOnset(w));
-  return ok.filter(w => (avoid || []).indexOf(w) === -1)[0] || ok[0] || null;
+  const fresh = ok.filter(w => (avoid || []).indexOf(w) === -1);
+  const from = fresh.length ? fresh : ok;
+  return (rand ? shuffled(from, rand) : from)[0] || null;
 }
 function reviewActivity(a, evidence, run){
   if(!a.review) return a;
@@ -5534,13 +5699,99 @@ function reviewActivity(a, evidence, run){
   if(type === 'sound-pick'){
     const s = reviewPick(a, a.review, evidence, asked);
     if(!s) return a;
-    return Object.assign({}, a, { sound: s, answer: soundWord(s, asked) || a.answer, reviewed: true });
+    return Object.assign({}, a, { sound: s, answer: soundWord(s, asked, seededRandom(run.id + ':' + run.index + ':review')) || a.answer, reviewed: true });
   }
   if(type === 'word-build' || type === 'sight-find' || type === 'sight-match' || type === 'letter-trace'){
     const t = reviewPick(a, a.review, evidence, asked) || a.target;
     return Object.assign({}, a, { target: t, reviewed: t !== a.target || null });
   }
   return a;
+}
+
+/* ---- replay: a mission played again asks afresh ----
+   A mission's first play is its activities as written: the teaching
+   order a grown-up can read in the content. Once it has been finished,
+   each replay keeps that sequence's shape — as many rounds, the guided
+   round where it was, every review round with its own rule — and asks
+   every other round afresh from the mission's `replay` pool: a letter
+   in the same case (and the same direction, for a pair), another rhyme,
+   a word with as many beats, another picture that starts with the same
+   sound, a word with the same vowel and the same kind of first sound.
+   Which one is the run's seeded choice, so the same seed, content and
+   history give the same sequence. Within a run an item comes back only
+   when the pool has run out; what this mission asked last time (its
+   completion keeps it, as `shown`) waits its turn, first by item, then
+   by place in the sequence. A pool too small repeats honestly and never
+   invents content. Which skill needs practice is still the review
+   rounds' rule, from the evidence. */
+const REPLAY_SHAPES = {
+  'find-letter':  { list: 'letters', take: ['target'] },
+  'rhyme-pick':   { list: 'pairs',   take: ['target', 'answer'], key: a => '-' + (WORDS[a.target] || {}).rime },
+  'syllable-tap': { list: 'words',   take: ['target'], fits: (a, w) => WORDS[w].beats.length === WORDS[a.target].beats.length },
+  'sound-pick':   { list: 'words',   take: ['answer'] },         // the round keeps its sound; validate() wants the picture to start with it
+  'word-build':   { list: 'words',   take: ['target'],
+                    fits: (a, w) => WORDS[w].phonemes[1] === WORDS[a.target].phonemes[1] && (WORDS[w].level || 1) === (WORDS[a.target].level || 1) },
+  'sight-find':   { list: 'words',   take: ['target'] },
+  'sight-match':  { list: 'words',   take: ['target'] }
+};
+/* What a round asks, as its pool lists it: a letter, a word, a pair. */
+function replayItem(a){
+  const shape = REPLAY_SHAPES[a.type];
+  if(!shape) return null;
+  return shape.take.length > 1 ? shape.take.map(f => a[f]) : a[shape.take[0]];
+}
+/* What a round showed, as a replay avoids it: a rhyme by its ending, so
+   two -at rhymes are not one after the other. */
+function roundKey(a){
+  const shape = REPLAY_SHAPES[a.type];
+  if(!shape) return String(a.target || a.sound || '');
+  return shape.key ? shape.key(a) : String(replayItem(a));
+}
+/* A round asking pool item `it` instead, if it fits this round's shape
+   and works; null if not. */
+function replayRound(a, it){
+  const shape = REPLAY_SHAPES[a.type];
+  if(!shape || a.review) return null;
+  const vals = shape.take.length > 1 ? it : [it];
+  if(!Array.isArray(vals) || vals.length !== shape.take.length) return null;
+  const b = Object.assign({}, a);
+  shape.take.forEach((f, i) => { b[f] = vals[i]; });
+  if(ACTIVITY_TYPES[b.type].validate(b) !== null) return null;
+  return !shape.fits || shape.fits(a, vals[0]) ? b : null;
+}
+function replayChoices(m, a){
+  const shape = REPLAY_SHAPES[a.type];
+  if(!shape || !m.replay || a.review) return [];
+  return (m.replay[shape.list] || []).map(it => replayRound(a, it)).filter(Boolean);
+}
+/* Every round a mission can ask: its own, and each one a replay may draw
+   (a review round asks what its candidates allow). */
+function missionRounds(m){
+  return [].concat.apply(m.activities.slice(), m.activities.map(a => replayChoices(m, a)));
+}
+/* A replay's sequence. `before`: what the last run of this mission
+   showed, round by round. */
+function replayPlan(m, seed, before){
+  const rand = seededRandom(seed + ':replay');
+  const last = before || [], lastSet = new Set(last), used = {};
+  return m.activities.map((a, i) => {
+    const choices = replayChoices(m, a);
+    if(!choices.length) return a;
+    const rank = b => { const k = roundKey(b); return 4 * (used[k] || 0) + (lastSet.has(k) ? 2 : 0) + (last[i] === k ? 1 : 0); };
+    const best = Math.min.apply(null, choices.map(rank));
+    const pick = shuffled(choices.filter(b => rank(b) === best), rand)[0];
+    used[roundKey(pick)] = (used[roundKey(pick)] || 0) + 1;
+    return pick;
+  });
+}
+/* The sequence a run plays: as written until the mission has been
+   finished, then a replay's. Only the latest run's `shown` is read; a
+   completion saved before it existed has none, and nothing is guessed. */
+function runPlan(m, runId, completions){
+  const done = (completions || []).filter(c => c && c.missionId === m.id);
+  if(!done.length || !m.replay) return m.activities.slice();
+  const latest = done.reduce((x, c) => ((c.completedAt || '') >= (x.completedAt || '') ? c : x));
+  return replayPlan(m, runId, Array.isArray(latest.shown) ? latest.shown.filter(k => typeof k === 'string') : []);
 }
 
 /* ---- evidence: what the child has shown, per letter ----
@@ -5566,17 +5817,22 @@ function applyOutcome(list, o){
 /* ---- a mission run ---- */
 function newRunId(now){ return 'run_' + now.getTime().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
 
-function startRun(missionId, now, runId){
-  if(!MISSIONS[missionId]) return null;
-  return { id: runId || newRunId(now), missionId: missionId, startedAt: now.toISOString(),
-           index: 0, round: null, results: [], complete: false, asked: [] };
+/* `completions`: the journey's, so a finished mission's replay is drawn
+   (runPlan()); without them, the activities as written. */
+function startRun(missionId, now, runId, completions){
+  const m = MISSIONS[missionId];
+  if(!m) return null;
+  const id = runId || newRunId(now);
+  return { id: id, missionId: missionId, startedAt: now.toISOString(), plan: runPlan(m, id, completions),
+           index: 0, round: null, results: [], complete: false, asked: [], shown: [] };
 }
 
 function beginRound(run, evidence, opts){
   const m = MISSIONS[run.missionId];
-  const a = reviewActivity(m.activities[run.index], evidence, run);
+  const a = reviewActivity(run.plan[run.index], evidence, run);
   const type = ACTIVITY_TYPES[a.type];
   run.asked = (run.asked || []).concat([a.target, a.sound, a.answer].filter(Boolean));
+  run.shown = (run.shown || []).slice(0, run.index).concat([roundKey(a)]);
   const key = type.evidenceKey(a);
   const ev = findEvidence(evidence || [], evidenceId(type.skillId, key.item, key.form));
   const tier = a.guided ? m.difficulty.min : tierFor(ev ? ev.recent : [], m.difficulty);
@@ -5616,10 +5872,9 @@ function answerRound(run, choice){
 }
 
 function advanceRun(run){
-  const m = MISSIONS[run.missionId];
   run.index += 1;
   run.round = null;
-  if(run.index >= m.activities.length) run.complete = true;
+  if(run.index >= run.plan.length) run.complete = true;
   return !run.complete;
 }
 
@@ -5636,7 +5891,8 @@ function completionRecord(run, now){
   const m = MISSIONS[run.missionId];
   const at = now.toISOString();
   return Object.assign({ id: run.id, missionId: m.id, destinationId: m.destinationId, skillId: m.skillId,
-                         startedAt: run.startedAt, completedAt: at, updatedAt: at }, runSummary(run));
+                         startedAt: run.startedAt, completedAt: at, updatedAt: at }, runSummary(run),
+                       { shown: (run.shown || []).slice() });
 }
 function addCompletion(list, rec){
   if(list.some(c => c.id === rec.id)) return { list: list, added: false };
@@ -5888,17 +6144,18 @@ function affordableCosmetics(){
 }
 
 /* ---- per-device preferences ---- */
-const soundPrefs = { voice: true, effects: true };
+const soundPrefs = { voice: true, effects: true, pace: 'calm' };
 let motionPref = 'system';
 
 function loadPrefs(){
   const s = Store.getJSON(KEYS.sound, null);
   soundPrefs.voice = !(isPlainObject(s) && s.voice === false);
   soundPrefs.effects = !(isPlainObject(s) && s.effects === false);
+  soundPrefs.pace = isPlainObject(s) && s.pace === 'quicker' ? 'quicker' : 'calm';
   motionPref = Store.get(KEYS.motion) === 'reduce' ? 'reduce' : 'system';
   applyMotionPref();
 }
-function saveSoundPrefs(){ return Store.setJSON(KEYS.sound, { voice: soundPrefs.voice, effects: soundPrefs.effects }); }
+function saveSoundPrefs(){ return Store.setJSON(KEYS.sound, { voice: soundPrefs.voice, effects: soundPrefs.effects, pace: soundPrefs.pace }); }
 function applyMotionPref(){ document.documentElement.setAttribute('data-motion', motionPref); }
 function motionReduced(){ return motionPref === 'reduce' || prefersReducedMotion(); }
 
@@ -5932,10 +6189,11 @@ const TIMING = {
   uiClear: 180,                                    // the controls fade as the engine lights
   arriveSettle: 420,                               // touchdown to taps: dust, Pip, the HUD
   wrongHold: 450,                                  // after a wrong answer, a bouncing finger is not a second one
-  dialogueScale: 1,                                // AUDIO_TYPES' pauses; the contracts run at 0
-  betweenRounds: 260, celebrateGuard: 1100,
+  startHold: 450,                                  // as a mission opens, the finger that started it is not an answer
+  dialogueScale: 1,                                // AUDIO_TYPES' pauses, times the pace's (dialogueScale()); the contracts run at 0
+  betweenRounds: 360, celebrateGuard: 1100,
   starFirst: 650, starEvery: 240, starFlight: 620,  // reward stars: quick, one after another
-  reprompt: 10000, maxReprompts: 2, gateHold: 3000,
+  reprompt: 14000, maxReprompts: 2, gateHold: 3000,     // a question asked again only after 14 s of quiet
   relight: 600,                                    // a beat, then what was fixed lights up
   beatPause: 1500,                                 // a pause this long after a beat ends the count
   beatSettle: 350,                                 // the count cannot go higher: answer after this
@@ -5963,28 +6221,32 @@ const TIMING = {
    "Listen." … /m/ … "Which picture starts with…" /m/ is three small
    pauses, not three lines fired back to back, and a question never
    follows a story line at once. Recorded narration keeps these rules;
-   only the voice changes. Sound effects (sfx) are the Sfx family's. */
+   only the voice changes. Sound effects (sfx) are the Sfx family's.
+   These are the calm pace's (speechPace()): an instruction settles before
+   the question, the three pictures are named a breath apart, praise is
+   heard out and "almost" is followed by a pause before the question
+   again — and still no gap reaches 0.7 s, so nothing sounds stopped. */
 const AUDIO_TYPES = {
-  story:       { pre: 150, post: 450, hold: 0,   interrupt: true,  tts: true },
-  instruction: { pre: 100, post: 250, hold: 0,   interrupt: true,  tts: true },
-  question:    { pre: 100, post: 0,   hold: 0,   interrupt: true,  tts: true },
-  praise:      { pre: 0,   post: 250, hold: 950, interrupt: false, tts: true },
-  correction:  { pre: 0,   post: 200, hold: 0,   interrupt: false, tts: true },
-  hint:        { pre: 100, post: 0,   hold: 0,   interrupt: true,  tts: true },
-  reaction:    { pre: 0,   post: 0,   hold: 0,   interrupt: true,  tts: true },
-  word:        { pre: 80,  post: 220, hold: 0,   interrupt: true,  tts: true },
-  letterName:  { pre: 0,   post: 150, hold: 0,   interrupt: true,  tts: true },
-  phoneme:     { pre: 150, post: 300, hold: 0,   interrupt: true,  tts: false, phonics: true },
-  segmented:   { pre: 150, post: 350, hold: 0,   interrupt: true,  tts: false, phonics: true },
-  blended:     { pre: 100, post: 250, hold: 0,   interrupt: false, tts: false, phonics: true },
-  sfx:         { pre: 0,   post: 0,   hold: 0,   interrupt: true,  tts: false, effect: true }
+  story:       { pre: 200, post: 500, hold: 0,    interrupt: true,  tts: true },
+  instruction: { pre: 150, post: 400, hold: 0,    interrupt: true,  tts: true },
+  question:    { pre: 150, post: 0,   hold: 0,    interrupt: true,  tts: true },
+  praise:      { pre: 100, post: 350, hold: 1000, interrupt: false, tts: true },
+  correction:  { pre: 100, post: 350, hold: 0,    interrupt: false, tts: true },
+  hint:        { pre: 150, post: 0,   hold: 0,    interrupt: true,  tts: true },
+  reaction:    { pre: 0,   post: 0,   hold: 0,    interrupt: true,  tts: true },
+  word:        { pre: 120, post: 330, hold: 0,    interrupt: true,  tts: true },
+  letterName:  { pre: 0,   post: 220, hold: 0,    interrupt: true,  tts: true },
+  phoneme:     { pre: 200, post: 400, hold: 0,    interrupt: true,  tts: false, phonics: true },
+  segmented:   { pre: 200, post: 450, hold: 0,    interrupt: true,  tts: false, phonics: true },
+  blended:     { pre: 150, post: 350, hold: 0,    interrupt: false, tts: false, phonics: true },
+  sfx:         { pre: 0,   post: 0,   hold: 0,    interrupt: true,  tts: false, effect: true }
 };
 function cueType(id){ const c = typeof id === 'string' ? voiceCue(id) : id; return (c && AUDIO_TYPES[c.type]) ? c.type : 'reaction'; }
 
 /* How the device voice's sentences are spaced: one line of several
    sentences is said sentence by sentence, with a pause by how each ends,
    because a synthesiser runs "Yes! That's the letter em." together. */
-const SPEECH_PAUSES = { '.': 200, '!': 180, '?': 260, '…': 380 };
+const SPEECH_PAUSES = { '.': 260, '!': 240, '?': 300, '…': 420 };
 function speechChunks(text){
   const parts = String(text || '').match(/[^.!?…]+(?:[.!?…]+|$)/g) || [];
   const out = [];
@@ -6019,9 +6281,19 @@ function setSpeaking(on){ document.documentElement.setAttribute('data-speaking',
 
 /* How the device voice is asked to speak. Pitch stays at 1: shifting a
    synthesised voice is what makes it sound most artificial — it was 1.08,
-   and "robotic" was the first thing heard on a real iPad. A slightly slow
-   rate keeps letter names clear for five-year-olds. */
-const SPEECH_STYLE = { lang: 'en-US', rate: 0.92, pitch: 1 };
+   and "robotic" was the first thing heard on a real iPad.
+   The pace is a grown-up's choice (soundPrefs.pace). Calm, the default,
+   is slower than the device's own voice and pauses as AUDIO_TYPES and
+   SPEECH_PAUSES say: a five-year-old can follow it. Quicker is close to
+   the pace before it: a little faster, the pauses a quarter shorter.
+   Neither changes the sounds a child learns from: a phoneme or a blended
+   word is made to be heard exactly, and is never slowed or hurried. */
+const SPEECH_STYLE = { lang: 'en-US', pitch: 1,
+                       paces: { calm: { rate: 0.86, pauses: 1 }, quicker: { rate: 0.94, pauses: 0.75 } } };
+function speechPace(){ return SPEECH_STYLE.paces[soundPrefs.pace] || SPEECH_STYLE.paces.calm; }
+/* How long the pauses are: the pace's, and none at all where the contracts
+   turn them off (TIMING.dialogueScale 0). */
+function dialogueScale(){ return TIMING.dialogueScale * speechPace().pauses; }
 
 /* Voices that must never be a child's guide: Apple's novelty voices
    (Bubbles, Zarvox, Bad News…) and the oldest desktop voices. Matched on
@@ -6032,7 +6304,8 @@ const VOICE_AVOID = /(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|
    that list can start with a basic compact voice or a novelty one. Rank
    instead: the intended locale first, then Apple's Premium and Enhanced
    voices (the natural-sounding ones, when installed), then anything that
-   works offline. Deterministic: the same list always gives the same voice. */
+   works offline. Deterministic: the same voices give the same choice in
+   any order, a tie going to the name first in the alphabet. */
 function voiceScore(v){
   const lang = String((v && v.lang) || '').replace('_', '-').toLowerCase();
   if(lang.indexOf('en') !== 0) return 0;                  // never another language
@@ -6049,7 +6322,10 @@ function voiceScore(v){
 }
 function bestVoice(list){
   let best = null, top = 0;
-  (list || []).forEach(v => { const s = voiceScore(v); if(s > top){ top = s; best = v; } });
+  (list || []).forEach(v => {
+    const s = voiceScore(v);
+    if(s > top || (s === top && s > 0 && String(v.name || '') < String(best.name || ''))){ top = s; best = v; }
+  });
   return best;
 }
 
@@ -6446,7 +6722,7 @@ const Voice = (function(){
   function speakWithSynth(cue, me){
     const s = synth();
     if(!s){ me.finish(); return; }
-    const scale = TIMING.dialogueScale;
+    const scale = dialogueScale();
     const chunks = scale > 0 ? speechChunks(cue.speak) : [{ text: cue.speak, pause: 0 }];
     let i = 0;
     const next = () => {
@@ -6455,7 +6731,7 @@ const Voice = (function(){
       if(!c){ me.finish(); return; }
       try{
         const u = new window.SpeechSynthesisUtterance(c.text);
-        u.lang = SPEECH_STYLE.lang; u.rate = SPEECH_STYLE.rate; u.pitch = SPEECH_STYLE.pitch;
+        u.lang = SPEECH_STYLE.lang; u.rate = speechPace().rate; u.pitch = SPEECH_STYLE.pitch;
         const v = pickVoice(s);
         if(v) u.voice = v;
         u.onstart = () => { me.started = true; };
@@ -6520,7 +6796,7 @@ const Voice = (function(){
         return;
       }
       setSpeaking(true);
-      const spacing = speechChunks(cue.speak).reduce((sum, ch) => sum + ch.pause, 0) * TIMING.dialogueScale;
+      const spacing = speechChunks(cue.speak).reduce((sum, ch) => sum + ch.pause, 0) * dialogueScale();
       timer = setTimeout(me.finish, TIMING.speechSafetyBase + String(cue.speak || '').length * TIMING.speechSafetyPerChar + spacing +
                                     (AUDIO_TYPES[cue.type] && AUDIO_TYPES[cue.type].phonics ? 4000 : 0));
       const phonics = !!(AUDIO_TYPES[cue.type] && AUDIO_TYPES[cue.type].phonics);
@@ -6557,7 +6833,7 @@ const Voice = (function(){
   function timed(cue, mine, step){
     const k = Object.assign({}, AUDIO_TYPES[cueType(cue)]);
     if(step) ['pre', 'post', 'hold', 'interrupt'].forEach(p => { if(p in step) k[p] = step[p]; });
-    const scale = TIMING.dialogueScale;
+    const scale = dialogueScale();
     const box = { id: cue && cue.id, whole: null };
     const run = () => {
       if(pending === box) pending = null;
@@ -8170,15 +8446,33 @@ function tapMarker(id){
   session.hintGiven = true;
   disarmIdleHint();
   const next = markerNext(v.dest);
-  if(!next){ Voice.say('planet.fixed'); return Promise.resolve(); }
+  if(!next){
+    /* this visit's mission is played: a lit marker plays its game again */
+    const again = markerAgain(v.dest, key);
+    if(!again){ Voice.say('planet.homeHint'); return Promise.resolve(); }
+    return startMission(again, familyLine('mission.again', journey.completions.length));
+  }
   if(markerOf(next) !== key){ Voice.say(d.markers[markerOf(next)].call); return Promise.resolve(); }
   return startMission(next);
 }
+/* A marker's game again, once the visit's mission is played: the missions
+   there the child has finished, each in turn. A game not yet played waits
+   for a visit that offers it (markerNext()), so the way home stays the
+   next thing to do. */
+function markerAgain(placeId, key){
+  const d = DESTINATIONS[placeId];
+  const mk = d && d.markers && d.markers[key];
+  const done = mk ? mk.missions.filter(missionDone) : [];
+  if(!done.length) return null;
+  const n = journey.completions.filter(c => done.indexOf(c.missionId) !== -1).length;
+  return done[n % done.length];
+}
 
 /* ---- Mission ---- */
-function startMission(missionId){
+/* `lead`: a line said first — a replay chosen at a marker says so. */
+function startMission(missionId, lead){
   const m = MISSIONS[missionId];
-  const run = startRun(missionId, new Date());
+  const run = startRun(missionId, new Date(), null, journey.completions);
   if(!run) return Promise.resolve();
   session.run = run;
   Voice.stop();
@@ -8186,6 +8480,9 @@ function startMission(missionId){
   renderMissionFrame();
   beginNextRound(run);
   setInput('intro');
+  /* A double tap on a marker: the second tap lands on the mission, where
+     a tile may already be under the finger. It is not an answer. */
+  session.inputHeldUntil = Date.now() + TIMING.startHold;
   /* The HUD names the game and what to do; the title arrives cleanly
      above the activity as the mission opens. */
   enterScene('mission', 'mission');
@@ -8194,7 +8491,7 @@ function startMission(missionId){
   session.praiseAt = hashString(run.id) % GAME_VIEWS[m.activities[0].type].praiseCount;
   /* The task is explained until its game has been played once: the
      second Letter Explorer mission needs no explaining. */
-  const intro = taskExplained(m.howTo) ? [] : [m.howTo];
+  const intro = (lead ? [lead] : []).concat(taskExplained(m.howTo) ? [] : [m.howTo]);
   return Voice.sequence(intro).then(() => (session.run === run ? askRound(run) : null));
 }
 
@@ -8205,7 +8502,7 @@ function renderMissionFrame(){
 }
 
 function beginNextRound(run){
-  const a = reviewActivity(MISSIONS[run.missionId].activities[run.index], journey.evidence, run);
+  const a = reviewActivity(run.plan[run.index], journey.evidence, run);
   const type = ACTIVITY_TYPES[a.type];
   /* A round asked out loud counts only if it could be heard; a pair, a
      matched word or a traced letter is seen, and counts either way. */
@@ -8232,7 +8529,7 @@ function renderRound(run){
 
 function renderProgress(run){
   if(!run) return;
-  const total = MISSIONS[run.missionId].activities.length;
+  const total = run.plan.length;
   const done = run.results.length;
   let html = '';
   for(let i = 0; i < total; i++){
@@ -9202,6 +9499,17 @@ function armReprompt(run){
   }, TIMING.reprompt);
 }
 function disarmReprompt(){ if(session.idleTimer){ clearTimeout(session.idleTimer); session.idleTimer = null; } }
+/* Something outside the game cut a question off — the screen turned, or the
+   app went to the background and came back: whatever was being asked is
+   asked again, and the nudge waits afresh. */
+function askAgain(){
+  Voice.stop();
+  const run = session.run;
+  if(currentScene !== 'mission' || !run || !run.round || run.round.resolved || overlayOpen()) return;
+  if(session.input !== 'open'){ askRound(run); return; }
+  armReprompt(run);
+  sayAsk(run);
+}
 
 function choose(i){
   const run = session.run;
@@ -9552,7 +9860,7 @@ function itemChipHtml(c, owned, worn, pick){
   const tag = has ? (on ? '<span class="item-worn" aria-hidden="true">' + glyph('check', 18) + '</span>' : '')
                   : '<span class="item-tag" aria-hidden="true">' + artImg('prop.star', 'item-tag-star') + c.cost + '</span>';
   const label = c.name + (has ? (on ? ', on your rocket' : ', yours') : ', costs ' + c.cost + (c.cost === 1 ? ' star' : ' stars'));
-  return '<button class="item-chip' + (has ? '' : ' is-locked') + '" role="radio" aria-checked="' + (c.id === pick) + '" ' +
+  return '<button id="item-' + c.id + '" class="item-chip' + (has ? '' : ' is-locked') + '" role="radio" aria-checked="' + (c.id === pick) + '" ' +
          'aria-label="' + escapeAttr(label) + '" onclick="pickItem(\'' + c.id + '\')">' + face + tag + '</button>';
 }
 function renderDockScene(){
@@ -9569,8 +9877,18 @@ function renderDockScene(){
   setHtml('dockTabs', COSMETIC_SLOTS.map(s =>
     '<button class="dock-tab" role="tab" aria-selected="' + (s.id === tab) + '" onclick="pickDockTab(\'' + s.id + '\')" aria-label="' + escapeAttr(s.label) + '">' +
       glyph(DOCK_TABS[s.id] || 'star', 30) + '<span>' + escapeHtml(s.label) + '</span></button>').join(''));
+  /* Trying a thing on draws the list again: where it was scrolled to
+     stays (a shelf on a phone), and the thing tried is kept in sight. */
+  const box = document.getElementById('dockItems');
+  const was = box && box.getAttribute('data-tab') === tab ? [box.scrollLeft, box.scrollTop] : [0, 0];
   const items = setHtml('dockItems', COSMETICS.filter(c => c.slot === tab).map(c => itemChipHtml(c, owned, worn, pick.id)).join(''));
-  if(items) items.setAttribute('aria-label', 'Rocket ' + cosmeticSlot(tab).label.toLowerCase());
+  if(items){
+    items.setAttribute('aria-label', 'Rocket ' + cosmeticSlot(tab).label.toLowerCase());
+    items.setAttribute('data-tab', tab);
+    items.scrollLeft = was[0] || 0;
+    items.scrollTop = was[1] || 0;
+    keepInSight(items, document.getElementById('item-' + pick.id));
+  }
 
   const action = document.getElementById('dockAction');
   if(action){
@@ -9589,6 +9907,15 @@ function renderDockScene(){
        told by Pip how many more stars are needed, rather than nothing. */
     if(off) action.setAttribute('aria-disabled', 'true'); else action.removeAttribute('aria-disabled');
   }
+}
+/* Scrolls a list just enough to show one of its things whole. */
+function keepInSight(list, el){
+  if(!list || !el || typeof el.getBoundingClientRect !== 'function') return;
+  const r = el.getBoundingClientRect(), b = list.getBoundingClientRect();
+  if(r.right > b.right) list.scrollLeft += r.right - b.right;
+  else if(r.left < b.left) list.scrollLeft -= b.left - r.left;
+  if(r.bottom > b.bottom) list.scrollTop += r.bottom - b.bottom;
+  else if(r.top < b.top) list.scrollTop -= b.top - r.top;
 }
 function pickDockTab(slot){
   if(currentScene !== 'dock' || session.busy || !cosmeticSlot(slot)) return;
@@ -9800,6 +10127,11 @@ function renderGrownups(){
     b.setAttribute('aria-checked', String(on));
     b.setAttribute('aria-selected', String(on));
   });
+  document.querySelectorAll('#paceSeg button').forEach(b => {
+    const on = b.getAttribute('data-pace') === soundPrefs.pace;
+    b.setAttribute('aria-checked', String(on));
+    b.setAttribute('aria-selected', String(on));
+  });
 
   const unread = Store.get(KEYS.lastSeenUpdate) !== APP_UPDATES[0].id;
   const row = document.getElementById('updatesRow');
@@ -9830,6 +10162,13 @@ function toggleVoice(){
 }
 function toggleEffects(){
   soundPrefs.effects = !soundPrefs.effects;
+  saveSoundPrefs();
+  renderGrownups();
+}
+/* The pace is heard from the next thing said. */
+function setSpeechPace(pace){
+  if(!SPEECH_STYLE.paces[pace]) return;
+  soundPrefs.pace = pace;
   saveSoundPrefs();
   renderGrownups();
 }
@@ -9870,7 +10209,11 @@ function wireProduct(){
        land now, where it was going. */
     if(session.travel) session.travel.finish();
     if(resizeTimer) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { drawFlightPath(); fitPlayfield(); }, 120);
+    resizeTimer = setTimeout(() => {
+      drawFlightPath(); fitPlayfield();
+      /* the station's list may have become a shelf, or stopped being one */
+      if(currentScene === 'dock') keepInSight(document.getElementById('dockItems'), document.querySelector('#dockItems .item-chip[aria-checked="true"]'));
+    }, 120);
   });
 
   /* Leaving the app mid-sentence must not leave Pip talking to an empty
@@ -9887,6 +10230,9 @@ function wireProduct(){
     checkStage();
     if(currentScene === 'earth' || currentScene === 'planet') armAmbient();
     preloadStage();
+    /* back mid-question: it was cut off as the app went, and so was the
+       nudge (upright only: sideways, the prompt to turn is showing) */
+    if(!(typeof window.matchMedia === 'function' && window.matchMedia('(orientation: portrait)').matches)) askAgain();
   });
 
   /* The network is back: what failed is tried again at once. A new worker
@@ -9903,13 +10249,8 @@ function wireProduct(){
     const onTurn = () => {
       if(mq.matches){ disarmReprompt(); if(Voice.isUnlocked()) Voice.say('rotate'); return; }
       /* The right way up again: whatever was being asked, ask it again,
-         because turning the iPad interrupted it. */
-      Voice.stop();
-      const run = session.run;
-      if(currentScene !== 'mission' || !run || !run.round || run.round.resolved || overlayOpen()) return;
-      if(session.input !== 'open'){ askRound(run); return; }
-      armReprompt(run);
-      sayAsk(run);
+         because turning the screen interrupted it. */
+      askAgain();
     };
     if(mq && typeof mq.addEventListener === 'function') mq.addEventListener('change', onTurn);
     else if(mq && typeof mq.addListener === 'function') mq.addListener(onTurn);
