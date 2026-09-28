@@ -49,6 +49,25 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
 
+## Reliable updates: what changed (v0.6.4)
+
+A user's installed phone app still showed an older release. The website
+served the newest files; the installed app did not take them. The v0.6.3
+updater had gaps that a phone meets every day: it checked only at launch
+and on coming to the front, a failed check silenced it for ten minutes,
+the network coming back checked nothing, a finger held still counted as
+idle, and several states (a takeover missed while suspended, a stubborn
+held one) could stop it for the rest of a session.
+
+| Area | Built |
+|---|---|
+| One owner that reads what is real | `reconcileUpdates()` decides everything, on every trigger — launch, the front, the network back, the worker's events, the grown-ups area, and a heartbeat every 3 s while the app is on screen. It reads the registration as it is (installing, waiting, active), so an event missed while suspended no longer matters |
+| Releases are found while the app stays open | The heartbeat checks every 10 minutes after the last successful check — no launch or trip to the background needed |
+| A failed check is retried | Only a check that succeeded restarts the ten-minute clock. A failed one is retried at once when the app or the network comes back, and otherwise after 30 s, doubling to 10 minutes. A release whose install fails backs off on its own count. Checks are at least 15 s apart; one asked for sooner is kept, not dropped |
+| Stalled states recover, within bounds | A takeover whose event was missed is noticed; a stubborn held one is helped again only after 10 minutes, and checks go on meanwhile |
+| A held finger is not idle | A finger down never counts as a quiet moment, however long it rests; the quiet clock restarts when it lifts |
+| A grown-up can see it | The grown-ups area shows "Updates" (checking, downloading, ready at the next quiet moment, offline, could not check and retrying, or up to date — only after a check that succeeded) and "Saved for offline" (the version the app opens offline) |
+
 ## The late takeover: what changed (v0.6.3)
 
 A second independent audit found that an update could still restart the app
@@ -273,6 +292,40 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Reliable updates QA record (v0.6.4, 2026-09-27)
+
+**Tested in the harness, and in Chromium (headless Edge on Windows), each
+browser run in a fresh, isolated profile against a local server that
+behaves like GitHub Pages (`max-age=600`). Background and foreground were
+the window minimized and restored (a real `visibilitychange`); offline was
+CDP network emulation plus a server refusing connections. No update event
+was dispatched by a script. No WebKit build was available on this machine,
+and no physical iPhone or iPad was tested.** OLD is the previous release's
+updater (v0.6.3 installed, a 0.6.9 built from its code delivered); NEW is
+this one (v0.6.4 installed, a test 0.6.5 delivered).
+
+| Check | OLD (v0.6.3) | NEW (v0.6.4) |
+|---|---|---|
+| Opened offline, then the network comes back, the app never closed | No check of the server in the 60 s after the network returned; still the old release | The grown-ups area said "Offline"; the network back, one check, and the new release installed and moved in 4 s later, with one reload |
+| A check fails (503), then the server recovers | No check at all in the 76 s after the server recovered, the app brought to the front 16 s in | "Could not check" shown; the app brought to the front retried at once, and moved in 17 s after the server recovered |
+| The app left open on one screen, untouched, while a release lands | No check of the server in 13 minutes; still the old release | Found by the heartbeat and moved in 601 s after the deploy — no launch, no trip to the background — with one reload |
+| A finger held still on Earth after a late takeover | The page reloaded under the finger | No reload while it was down (5.6 s); one reload 4.3 s after it lifted |
+| Twelve trips to the background during a slow install | — | No extra check; one reload when it finished |
+| A worker already waiting when the page registers (a same-tab reload) | — | Found, and in charge in the same session, with no further navigation |
+| A worker still installing when the page reloads | Both handled it: in Chromium the page's registration resolves only once the running install has finished, so it saw a waiting worker | As OLD. Following an install from whenever it is seen covers a page suspended while one began (harness) |
+| A takeover held, helped once, stalled, then released | — | One helping reload (offline, so the old page returned), then stalled with checks going on; released, it moved in: two navigations in all, no loop |
+| A delayed takeover during tracing | — | Recorded mid-letter; the letter finished by touch under the new worker; one reload on Earth after the finger lifted |
+| The previous release installed, this one deployed, the app opened | — | The v0.6.4 page at once, and its worker in charge in the same session |
+| After every move | — | Every mission, the stars and the paint kept; offline, the app started on the new version and flew to Jupiter with every picture |
+| Contracts | | `npm run verify`: 1489 passed, 0 failed; config verify ok. The new contract 58 was run first against the shipped v0.6.3 code: 23 of its checks failed there |
+| Mutation check | | 19 defects planted one at a time, each gap put back and v0.6.3's protections removed: all 19 caught by failing contracts, after one equivalent mutant was replaced by the real gap it stood for, and one catch my script misfiled as a runner error was re-run |
+
+**Not tested:** a physical iPhone or iPad, Safari's service-worker
+lifecycle, a Home Screen app resuming from the background, iOS suspending
+timers. On the phone, a page still running v0.6.3's code keeps its own
+updater until it reloads once into v0.6.4: it looks for a release only at
+launch and on coming to the front, at most every ten minutes.
 
 ## The late takeover QA record (v0.6.3, 2026-09-27)
 

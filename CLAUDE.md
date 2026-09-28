@@ -450,19 +450,21 @@ words, and so completed the seven learning areas.
 ## Releases that arrive by themselves
 
 These came from the v0.6.1 follow-up to an independent audit, from its
-first real rollout (v0.6.2), and from a second audit (v0.6.3).
+first real rollout (v0.6.2), from a second audit (v0.6.3), and from an
+installed phone that still did not update (v0.6.4).
 
 86. **A new version moves in only at a quiet moment.** It installs in the
     background and waits; the page asks it to take over when
     `Domain.safeToReload()` says so — home on Earth, at rest, the child
     still, no picture loading — and never within `UPDATE_SETTLE` of the
     page loading, and reloads once, only into a newer version, at a quiet
-    moment checked when the reload happens. Never mid-mission, mid-letter,
-    mid-flight, in the space station, with a grown-ups page open or the
-    lock held. A new state that must not be interrupted adds its rule
-    there. A takeover asked while the old worker is busy can be held
-    by the browser until the next navigation (the v0.6.1 rollout): a held
-    newer version gets one reload at a quiet moment, never two in a row.
+    moment checked when the reload happens, with no finger down. Never
+    mid-mission, mid-letter, mid-flight, in the space station, with a
+    grown-ups page open or the lock held. A new state that must not be
+    interrupted adds its rule there. A takeover asked while the old worker
+    is busy can be held by the browser until the next navigation (the
+    v0.6.1 rollout): a held newer version gets one reload at a quiet
+    moment, never two in a row.
 87. **A failed install never replaces a working version.** The precache is
     fetched fresh (`cache: 'reload'`) and all-or-nothing; runtime caching
     stores only good answers, never a page, and never overwrites a file the
@@ -491,3 +493,15 @@ first real rollout (v0.6.2), and from a second audit (v0.6.3).
     A takeover is only recorded (`'arrived'`); every update reload goes
     through `watchTakeover()`, which checks `quietNow()` at that instant.
     A pending reload is a state of its own, never the waiting worker's.
+92. **One update owner reconciles what is real.** A phone suspends the
+    page, starts installs before it listens, and wakes it offline: events
+    get missed. `reconcileUpdates()` is the only place that decides, and
+    it reads the registration as it is (installing, waiting, active)
+    rather than trusting that an event arrived. Every trigger — launch,
+    front, network back, the worker's events, the heartbeat — calls it. A
+    new update behavior goes into it, never into a handler of its own.
+93. **A check counts when it succeeds.** Only a successful check restarts
+    the ten-minute clock; a failure is retried soon, and at once when the
+    network or the app comes back. Throttling keeps a wanted check for
+    later instead of dropping it. The grown-ups area says "up to date" only
+    after a check that succeeded, and says plainly when it could not check.

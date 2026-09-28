@@ -2299,6 +2299,23 @@ function validateAppId(id){
    ========================================================= */
 const APP_UPDATES = [
   {
+    id: 'v0-6-4',
+    version: '0.6.4',
+    title: 'Updates arrive reliably',
+    date: '2026-09-27',
+    summary: 'An app left open, brought back from the background, or opened offline could stay on an older version. ' +
+             'It now keeps looking for a new version while it is open, tries again soon after a failed check, and shows grown-ups what it is doing.',
+    improvements: [
+      'The grown-ups area shows what updates are doing, and which version is saved for offline use'
+    ],
+    fixes: [
+      'A check that failed, for example while the device was waking up, held back the next one for ten minutes; it is now tried again soon, and at once when the network comes back',
+      'A new version that began downloading before the app was ready, or finished while it was in the background, is now picked up without closing the app',
+      'An app left open on one screen now finds a new version by itself',
+      'A finger held on the screen is never mistaken for a quiet moment'
+    ]
+  },
+  {
     id: 'v0-6-3',
     version: '0.6.3',
     title: 'Updates never interrupt play',
@@ -9671,6 +9688,7 @@ function openGrownups(){
   renderGrownups();
   pushOverlayHistory();
   openOverlay('grownupOverlay');
+  reconcileUpdates('look');
 }
 function closeGrownups(){
   closeOverlay('grownupOverlay');
@@ -9697,9 +9715,9 @@ function checkStorage(){
   }catch(e){}
 }
 
-function detailRow(label, value){
+function detailRow(label, value, id){
   return '<div class="detail-row"><span class="detail-label">' + escapeHtml(label) + '</span>' +
-         '<span class="detail-value">' + escapeHtml(value) + '</span></div>';
+         '<span class="detail-value"' + (id ? ' id="' + escapeHtml(id) + '"' : '') + '>' + escapeHtml(value) + '</span></div>';
 }
 /* How a practised item is shown to a grown-up: a letter, a sound as
    /m/ (never as a letter), or a built word in capitals. */
@@ -9791,6 +9809,8 @@ function renderGrownups(){
   const persisted = storageState.persisted === null ? 'Unknown' : (storageState.persisted ? 'Yes' : 'Not guaranteed');
   setHtml('gAbout',
     detailRow('Version', APP_VERSION) +
+    detailRow('Updates', updateStatus(), 'updStatus') +
+    detailRow('Saved for offline', Updates.offline ? 'Version ' + Updates.offline : 'Not yet', 'updOffline') +
     detailRow('Progress saving', !Store.isPersistent() ? 'Not saving' : (journey.saveFailed ? 'A save failed' : 'Saving on this device')) +
     detailRow('Protected from clearing', persisted) +
     detailRow('On the Home Screen', storageState.standalone ? 'Yes' : 'No') +
@@ -10162,6 +10182,312 @@ function renderStorageNotice(migrationResult){
 }
 
 /* =========================================================
+   UPDATES — a new release arrives by itself
+   ---------------------------------------------------------
+   The service worker is registered at load. One owner decides everything
+   here: reconcileUpdates(). Every trigger calls it — launch, the app
+   coming to the front (visibilitychange, pageshow), the network coming
+   back (online), the worker's own events (updatefound, statechange,
+   controllerchange), a grown-up opening the grown-ups area, and its own
+   heartbeat (every UPDATE_POLL while the app is on screen). It reads the
+   registration as it is now — installing, waiting, active — and never
+   relies on having seen an event: a phone suspends the page, and an
+   install that began before the page was listening tells it nothing.
+   Then it:
+     - FINDS a release. A check (reg.update()) is due at launch, and again
+       every UPDATE_EVERY while the app is open; only a check that
+       succeeded restarts that clock. After a failed one it is due at once
+       on coming to the front or on the network returning, and otherwise
+       after UPDATE_RETRY, doubling up to UPDATE_EVERY. A release whose
+       install fails backs off the same way, on its own count, so a broken
+       release is not downloaded again every few seconds. Checks are never
+       closer than UPDATE_GAP; one asked for sooner is kept and made by the
+       heartbeat, not dropped. Offline, nothing is asked of the server.
+     - FOLLOWS an install under way, from whenever it is seen. A new
+       version installs fresh, all or nothing, and WAITS: this page keeps
+       its own version and files until a quiet moment.
+     - ASKS a waiting worker in at a quiet moment — quietNow(): the
+       product's Domain.safeToReload (never mid-mission, mid-letter,
+       mid-flight, in the station or in the grown-ups area), no finger
+       down, no touch for UPDATE_IDLE — and never within UPDATE_SETTLE of
+       the page loading (a browser can hold a takeover asked while the old
+       worker serves the page's first loads).
+     - RECORDS a takeover ('arrived') — from controllerchange, or from
+       seeing the asked worker in charge when the event was missed — and
+       reloads once, into the new version, at a quiet moment checked at the
+       reload itself: taking over is asynchronous, and the child may be
+       playing again by then. A same-version takeover needs no reload.
+     - RECOVERS, within bounds: a newer version asked but still held after
+       UPDATE_STALL gets one helping reload at a quiet moment — a
+       navigation lets it in — marked on this tab's history entry; a
+       stubborn one is helped again only after UPDATE_EVERY. While one is
+       held the app still looks for newer releases, and one that turns
+       redundant is let go. A same-version takeover held is simply let go.
+   Progress, settings and stars are in local storage and are never
+   touched; a world's pictures are carried into the new cache. Nothing is
+   shown or said to a child. The grown-ups area shows the version, the
+   version saved for offline use, and one line of status — "up to date"
+   only after a check that succeeded. The browser runs none of this while
+   the app is closed.
+   ========================================================= */
+const UPDATE_EVERY = 10 * 60 * 1000;    // a successful check holds for this long; the heartbeat checks again after it
+const UPDATE_IDLE = 2500;               // no touch for this long before a takeover or a reload
+const UPDATE_POLL = 3000;               // the heartbeat, while the app is on screen
+const UPDATE_SETTLE = 4000;             // the page's own first loads, done before any takeover
+const UPDATE_STALL = 8000;              // asked, and still not in: one reload lets it in
+const UPDATE_GAP = 15000;               // never two checks closer than this
+const UPDATE_RETRY = 30000;             // after a failed check, the first retry; it doubles
+/* Updates.moving: false (nothing under way) · 'asked' (a newer worker was
+   asked in) · 'quiet' (one of this page's own version was) · 'arrived' (a
+   newer one came in: one reload owed, at a quiet moment) · 'stalled' (a
+   held one was already helped once in this tab) · 'reloading' */
+const Updates = { reg: null, unavailable: false, loadedAt: 0, timer: null,
+  checkedAt: 0, triedAt: 0, failures: 0, broken: 0, checking: false, wanted: null,
+  followed: new WeakSet(), letGo: new WeakSet(), considering: null, waiting: null, same: null, next: '', offline: '',
+  moving: false, asked: null, askedAt: 0, touchedAt: 0, pressed: new Map() };
+
+/* A question to a worker, answered on a port of its own; null if it does
+   not answer in time. */
+function askWorker(worker, msg, ms){
+  return new Promise(resolve => {
+    if(!worker || typeof worker.postMessage !== 'function' || typeof MessageChannel !== 'function'){ resolve(null); return; }
+    const ch = new MessageChannel();
+    const t = setTimeout(() => resolve(null), ms || 4000);
+    ch.port1.onmessage = e => { clearTimeout(t); resolve((e && e.data) || null); };
+    try{ worker.postMessage(msg, [ch.port2]); }catch(e){ clearTimeout(t); resolve(null); }
+  });
+}
+function startUpdates(){
+  const sw = navigator.serviceWorker;
+  Updates.unavailable = false;
+  Updates.loadedAt = Date.now();
+  sw.addEventListener('controllerchange', () => { tookOver(); reconcileUpdates('event'); });
+  /* the child's hands: a finger down is never a quiet moment however long
+     it rests, and the quiet clock starts again when it lifts. A touch cut
+     off by going to the background is forgotten there. */
+  const press = (e, down) => {
+    Updates.touchedAt = Date.now();
+    const id = e && e.pointerId !== undefined ? e.pointerId : 'touch', type = (e && e.pointerType) || '';
+    if(!down){ Updates.pressed.delete(id); return; }
+    if(e && e.isPrimary) Updates.pressed.forEach((t, k) => { if(t === type) Updates.pressed.delete(k); });
+    Updates.pressed.set(id, type);
+  };
+  document.addEventListener('pointerdown', e => press(e, true), true);
+  document.addEventListener('pointerup', e => press(e, false), true);
+  document.addEventListener('pointercancel', e => press(e, false), true);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState !== 'hidden'){ reconcileUpdates('front'); return; }
+    Updates.pressed.clear();
+    if(Updates.timer){ clearTimeout(Updates.timer); Updates.timer = null; }
+  });
+  window.addEventListener('pageshow', e => { if(e && e.persisted) reconcileUpdates('front'); });
+  window.addEventListener('online', () => reconcileUpdates('online'));
+  window.addEventListener('offline', () => showUpdateStatus());
+  return sw.register('sw.js').then(reg => {
+    Updates.reg = reg;
+    reg.addEventListener('updatefound', () => reconcileUpdates('event'));
+    reconcileUpdates('launch');
+  }).catch(() => { Updates.unavailable = true; showUpdateStatus(); });
+}
+/* The one owner. Reads the registration as it is now and does whatever is
+   due: follow an install, notice a takeover or a worker gone, consider a
+   waiting worker, reload or help a held one, ask one in, check the server,
+   and keep the heartbeat going while the app is on screen. */
+function reconcileUpdates(why){
+  const reg = Updates.reg;
+  if(!reg) return;
+  if(why === 'front' || why === 'online' || why === 'look') Updates.wanted = why;
+  if(why === 'launch' || why === 'front' || why === 'look') refreshOfflineVersion();
+  /* an install under way, whether or not this page saw it begin */
+  const inst = reg.installing;
+  if(inst && !Updates.followed.has(inst)){
+    Updates.followed.add(inst);
+    let done = false;
+    inst.addEventListener('statechange', () => {
+      if(inst.state === 'installed'){ done = true; Updates.broken = 0; }
+      /* it never finished installing: a file could not be fetched */
+      if(inst.state === 'redundant' && !done){ Updates.broken++; Updates.triedAt = Date.now(); }
+      reconcileUpdates('event');
+    });
+  }
+  /* the worker asked in: in charge now (its event missed), or gone */
+  const asked = Updates.asked, sw = navigator.serviceWorker;
+  if(asked && (Updates.moving === 'asked' || Updates.moving === 'stalled' || Updates.moving === 'quiet')){
+    if(reg.active === asked || (sw && sw.controller === asked)) tookOver();
+    else if(asked.state === 'redundant'){ Updates.moving = false; Updates.asked = Updates.waiting = Updates.same = null; }
+  }
+  /* a worker waiting, whether or not this page saw it arrive */
+  const w = reg.waiting;
+  if(w && !Updates.moving && w !== Updates.waiting && w !== Updates.same && w !== Updates.considering && !Updates.letGo.has(w)) considerUpdate(w);
+  watchTakeover();
+  applyUpdate();
+  if(checkDue(Date.now())) checkForUpdate(true);
+  else if(!Updates.failures && Updates.wanted !== 'look' && Date.now() - Updates.checkedAt < UPDATE_EVERY) Updates.wanted = null;
+  showUpdateStatus();
+  if(document.visibilityState !== 'hidden') pollUpdate();
+}
+/* Is a check of the server due now? (See FINDS above.) */
+function checkDue(now){
+  const reg = Updates.reg;
+  if(!reg || typeof reg.update !== 'function' || Updates.checking) return false;
+  if(Updates.moving && Updates.moving !== 'stalled') return false;
+  if(navigator.onLine === false || document.visibilityState === 'hidden') return false;
+  const since = now - Updates.triedAt;
+  if(since < UPDATE_GAP) return false;
+  if(Updates.wanted === 'look') return true;
+  if(Updates.failures) return !!Updates.wanted || since >= retryWait();
+  if(Updates.broken) return since >= retryWait();
+  return now - Updates.checkedAt >= UPDATE_EVERY;
+}
+/* After failures, the wait before trying again: UPDATE_RETRY, doubling,
+   never longer than UPDATE_EVERY. */
+function retryWait(){
+  return Math.min(UPDATE_RETRY * Math.pow(2, Math.max(Updates.failures, Updates.broken) - 1), UPDATE_EVERY);
+}
+/* Ask the server for a newer worker. Only success restarts the clock; a
+   failure is counted, and retried soon. */
+function checkForUpdate(force){
+  const reg = Updates.reg;
+  if(!reg || typeof reg.update !== 'function' || Updates.checking) return false;
+  if(Updates.moving && Updates.moving !== 'stalled') return false;
+  if(!force && !checkDue(Date.now())) return false;
+  Updates.checking = true;
+  Updates.wanted = null;
+  Updates.triedAt = Date.now();
+  showUpdateStatus();
+  Promise.resolve().then(() => reg.update()).then(() => {
+    Updates.checking = false;
+    Updates.checkedAt = Date.now();
+    Updates.failures = 0;
+    reconcileUpdates('event');
+  }, () => {
+    Updates.checking = false;
+    Updates.failures++;
+    showUpdateStatus();
+  });
+  return true;
+}
+/* A worker has installed and is waiting. Of this page's own version: it
+   takes over at the first quiet moment, and nothing changes for the child.
+   Newer: at the first quiet moment too, and the page reloads into it. Only
+   a worker still waiting ('installed') counts: on a first install the
+   worker passes through 'installed' straight in, and is not waiting. */
+function considerUpdate(worker){
+  Updates.considering = worker;
+  return askWorker(worker, { type: 'version' }, 4000).then(res => {
+    if(Updates.considering === worker) Updates.considering = null;
+    if(Updates.moving || !worker || worker.state !== 'installed') return;
+    if(res && res.version === APP_VERSION) Updates.same = worker;
+    else { Updates.waiting = worker; Updates.next = res && res.version ? String(res.version) : ''; }
+    applyUpdate();
+    showUpdateStatus();
+  });
+}
+/* A quiet moment, as of now: the product says so, no finger down, and no
+   touch for UPDATE_IDLE. Checked at every ask and at every reload, never
+   carried over from an earlier check. */
+function quietNow(){
+  try{ return !!Domain.safeToReload() && Updates.pressed.size === 0 && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){ return false; }
+}
+function applyUpdate(){
+  const w = Updates.waiting || Updates.same;
+  if(!w || Updates.moving) return false;
+  if(w.state !== 'installed'){ Updates.waiting = null; Updates.same = null; return false; }
+  if(Date.now() - Updates.loadedAt < UPDATE_SETTLE || !quietNow()){ pollUpdate(); return false; }
+  Updates.moving = w === Updates.waiting ? 'asked' : 'quiet';
+  Updates.asked = w;
+  Updates.askedAt = Date.now();
+  w.postMessage({ type: 'activate' });
+  pollUpdate();
+  return true;
+}
+/* The worker asked in is in charge. A newer one: one reload owed, made
+   only at a quiet moment. The page's own version: nothing to do. */
+function tookOver(){
+  if(Updates.moving === 'asked' || Updates.moving === 'stalled'){ Updates.moving = 'arrived'; Updates.waiting = null; }
+  else if(Updates.moving === 'quiet'){ Updates.moving = false; Updates.same = null; Updates.asked = null; }
+  refreshOfflineVersion();
+}
+/* The heartbeat: one timer, while anything could be due. */
+function pollUpdate(){
+  if(!Updates.timer) Updates.timer = setTimeout(() => { Updates.timer = null; reconcileUpdates('tick'); }, UPDATE_POLL);
+}
+/* Every reload an update makes happens here, and only at a quiet moment
+   checked here. A newer worker has come in ('arrived'): the page reloads
+   into it once, at the first quiet moment — until then the child plays on
+   with nothing frozen, and looking again never reloads twice. A worker
+   asked in, at a quiet moment, and still not in: a browser can hold it
+   while the old worker has work in hand. Of this page's own version:
+   nothing on screen would change, so the page lets it go and goes on
+   looking for later versions (it is not asked again; the next launch lets
+   it in). Newer: a navigation lets it in, so the page reloads once, at a
+   quiet moment — marked on this tab's history entry, so a stubborn one is
+   helped again only after UPDATE_EVERY (and if it comes in first, it is
+   'arrived' like any other). */
+function watchTakeover(){
+  if(Updates.moving === 'arrived'){
+    if(!quietNow()){ pollUpdate(); return false; }
+    Updates.moving = 'reloading';
+    location.reload();
+    return true;
+  }
+  const st = history.state && typeof history.state === 'object' ? history.state : {};
+  const marked = !!st.updateReloadAt && Date.now() - st.updateReloadAt < UPDATE_EVERY;
+  if(Updates.moving === 'stalled'){
+    if(marked || !quietNow()) return false;
+    Updates.moving = 'asked';
+  }
+  if(Updates.moving !== 'asked' && Updates.moving !== 'quiet') return false;
+  if(Date.now() - Updates.askedAt < UPDATE_STALL){ pollUpdate(); return false; }
+  if(Updates.moving === 'quiet'){ Updates.letGo.add(Updates.asked); Updates.moving = false; Updates.same = null; Updates.asked = null; return false; }
+  if(marked){ Updates.moving = 'stalled'; return false; }
+  if(!quietNow()){ pollUpdate(); return false; }
+  try{ history.replaceState(Object.assign({}, st, { updateReloadAt: Date.now() }), ''); }catch(e){}
+  Updates.moving = 'reloading';
+  location.reload();
+  return true;
+}
+/* The version the worker in charge holds — what the app opens offline. */
+function refreshOfflineVersion(){
+  const c = navigator.serviceWorker && navigator.serviceWorker.controller;
+  askWorker(c, { type: 'version' }, 3000).then(res => { Updates.offline = res && res.version ? String(res.version) : ''; showUpdateStatus(); });
+}
+function sinceText(t){
+  const m = Math.floor((Date.now() - t) / 60000);
+  return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.floor(m / 60) + ' h ago';
+}
+/* One line for the grown-ups area, in plain words. "Up to date" only after
+   a check that succeeded. */
+function updateStatus(){
+  if(Updates.unavailable) return 'Not available in this browser';
+  const reg = Updates.reg;
+  if(!reg) return 'Starting';
+  if(Updates.waiting || Updates.moving === 'asked' || Updates.moving === 'stalled' || Updates.moving === 'arrived')
+    return (Updates.next ? 'Version ' + Updates.next : 'A new version') + ' is ready. It starts at the next quiet moment on Earth';
+  if(reg.installing) return 'Downloading a new version';
+  if(Updates.checking) return 'Checking for a new version';
+  if(navigator.onLine === false) return 'Offline. It checks again when the network is back';
+  if(Updates.failures || Updates.broken){
+    const wait = retryWait();
+    return (Updates.failures ? 'Could not check for a new version' : 'A new version did not finish downloading') +
+      '. It tries again ' + (wait >= 60000 ? 'within ' + Math.round(wait / 60000) + ' min' : 'shortly');
+  }
+  if(Updates.checkedAt) return 'Up to date (checked ' + sinceText(Updates.checkedAt) + ')';
+  return 'Not checked yet';
+}
+function showUpdateStatus(){
+  const s = document.getElementById('updStatus'), o = document.getElementById('updOffline');
+  if(s) s.textContent = updateStatus();
+  if(o) o.textContent = Updates.offline ? 'Version ' + Updates.offline : 'Not yet';
+}
+/* Offline support registers only over http(s) — a no-op when the file is
+   opened directly from disk. */
+if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
+  window.addEventListener('load', () => { startUpdates(); });
+}
+else Updates.unavailable = true;
+
+/* =========================================================
    BOOT
    ========================================================= */
 function paintStaticIcons(){
@@ -10201,168 +10527,6 @@ catch(err){
     '<div class="notice notice-error" style="margin:var(--space-xl)">' +
     '<span><strong>This app could not start</strong>' + escapeHtml(String(err && err.message || err)) +
     '</span></div>');
-}
-
-/* =========================================================
-   UPDATES — a new release arrives by itself
-   ---------------------------------------------------------
-   The service worker is registered at load. The app asks for a new
-   version at launch and whenever it comes back to the front (at most every
-   UPDATE_EVERY). A new version installs in the background and WAITS: this
-   page keeps its own version and its own files until a quiet moment
-   (Domain.safeToReload: the product decides — never mid-mission,
-   mid-letter or mid-flight — no touch for UPDATE_IDLE, and never within
-   UPDATE_SETTLE of the page loading). Then the waiting worker is asked to
-   take over; once it has come in, the page reloads once, into the new
-   version. Progress, settings and stars are in local storage and are
-   never touched; a world's pictures are carried into the new cache.
-     - the quiet moment is checked again at the reload itself (quietNow),
-       never trusted from the ask: taking over is asynchronous, and a held
-       worker can come in long after, with the child playing again. A
-       takeover that lands then is recorded ('arrived') and the reload
-       waits, the child's controls live, for the next quiet moment
-     - asked while the old worker still serves the page's first loads, a
-       browser can hold the new worker waiting until the next navigation
-       (seen in the first real rollout): so never before UPDATE_SETTLE;
-       and a newer version asked but not in after UPDATE_STALL gets one
-       reload at the same quiet moment — a navigation lets it in — marked
-       on this tab's history entry, so it is never forced twice in a row
-     - a waiting worker of this page's own version (the page came fresh
-       from the network) takes over at the first quiet moment, with no
-       reload
-     - one that was already waiting at launch, and one that finishes
-       installing later, are both handled
-     - one reload per page, and only into a newer version: no loops
-     - no network, or a failed install: this version stays, and works
-   Nothing is shown to a child. The grown-ups area shows the version. The
-   browser runs none of this while the app is closed.
-   ========================================================= */
-const UPDATE_EVERY = 10 * 60 * 1000;    // coming to the front asks again at most this often
-const UPDATE_IDLE = 2500;               // no touch for this long before a reload
-const UPDATE_POLL = 3000;               // how often a waiting update looks for a quiet moment
-const UPDATE_SETTLE = 4000;             // the page's own first loads, done before any takeover
-const UPDATE_STALL = 8000;              // asked, and still not in: one reload lets it in
-/* Updates.moving: false (nothing under way) · 'asked' (a newer worker was
-   asked in) · 'quiet' (one of this page's own version was) · 'arrived' (a
-   newer one came in: one reload owed, at a quiet moment) · 'stalled' (a
-   held one was already helped once) · 'reloading' */
-const Updates = { reg: null, checkedAt: 0, waiting: null, same: null, moving: false, timer: null, touchedAt: 0, loadedAt: 0, askedAt: 0 };
-
-/* A question to a worker, answered on a port of its own; null if it does
-   not answer in time. */
-function askWorker(worker, msg, ms){
-  return new Promise(resolve => {
-    if(!worker || typeof worker.postMessage !== 'function' || typeof MessageChannel !== 'function'){ resolve(null); return; }
-    const ch = new MessageChannel();
-    const t = setTimeout(() => resolve(null), ms || 4000);
-    ch.port1.onmessage = e => { clearTimeout(t); resolve((e && e.data) || null); };
-    try{ worker.postMessage(msg, [ch.port2]); }catch(e){ clearTimeout(t); resolve(null); }
-  });
-}
-function startUpdates(){
-  const sw = navigator.serviceWorker;
-  Updates.loadedAt = Date.now();
-  sw.addEventListener('controllerchange', () => {
-    /* a worker took over. A newer one (asked for, or a held one come in
-       late): the page owes one reload into it, made only at a quiet moment
-       checked now — the child may be playing again since it was asked. A
-       same-version takeover changes nothing on screen. */
-    if(Updates.moving === 'asked' || Updates.moving === 'stalled'){ Updates.moving = 'arrived'; Updates.waiting = null; watchTakeover(); }
-    else if(Updates.moving === 'quiet'){ Updates.moving = false; Updates.same = null; }
-  });
-  document.addEventListener('pointerdown', () => { Updates.touchedAt = Date.now(); }, true);
-  document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'hidden') return;
-    checkForUpdate();
-    applyUpdate();
-  });
-  return sw.register('sw.js').then(reg => {
-    Updates.reg = reg;
-    if(reg.waiting) considerUpdate(reg.waiting);
-    reg.addEventListener('updatefound', () => {
-      const w = reg.installing;
-      if(w) w.addEventListener('statechange', () => { if(w.state === 'installed' && reg.waiting === w) considerUpdate(w); });
-    });
-    checkForUpdate(true);
-  }).catch(() => {});
-}
-/* Ask the server for a newer worker. No network: the check fails quietly
-   and this version stays. */
-function checkForUpdate(force){
-  const reg = Updates.reg;
-  if(!reg || typeof reg.update !== 'function' || Updates.moving) return false;
-  if(!force && Date.now() - Updates.checkedAt < UPDATE_EVERY) return false;
-  Updates.checkedAt = Date.now();
-  Promise.resolve().then(() => reg.update()).catch(() => {});
-  return true;
-}
-/* A worker has installed and is waiting. Of this page's own version: it
-   takes over at the first quiet moment, and nothing changes for the child.
-   Newer: at the first quiet moment too, and the page reloads into it. Only
-   a worker still waiting ('installed') counts: on a first install the
-   worker passes through 'installed' straight in, and is not waiting. */
-function considerUpdate(worker){
-  return askWorker(worker, { type: 'version' }, 4000).then(res => {
-    if(Updates.moving || !worker || worker.state !== 'installed') return;
-    if(res && res.version === APP_VERSION) Updates.same = worker;
-    else Updates.waiting = worker;
-    applyUpdate();
-  });
-}
-/* A quiet moment, as of now: the product says so, and no touch for
-   UPDATE_IDLE. Checked at every ask and at every reload, never carried
-   over from an earlier check. */
-function quietNow(){
-  try{ return !!Domain.safeToReload() && Date.now() - Updates.touchedAt >= UPDATE_IDLE; }catch(e){ return false; }
-}
-function applyUpdate(){
-  const w = Updates.waiting || Updates.same;
-  if(!w || Updates.moving) return false;
-  if(w.state !== 'installed'){ Updates.waiting = null; Updates.same = null; return false; }
-  if(Date.now() - Updates.loadedAt < UPDATE_SETTLE || !quietNow()){ pollUpdate(); return false; }
-  Updates.moving = w === Updates.waiting ? 'asked' : 'quiet';
-  Updates.askedAt = Date.now();
-  w.postMessage({ type: 'activate' });
-  pollUpdate();
-  return true;
-}
-function pollUpdate(){
-  if(!Updates.timer) Updates.timer = setTimeout(() => { Updates.timer = null; watchTakeover(); applyUpdate(); }, UPDATE_POLL);
-}
-/* Every reload an update makes happens here, and only at a quiet moment
-   checked here. A newer worker has come in ('arrived'): the page reloads
-   into it once, at the first quiet moment — until then the child plays on
-   with nothing frozen, and looking again (the poll, another takeover
-   event) never reloads twice. A worker asked in, at a quiet moment, and
-   still not in: a browser can hold it while the old worker has work in
-   hand. Of this page's own version: nothing on screen would change, so
-   the page stops waiting on it and goes on looking for later versions
-   (the next launch lets it in). Newer: a navigation lets it in, so the
-   page reloads once, at a quiet moment — marked on this tab's history
-   entry, so a stubborn one is never forced twice in a row (the next launch
-   brings it in; if it comes in first, it is 'arrived' like any other). */
-function watchTakeover(){
-  if(Updates.moving === 'arrived'){
-    if(!quietNow()){ pollUpdate(); return false; }
-    Updates.moving = 'reloading';
-    location.reload();
-    return true;
-  }
-  if(Updates.moving !== 'asked' && Updates.moving !== 'quiet') return false;
-  if(Date.now() - Updates.askedAt < UPDATE_STALL){ pollUpdate(); return false; }
-  if(Updates.moving === 'quiet'){ Updates.moving = false; Updates.same = null; return false; }
-  const st = history.state && typeof history.state === 'object' ? history.state : {};
-  if(st.updateReloadAt && Date.now() - st.updateReloadAt < UPDATE_EVERY){ Updates.moving = 'stalled'; return false; }
-  if(!quietNow()){ pollUpdate(); return false; }
-  try{ history.replaceState(Object.assign({}, st, { updateReloadAt: Date.now() }), ''); }catch(e){}
-  Updates.moving = 'reloading';
-  location.reload();
-  return true;
-}
-/* Offline support registers only over http(s) — a no-op when the file is
-   opened directly from disk. */
-if('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
-  window.addEventListener('load', () => { startUpdates(); });
 }
 </script>
 </body>

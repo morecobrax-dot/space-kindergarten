@@ -81,7 +81,8 @@ const SUITES = [
   C.testWorldKeeping,
   C.testUpdates,
   C.testWorker,
-  C.testLateTakeover
+  C.testLateTakeover,
+  C.testFindsReleases
 ];
 
 async function main(){

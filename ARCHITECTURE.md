@@ -107,13 +107,28 @@ nothing from the product.
 
 ### Updates and the service worker
 
-A new release reaches an installed app by itself (`UPDATES`, at the end of
-the script; `sw.js`):
+A new release reaches an installed app by itself (`UPDATES`, just before
+BOOT in the script; `sw.js`). **One owner decides everything:
+`reconcileUpdates()`.** Every trigger calls it — launch, the app coming to
+the front (`visibilitychange`, `pageshow`), the network returning
+(`online`), the worker's own events (`updatefound`, `statechange`,
+`controllerchange`), a grown-up opening the grown-ups area, and its own
+heartbeat (every `UPDATE_POLL` while the app is on screen). It reads the
+registration as it is now — installing, waiting, active — and never relies
+on having seen an event: a phone suspends the page, and an install that
+began before the page was listening tells it nothing.
 
-1. **Checking.** The worker is registered at load. The app asks for a new
-   version at launch (`checkForUpdate(true)`) and whenever it comes back to
-   the front, at most every `UPDATE_EVERY` (10 minutes). No network: the
-   check fails quietly and nothing changes.
+1. **Checking.** The worker is registered at load. A check (`reg.update()`)
+   is due at launch and every `UPDATE_EVERY` (10 minutes) while the app is
+   open — found by the heartbeat, so an app left open on one screen finds
+   a release without any launch. Only a check that **succeeded** restarts
+   that clock. After a failed one it is due at once on coming to the front
+   or on the network returning, and otherwise after `UPDATE_RETRY` (30 s),
+   doubling to `UPDATE_EVERY`; a release whose install fails backs off the
+   same way on its own count, so a broken release is not downloaded every
+   few seconds. Checks are never closer than `UPDATE_GAP` (15 s); one
+   asked for sooner is kept (`Updates.wanted`) and made by the heartbeat,
+   not dropped. Offline, nothing is asked of the server.
 2. **Installing.** A new worker precaches every file fresh from the server
    (`cache: 'reload'`), all or nothing: one missing file and the install
    fails, and the version already working stays. It then **waits**; it
@@ -123,18 +138,24 @@ the script; `sw.js`):
    at a quiet moment: never within `UPDATE_SETTLE` (4 s) of the page
    loading; `Domain.safeToReload()` (the product: home on Earth, at rest,
    Pip quiet, no mission, flight, station or grown-ups page, no picture
-   still loading); and no touch for `UPDATE_IDLE` — looked for every
-   `UPDATE_POLL` and whenever the app comes to the front. The page's own
+   still loading); no finger down (a held pointer is never idle, however
+   long ago it touched); and no touch for `UPDATE_IDLE` since the last
+   one went down or lifted — looked for every `UPDATE_POLL` and whenever
+   the app comes to the front. The page's own
    version (the page came fresh from the network) moves in with no reload;
    a newer one with one. Only a worker still waiting (`installed`) counts:
-   a first install's worker passes straight through it and goes in.
+   a first install's worker passes straight through it and goes in. An
+   install is followed from whenever the owner sees it, and a waiting
+   worker is found as it is — whether or not their events reached the page.
 4. **Taking over.** The app sends `activate`; the worker takes over, carries
    the non-precached pictures of older caches into its own
    (`carryPictures()`), deletes only this app's older caches, and claims the
    page. Taking over is asynchronous — a held worker can come in long
    after the ask, with the child playing again — so `controllerchange`
    only records it: a newer version the page asked for (or a held one come
-   in late) is `'arrived'`, and the page owes one reload. The reload waits
+   in late) is `'arrived'`, and the page owes one reload. If the event was
+   missed (the page was suspended), the owner sees the asked worker in
+   charge and records it the same way. The reload waits
    for a quiet moment checked at that instant (`quietNow()`: the
    product's `safeToReload()` and no touch for `UPDATE_IDLE`), is looked
    for by the same poll, and happens **once**; until then the child plays
@@ -149,16 +170,22 @@ the script; `sw.js`):
    not in after `UPDATE_STALL` (8 s) gets one reload, at a quiet moment —
    a navigation lets it in — marked on this tab's history entry
    (`updateReloadAt`), so a stubborn one is never forced twice within
-   `UPDATE_EVERY`: the page stops trying (`'stalled'`) and the next launch
-   brings it in — or, if it comes in first, it is `'arrived'` like any
-   other. A held worker of the page's own version would change
-   nothing on screen, so the page just stops waiting on it and goes on
-   looking for later versions.
+   `UPDATE_EVERY`: the page stops forcing (`'stalled'`), keeps checking for
+   newer releases, and helps it once more only after `UPDATE_EVERY`, at a
+   quiet moment — or, if it comes in first, it is `'arrived'` like any
+   other; one that turns redundant is let go. A held worker of the page's
+   own version would change nothing on screen, so the page lets it go (not
+   asked again; the next launch lets it in) and goes on looking.
+6. **Telling a grown-up.** Nothing is shown or said to a child. The
+   grown-ups area shows the version, the version saved for offline use
+   (the worker in charge, asked its `version`), and one line of status
+   (`updateStatus()`): checking, downloading, ready at the next quiet
+   moment, offline, could not check (retrying), or up to date — the last
+   only after a check that succeeded. Opening the grown-ups area asks for
+   a fresh check (at most every `UPDATE_GAP`).
 
-Both a worker already waiting at launch and one that finishes installing
-later (`updatefound` → `installed`) are handled. Nothing is shown or said
-to a child; the grown-ups area shows the version. The browser runs none of
-this while the app is closed.
+The browser runs none of this while the app is closed: a phone picks up a
+release when the app next runs — resumed, reopened, or left open.
 
 **What the worker stores.** The precache, as installed; at runtime, only a
 good (`ok`) answer for a file the version did not install (a world's
@@ -553,6 +580,17 @@ The contracts collapse these to zero to run the journey in milliseconds.
   pictures, answer `version`/`activate`/`keep`, never store an error or
   replace an installed file). Real-browser flows for all of it are in
   docs/PRODUCT.md's v0.6.1 and v0.6.2 QA records.
+- **Contract 58** covers v0.6.4, with a rig that can start an install
+  before the page listens, hide events from a "suspended" page, take the
+  network away and back, and hold a release on the server: a failed check
+  retried at the front and by itself; the network returning; a release
+  found by the heartbeat with the app untouched; an install under way at
+  launch; a worker finished while suspended; a takeover whose event was
+  missed; a stubborn held one (checks go on; helped again only after its
+  window); a finger held down; twenty trips to the front (no burst, the
+  deferred check kept); a release that will not install (backing off
+  though each check succeeds); a browser refusing the worker; and the
+  grown-ups status at each step.
 - **Contract 57** covers v0.6.3: a takeover asked at a quiet moment that
   comes in late — mid-letter, mid-flight, with a grown-ups page open or
   the lock held, just after a touch — is recorded, and the page reloads

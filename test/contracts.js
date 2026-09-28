@@ -969,7 +969,7 @@ function testPWA(){
   sub('the service worker');
   T('registration is guarded to http(s)',
     /location\.protocol\.indexOf\('http'\) === 0/.test(js()));
-  T('a failed registration cannot break boot', /register\('sw\.js'\)[\s\S]{0,600}\.catch\(\(\) => \{\}\)/.test(fnBody(js(), 'startUpdates')));
+  T('a failed registration cannot break boot (it is caught, and only recorded)', /register\('sw\.js'\)[\s\S]{0,600}\.catch\(\(\) => \{/.test(fnBody(js(), 'startUpdates')));
   T('the shell is network-first, so a deploy is picked up promptly',
     /fetch\(req\)[\s\S]{0,900}\.catch\(\(\) => caches\.match\(req\)/.test(sw));
   T('index.html is the offline fallback', /caches\.match\('\.\/index\.html'\)/.test(sw));
@@ -5032,21 +5032,28 @@ async function testWorldKeeping(){
    over the same saved records, as a reload would. */
 function updateRig(waitingVersion, o){
   o = o || {};
-  const box = { reloads: 0, messages: [], updates: 0, failUpdate: false, hold: false, held: null };
+  const box = { reloads: 0, messages: [], updates: 0, failUpdate: false, hold: false, held: null, online: true, release: null };
   const listeners = {};
   const container = { controller: {},
     addEventListener(t, fn){ (listeners[t] = listeners[t] || []).push(fn); },
     fire(t){ (listeners[t] || []).forEach(fn => fn({})); } };
   const reg = { waiting: null, installing: null, active: null, ls: {},
     addEventListener(t, fn){ (reg.ls[t] = reg.ls[t] || []).push(fn); },
-    update(){ box.updates++; return box.failUpdate ? Promise.reject(new Error('no network')) : Promise.resolve(); } };
-  /* the worker comes in: active, waiting no longer, in charge of the page */
-  box.takeover = w => {
+    /* a check: fails with no network; finds box.release if one is waiting
+       on the server, and installs it as a browser would, a moment later */
+    update(){ box.updates++;
+      if(box.failUpdate || !box.online) return Promise.reject(new Error('no network'));
+      if(box.release){ const v = box.release, broken = box.brokenRelease; if(!broken) box.release = null;
+        setTimeout(() => { const w = box.startInstall(v); setTimeout(() => (broken ? w.fail() : w.finish()), 0); }, 0); }
+      return Promise.resolve(); } };
+  /* the worker comes in: active, waiting no longer, in charge of the page.
+     q.quiet: the page misses the event (it was suspended) */
+  box.takeover = (w, q) => {
     w = w || box.held;
     if(!w) return;
     box.held = null;
     w.state = 'activated'; reg.waiting = null; reg.active = w; container.controller = w;
-    setTimeout(() => container.fire('controllerchange'), 0);
+    if(!(q && q.quiet)) setTimeout(() => container.fire('controllerchange'), 0);
   };
   const worker = version => {
     const w = { version: version, state: 'installed', ls: {},
@@ -5062,14 +5069,24 @@ function updateRig(waitingVersion, o){
   if(waitingVersion) reg.waiting = worker(waitingVersion);
   container.register = () => Promise.resolve(reg);
   container.ready = Promise.resolve(reg);
+  /* a new version starting its install; finish() or fail() it later.
+     q.quiet: the page misses the events (it was suspended) */
+  box.startInstall = (version, q) => {
+    const quiet = !!(q && q.quiet), w = worker(version);
+    w.state = 'installing'; reg.installing = w;
+    if(!quiet) (reg.ls.updatefound || []).forEach(fn => fn({}));
+    const to = st => { if(quiet) w.state = st; else w.setState(st); };
+    w.finish = () => { reg.installing = null; reg.waiting = w; to('installed'); return w; };
+    w.fail = () => { reg.installing = null; to('redundant'); return w; };
+    return w;
+  };
   /* a new version finishing its install while the app runs */
-  box.install = version => { const w = worker(version); w.state = 'installing'; reg.installing = w;
-    (reg.ls.updatefound || []).forEach(fn => fn({})); reg.installing = null; reg.waiting = w; w.setState('installed'); return w; };
+  box.install = (version, q) => box.startInstall(version, q).finish();
   const sp = fakeSpeech();
   const app = H.loadApp({ windowExtras: sp.extras, sharedStorage: o.sharedStorage });
   const c = fast(app.ctx);
   c.MessageChannel = FakeChannel;
-  c.navigator = { serviceWorker: container };
+  c.navigator = { serviceWorker: container, get onLine(){ return box.online; } };
   c.location.reload = () => { box.reloads++; };
   if(waitingVersion === 'same') reg.waiting = worker(c.APP_VERSION);
   box.app = app; box.c = c; box.container = container; box.reg = reg; box.worker = worker;
@@ -5248,12 +5265,13 @@ async function testUpdates(){
   for(let q = 0; q < 12; q++) fg.app.dom.document.dispatch('visibilitychange');
   await wait(10);
   T('the app asks for a new version at most every so often, not every time', fg.updates === 1, String(fg.updates));
-  fg.c.Updates.checkedAt = Date.now() - fg.c.UPDATE_EVERY - 1;
+  fg.c.Updates.checkedAt = fg.c.Updates.triedAt = Date.now() - fg.c.UPDATE_EVERY - 1;
   fg.app.dom.document.dispatch('visibilitychange');
   await wait(10);
   T('and asks again once that time has passed', fg.updates === 2, String(fg.updates));
   fg.failUpdate = true;
   fg.c.Updates.checkedAt = 0;
+  fg.c.Updates.triedAt = Date.now() - fg.c.UPDATE_EVERY - 1;
   fg.app.dom.document.dispatch('visibilitychange');
   await wait(20);
   T('with no network the check fails quietly: the same version, nothing reloaded, no error', fg.updates === 3 && fg.reloads === 0 && fg.app.errors.length === 0 && fg.c.currentScene === 'earth');
@@ -5310,7 +5328,8 @@ async function testUpdates(){
   await wait(20);
   T('taking over touches no saved record: progress, stars, the rocket and settings are all as they were',
     saved() === beforeKeys && beforeKeys.length > 20 && !/localStorage|Store\.(set|remove)/.test(fnBody(js(), 'applyUpdate') + fnBody(js(), 'considerUpdate') + fnBody(js(), 'startUpdates')));
-  T('nothing about updates is ever shown or said to a child', !/Voice\.say|toast\(|setHtml\(/.test(fnBody(js(), 'applyUpdate') + fnBody(js(), 'considerUpdate') + fnBody(js(), 'startUpdates') + fnBody(js(), 'checkForUpdate')));
+  T('nothing about updates is ever shown or said to a child', !/Voice\.say|toast\(|setHtml\(/.test(fnBody(js(), 'applyUpdate') + fnBody(js(), 'considerUpdate') + fnBody(js(), 'startUpdates') + fnBody(js(), 'checkForUpdate') +
+    fnBody(js(), 'reconcileUpdates') + fnBody(js(), 'watchTakeover') + fnBody(js(), 'showUpdateStatus')));
   clearPreloadTimers(keep.c);
   const rigs = [same, held, first, idle, mid, where, loading, touch, fg, stuck, bad, keep];
   T('no console errors', rigs.every(b => b.app.errors.length === 0), rigs.map(b => b.app.errors.join('|')).join(' '));
@@ -5462,8 +5481,9 @@ async function testLateTakeover(){
   section('CONTRACT 57 — a takeover that comes in late waits for a quiet moment');
   const activated = (b, v) => b.messages.indexOf('activate@' + v) !== -1;
   const hush = async b => { for(let q = 0; q < 400 && (b.c.Voice.speaking() || b.c.session.busy); q++) await wait(2); };
-  /* a real touch reaches the page's capture listener on the document first */
-  const touch = b => b.app.dom.document.dispatch('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true });
+  /* a real tap reaches the page's capture listeners on the document first */
+  const touch = b => { const e = { pointerId: 1, pointerType: 'touch', isPrimary: true };
+    b.app.dom.document.dispatch('pointerdown', e); b.app.dom.document.dispatch('pointerup', e); };
   const still = b => { b.c.Updates.touchedAt = Date.now() - b.c.UPDATE_IDLE - 1; };
   /* a newer version (or one of the page's own), asked in at rest on Earth
      and held by the browser until the test lets it in */
@@ -5670,6 +5690,219 @@ async function testLateTakeover(){
   T('no console errors', rigs.every(b => b.app.errors.length === 0) && back.errors.length === 0, rigs.map(b => b.app.errors.join('|')).join(' '));
 }
 
+/* =========================================================
+   CONTRACT 58 — AN INSTALLED APP FINDS EACH RELEASE AND TAKES IT, BY ITSELF
+   A phone keeps an installed app for days: it resumes it from the
+   background, wakes it offline, and leaves it open on one screen. v0.6.3
+   could stay on an old release. A failed check silenced checks from the
+   front for ten minutes; the network coming back checked nothing; nothing
+   looked for a release while the app stayed open; an install already
+   under way at launch, or one finished while the page was suspended, was
+   never followed; a takeover missed while suspended went unnoticed; and a
+   stubborn one stopped everything for the session. One reconcile now
+   reads the worker's real state at launch, at the front, when the network
+   returns, and on its own heartbeat.
+   ========================================================= */
+async function testFindsReleases(){
+  section('CONTRACT 58 — an installed app finds each release and takes it, by itself');
+  const activated = (b, v) => b.messages.indexOf('activate@' + v) !== -1;
+  const hush = async b => { for(let q = 0; q < 400 && (b.c.Voice.speaking() || b.c.session.busy); q++) await wait(2); };
+  const still = b => { b.c.Updates.touchedAt = Date.now() - b.c.UPDATE_IDLE - 1; };
+  const doc = b => b.app.dom.document;
+  const hide = b => { doc(b).visibilityState = 'hidden'; doc(b).dispatch('visibilitychange'); };
+  const show = b => { doc(b).visibilityState = 'visible'; doc(b).dispatch('visibilitychange'); };
+  /* to the background and back, as a phone does */
+  const front = b => { hide(b); show(b); };
+  /* one heartbeat, and nothing else touched */
+  const beat = async b => { await wait(b.c.UPDATE_POLL + 300); await wait(30); };
+  const launch = async b => { await b.c.startAdventure(); await b.c.startUpdates(); await wait(10);
+    b.c.Updates.loadedAt = Date.now() - b.c.UPDATE_SETTLE - 1; await hush(b); };
+  const status = b => typeof b.c.updateStatus === 'function' ? b.c.updateStatus() : '(no status)';
+  const until = async (ok, ms) => { for(let t = 0; t < (ms || 1000) && !ok(); t += 10) await wait(10); };
+  const rigs = [];
+  const rig = w => { const b = updateRig(w); rigs.push(b); return b; };
+
+  sub('a failed check does not hold the next one back');
+  const fl = rig(null);
+  fl.failUpdate = true;
+  await launch(fl);
+  T('the launch check is made, and fails quietly', fl.updates === 1 && fl.app.errors.length === 0 && fl.reloads === 0);
+  T('the grown-ups area says it could not check — never "up to date"', /could not/i.test(status(fl)) && !/up to date/i.test(status(fl)), status(fl));
+  fl.failUpdate = false;
+  fl.release = '9.9.9';
+  fl.c.Updates.triedAt = Date.now() - fl.c.UPDATE_GAP - 1;
+  front(fl);
+  await until(() => fl.reloads > 0);
+  T('back at the front a moment later, it checks again — no ten-minute silence after a failure', fl.updates === 2, String(fl.updates));
+  T('and the release it finds is installed, asked in at the quiet moment, and the page moves into it once', activated(fl, '9.9.9') && fl.reloads === 1, fl.messages.join(','));
+
+  sub('a failed check is tried again by itself');
+  const rt = rig(null);
+  rt.failUpdate = true;
+  await launch(rt);
+  rt.failUpdate = false;
+  rt.release = '9.9.9';
+  rt.c.Updates.triedAt = Date.now() - rt.c.UPDATE_RETRY - 1;
+  await beat(rt);
+  T('with the app open and nothing touched, the heartbeat tries again after a short wait, and finds the release', rt.updates === 2 && activated(rt, '9.9.9'), rt.updates + ' ' + rt.messages.join(','));
+
+  sub('opened offline; the network comes back');
+  const nb = rig(null);
+  nb.online = false;
+  await launch(nb);
+  T('offline at launch: the grown-ups area says so', /offline/i.test(status(nb)), status(nb));
+  const before = nb.updates;
+  nb.online = true;
+  nb.release = '9.9.9';
+  nb.c.window.dispatch('online');
+  await until(() => nb.reloads > 0);
+  T('the network comes back: it checks at once, with the app still open', nb.updates === before + 1, nb.updates + ' vs ' + before);
+  T('and takes the release at the quiet moment', activated(nb, '9.9.9') && nb.reloads === 1);
+
+  sub('a release appears while the app stays open, untouched');
+  const op = rig(null);
+  await launch(op);
+  T('the launch check succeeds and finds nothing new: only now "up to date"', op.updates === 1 && /up to date/i.test(status(op)), status(op));
+  op.release = '9.9.9';
+  op.c.Updates.checkedAt = op.c.Updates.triedAt = Date.now() - op.c.UPDATE_EVERY - 1;
+  await beat(op);
+  T('ten minutes on, with no touch and no trip to the background: the heartbeat checks, and finds it', op.updates === 2 && activated(op, '9.9.9'), op.updates + ' ' + op.messages.join(','));
+  T('and the page moves into it once', op.reloads === 1);
+
+  sub('an install already under way when the app starts');
+  const iw = rig(null);
+  const early = iw.startInstall('9.9.9');          // its "updatefound" came before the page was listening
+  await launch(iw);
+  T('while it installs, the grown-ups area says it is downloading', /download/i.test(status(iw)), status(iw));
+  early.finish();
+  await wait(40);
+  T('it is followed from the start: when it finishes, it is asked in at the quiet moment, and the page moves once', activated(iw, '9.9.9') && iw.reloads === 1, iw.messages.join(','));
+
+  sub('a new version that finished installing while the app was in the background');
+  const sp = rig(null);
+  await launch(sp);
+  hide(sp);
+  sp.install('9.9.9', { quiet: true });            // no event reaches a suspended page
+  show(sp);
+  await wait(40);
+  T('back at the front it is found as it is now — waiting — and asked in', activated(sp, '9.9.9') && sp.reloads === 1, sp.messages.join(','));
+
+  sub('a held takeover, already helped once, that comes in while no one is looking');
+  const st = rig(null);
+  st.hold = true;
+  st.c.history = { state: { updateReloadAt: Date.now() - 1000 }, replaceState(s){ this.state = s; }, pushState(){}, back(){} };
+  await launch(st);
+  st.install('9.9.9');
+  await wait(40);
+  T('asked in at rest; the browser holds it', activated(st, '9.9.9') && st.c.Updates.moving === 'asked');
+  st.c.Updates.askedAt = Date.now() - st.c.UPDATE_STALL - 1;
+  st.c.watchTakeover();
+  T('helped once already in this tab: it stops forcing, and nothing reloads', st.c.Updates.moving === 'stalled' && st.reloads === 0);
+  st.takeover(null, { quiet: true });              // it comes in; the event is missed
+  await beat(st);
+  T('the heartbeat sees it is in charge, and the page moves into it once, at the quiet moment', st.reloads === 1, String(st.c.Updates.moving));
+
+  sub('a held takeover that never comes in');
+  const sb = rig(null);
+  sb.hold = true;
+  sb.c.history = { state: { updateReloadAt: Date.now() - 1000 }, replaceState(s){ this.state = s; }, pushState(){}, back(){} };
+  await launch(sb);
+  sb.install('9.9.9');
+  await wait(40);
+  sb.c.Updates.askedAt = Date.now() - sb.c.UPDATE_STALL - 1;
+  sb.c.watchTakeover();
+  sb.c.Updates.checkedAt = sb.c.Updates.triedAt = Date.now() - sb.c.UPDATE_EVERY - 1;
+  await beat(sb);
+  T('while it is held, the app still looks for newer releases', sb.c.Updates.moving === 'stalled' && sb.updates === 2, sb.updates + ' ' + sb.c.Updates.moving);
+  sb.c.history.state = { updateReloadAt: Date.now() - sb.c.UPDATE_EVERY - 1 };
+  await beat(sb);
+  T('once this tab\'s ten minutes have passed, it is helped once more — one reload, at a quiet moment, marked again', sb.reloads === 1 && Date.now() - sb.c.history.state.updateReloadAt < 10000, sb.reloads + ' ' + sb.c.Updates.moving);
+  await beat(sb);
+  T('and not again straight after', sb.reloads === 1);
+
+  sub('a finger held down is not a quiet moment');
+  const hd = rig(null);
+  await launch(hd);
+  const finger = { pointerId: 7, pointerType: 'touch', isPrimary: true };
+  doc(hd).dispatch('pointerdown', finger);
+  still(hd);
+  T('a finger still down, long after it touched: not quiet', hd.c.quietNow() === false);
+  doc(hd).dispatch('pointerup', finger);
+  T('lifted just now: not quiet yet', hd.c.quietNow() === false);
+  still(hd);
+  T('lifted, and still for long enough: quiet', hd.c.quietNow() === true);
+  doc(hd).dispatch('pointerdown', finger);
+  front(hd);
+  still(hd);
+  T('a touch cut off by going to the background is not held for ever', hd.c.quietNow() === true);
+
+  sub('coming to the front again and again, after a failed check');
+  const tf = rig(null);
+  tf.failUpdate = true;
+  await launch(tf);
+  tf.failUpdate = false;
+  for(let q = 0; q < 20; q++) front(tf);
+  await wait(40);
+  T('twenty trips to the front straight after a failure: no burst of checks', tf.updates === 1, String(tf.updates));
+  tf.c.Updates.triedAt = Date.now() - tf.c.UPDATE_GAP - 1;
+  await beat(tf);
+  T('the check they asked for is not lost: the heartbeat makes it, once, as soon as the short gap allows', tf.updates === 2, String(tf.updates));
+
+  sub('what the grown-ups area says');
+  const ds = rig(null);
+  await launch(ds);
+  ds.c.Updates.triedAt = Date.now() - ds.c.UPDATE_GAP - 1;
+  ds.c.openGrownups();
+  await wait(40);
+  T('opening the grown-ups area checks, so what it shows is fresh', ds.updates === 2, String(ds.updates));
+  const slow = ds.startInstall('9.9.9');
+  await wait(20);
+  T('an install under way: downloading', /download/i.test(status(ds)), status(ds));
+  slow.finish();
+  await wait(40);
+  T('installed, with the grown-ups page still open: ready, and it waits for play to end — no reload', /ready/i.test(status(ds)) && ds.reloads === 0, status(ds));
+  ds.c.closeGrownups();
+  await hush(ds); still(ds);
+  await beat(ds);
+  T('closed, home on Earth and still: the page moves into it once', activated(ds, '9.9.9') && ds.reloads === 1);
+
+  sub('a release that will not install (a file missing on the server)');
+  const bf = rig(null);
+  await launch(bf);
+  bf.release = '9.9.9';
+  bf.brokenRelease = true;
+  bf.c.Updates.checkedAt = bf.c.Updates.triedAt = Date.now() - bf.c.UPDATE_EVERY - 1;
+  await beat(bf);
+  T('found, but its install fails: nothing is asked in, nothing reloads, and the grown-ups area says so',
+    bf.updates === 2 && !activated(bf, '9.9.9') && bf.reloads === 0 && /did not finish/i.test(status(bf)), bf.updates + ' ' + status(bf));
+  bf.c.Updates.triedAt = Date.now() - bf.c.UPDATE_RETRY - 1;
+  await beat(bf);
+  T('it is tried again after a short wait — and fails again', bf.updates === 3, String(bf.updates));
+  bf.c.Updates.triedAt = Date.now() - bf.c.UPDATE_RETRY - 1;
+  await beat(bf);
+  T('the wait doubles although each check itself succeeded: no download every few seconds', bf.updates === 3, String(bf.updates));
+  bf.c.Updates.triedAt = Date.now() - 2 * bf.c.UPDATE_RETRY - 1;
+  await beat(bf);
+  T('after the doubled wait, once more', bf.updates === 4, String(bf.updates));
+  bf.brokenRelease = false;
+  bf.c.Updates.triedAt = Date.now() - 4 * bf.c.UPDATE_RETRY - 1;
+  await beat(bf);
+  await until(() => bf.reloads > 0);
+  T('fixed on the server: the next try installs it, and the page moves into it once', activated(bf, '9.9.9') && bf.reloads === 1, bf.updates + ' ' + bf.messages.join(','));
+
+  sub('a browser that refuses the worker');
+  const nr = rig(null);
+  nr.container.register = () => Promise.reject(new Error('refused'));
+  await nr.c.startAdventure();
+  await nr.c.startUpdates();
+  await wait(20);
+  T('boot goes on, and the grown-ups area says automatic updates are not available here — never "up to date"',
+    nr.c.currentScene !== 'boot' && /not available/i.test(status(nr)) && !/up to date/i.test(status(nr)), status(nr));
+
+  rigs.forEach(b => clearPreloadTimers(b.c));
+  T('no console errors', rigs.every(b => b.app.errors.length === 0), rigs.map(b => b.app.errors.join('|')).join(' '));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -5682,5 +5915,5 @@ module.exports = {
   testHud, testTravel, testInput, testPlayfield, testStation,
   testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign,
   testLetterforms, testLetterCases, testSightWords, testTracing, testMoonWriter, testJupiter, testAssetLoading, testGrownupsSeven,
-  testWorldKeeping, testUpdates, testWorker, testLateTakeover
+  testWorldKeeping, testUpdates, testWorker, testLateTakeover, testFindsReleases
 };
