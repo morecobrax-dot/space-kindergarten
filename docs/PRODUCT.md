@@ -61,10 +61,10 @@ the child's choices are the same taps as before.
 | Replays ask afresh | A mission's first play is always as written. Once finished, a replay keeps its shape — as many rounds, the guided round in place, the same case and direction, sound, vowel, level and number of beats, and every review round with its own rule — and draws each other round from the mission's own list, by the run's seed. Within a run nothing comes back while the list has more; what the last run asked waits its turn, and a replay never starts as the last one did. A list too small repeats honestly. Moon Writer keeps its stroke order. A replay never adds a letter or a sound the mission does not teach |
 | Replay from a marker | Once the visit's mission is played, a lit marker plays its game again ("Let's play it again!"), its finished missions in turn. The way home stays the yellow next step, and a game not yet played waits for a visit of its own. It used to say "Tap it to play again!" and do nothing |
 | What a replay records | Its answers and evidence are for what it asked, and its completion keeps a short list of what that was (`shown`), so the next replay can avoid it. Older completions have none, and nothing is guessed for them |
-| Eleven new pictures | bat, bun, pup, hut, fox, box, mouse, nest, seal, robot and butterfly, rendered by the same clay renderer and light: new rhyme pairs (fox/box, hat/bat, cup/pup, nut/hut, sun/bun), a third picture for each held sound in Sound Scout, two more short-u words to build (bun, hut), and more beats (robot, butterfly). All core pictures: 1.12 MB of the 1.2 MB budget (91%) |
+| Eleven new pictures | bat, bun, pup, hut, fox, box, mouse, nest, seal, robot and butterfly, rendered by the same clay renderer and light: new rhyme pairs (fox/box, hat/bat, cup/pup, nut/hut, sun/bun), a third picture for each held sound in Sound Scout, two more short-u words to build (bun, hut), and more beats (robot, butterfly). All core pictures: 1,151,750 bytes, 91.5% of the 1.2 MB budget |
 | More for the rocket | Two paints (Midnight blue, Moon silver), two themes (Polka dots, Race checkers: patterns through the same paint mask) and three pieces of gear (a planet ring, a satellite dish, party flags), each rendered in the rocket's own frame. 22 things cost 123 stars: a first pass through the 20 missions unlocks about 13, and everything takes 41 missions, 21 of them replays |
 | A calmer voice | Pip speaks at a calm pace by default (0.86 of the device voice's speed, and longer pauses where a child listens: after an instruction, between the pictures named, after "almost"), and asks a question again only after 14 seconds. Grown-ups can choose "A little quicker". Letter sounds keep their own timing. The voice is still the device's own: easier to follow, not more natural |
-| The recording list | [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md) now lists every line built from a template, family by family, with each phrasing and every item it is said for (870 lines), not just the authored ones |
+| The recording list | [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md) now lists every line built from a template, family by family, with each phrasing and every item it is said for (1055 lines), not just the authored ones |
 | On a phone | The space station's things are a shelf that scrolls sideways, with the next one half showing (four of eight paints showed before, with no sign of the rest); the prompt to turn the screen no longer says "iPad" |
 | Rapid taps | A double tap on a marker no longer answers the new mission's first question with its second tap |
 | Back from the background | A question the app was in the middle of when it went to the background is asked again when it comes back, and Pip's nudge waits afresh; before, the round sat silent and was never asked again |
@@ -289,7 +289,7 @@ These are never planned:
   templates included ([AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)).
 - **Letter sounds, words said sound by sound, and blended words** are
   DEVELOPMENT AUDIO: a formant synthesiser in the app, never the device voice,
-  labelled in the code, the grown-ups area and [AUDIO.md](AUDIO.md). The 35
+  labelled in the code, the grown-ups area and [AUDIO.md](AUDIO.md). The 39
   recordings that replace them are listed in
   [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md). Nobody has judged these sounds
   on an iPad yet.
@@ -347,7 +347,7 @@ heard.**
 | Offline | The network cut and the server stopped: v0.7.0 started, all 14 new pictures and gear were cached, and Mars was played |
 | Contracts | `npm run verify`: 1570 passed, 0 failed; config verify ok. New: contract 59 (replays), 60 (pace), 61 (the phone), 62 (back from the background) |
 | Mutation | 27 defects planted one at a time on a copy of the repo, in two batches: 25 caught by failing contracts. One first crashed the test runner instead of misbehaving; rewritten, it was caught (one of the 25). One could not be caught because it changed nothing: Sound Scout's 'same sound' replay rule only repeated what validate() already refuses, so the rule was removed |
-| Budgets and economy | Core pictures 1.12 MB of 1.2 MB (91%); Jupiter 64% of its own 300 KB. 22 things cost 123 stars: 13 on a first pass, everything after 41 missions |
+| Budgets and economy | Core pictures 1,151,750 bytes, 91.5% of the 1.2 MB budget; Jupiter 63.8% of its own 300 KB. 22 things cost 123 stars: 13 on a first pass, everything after 41 missions |
 
 **Not tested:** a physical iPhone or iPad; Safari; how the calm pace
 actually sounds, and whether Pip's device voice is easy to follow for a
