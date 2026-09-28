@@ -4,16 +4,25 @@
   "private": true,
   "description": "A space adventure where kindergarten explorers practice their letters.",
   "scripts": {
-    "verify": "node test/run.js verify",
+    "verify": "node scripts/project-status.js verify && node test/run.js verify",
     "test": "node test/run.js contracts",
     "config:sync": "node scripts/config.js sync",
     "config:verify": "node scripts/config.js verify",
     "contamination": "node scripts/contamination.js",
     "art:render": "node tools/art/render.js",
     "art:encode": "node tools/art/encode.js",
-    "economy": "node scripts/economy.js"
+    "economy": "node scripts/economy.js",
+    "status": "node scripts/project-status.js verify"
   },
   "engines": {
     "node": ">=18"
+  },
+  "projectStatus": {
+    "appId": "space-kindergarten",
+    "version": {
+      "file": "index.html",
+      "list": "const APP_UPDATES = [",
+      "pick": "first"
+    }
   }
 }
