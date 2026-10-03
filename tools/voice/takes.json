@@ -1,0 +1,822 @@
+{
+  "disclosure": "AI-generated voice, not a human voice. Voices powered by Speechify.",
+  "service": "Speechify AI Voice API (api.speechify.ai, POST /v1/audio/speech)",
+  "settings": {
+    "voice": "harper_32",
+    "model": "simba-3.2",
+    "rate": "-20%",
+    "emotion": "warm",
+    "sampleRate": 24000,
+    "bitrate": "48k",
+    "level": -20,
+    "budget": 15000
+  },
+  "clips": [
+    {
+      "line": "travel.launch.1",
+      "file": "assets/voice/travel-launch-1.mp3",
+      "script": "Let's launch!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Let&apos;s launch!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 1.61,
+      "bytes": 9923,
+      "gainDb": -2.2,
+      "words": [
+        "Let's",
+        "launch!"
+      ]
+    },
+    {
+      "line": "story.moon.firstArrive",
+      "file": "assets/voice/story-moon-first-arrive.mp3",
+      "script": "We made it to the Moon! Its beacon is dim. Let's find letters to light it up!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">We made it to the Moon! Its beacon is dim. Let&apos;s find letters to light it up!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 6.36,
+      "bytes": 38499,
+      "gainDb": -4.4,
+      "words": [
+        "We",
+        "made",
+        "it",
+        "to",
+        "the",
+        "Moon!",
+        "Its",
+        "beacon",
+        "is",
+        "dim.",
+        "Let's",
+        "find",
+        "letters",
+        "to",
+        "light",
+        "it",
+        "up!"
+      ]
+    },
+    {
+      "line": "story.moon.arrive.3",
+      "file": "assets/voice/story-moon-arrive-3.mp3",
+      "script": "Here we are on the Moon!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Here we are on the Moon!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.64,
+      "bytes": 16126,
+      "gainDb": -5,
+      "words": [
+        "Here",
+        "we",
+        "are",
+        "on",
+        "the",
+        "Moon!"
+      ]
+    },
+    {
+      "line": "marker.beacon",
+      "file": "assets/voice/marker-beacon.mp3",
+      "script": "Tap the beacon to start!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Tap the beacon to start!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.42,
+      "bytes": 14830,
+      "gainDb": -1.4,
+      "words": [
+        "Tap",
+        "the",
+        "beacon",
+        "to",
+        "start!"
+      ]
+    },
+    {
+      "line": "mission.howTo",
+      "file": "assets/voice/mission-how-to.mp3",
+      "script": "I'll say a letter. You tap it!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">I&apos;ll say a letter. You tap it!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.22,
+      "bytes": 19588,
+      "gainDb": -1.1,
+      "words": [
+        "I'll",
+        "say",
+        "a",
+        "letter.",
+        "You",
+        "tap",
+        "it!"
+      ]
+    },
+    {
+      "line": "mission.again.1",
+      "file": "assets/voice/mission-again-1.mp3",
+      "script": "Let's play it again!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Let&apos;s play it again!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 1.82,
+      "bytes": 11226,
+      "gainDb": -2.4,
+      "words": [
+        "Let's",
+        "play",
+        "it",
+        "again!"
+      ]
+    },
+    {
+      "line": "find.M",
+      "file": "assets/voice/find-m.mp3",
+      "script": "Find the letter em.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Find the letter em.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 1.99,
+      "bytes": 12233,
+      "gainDb": -2.9,
+      "words": [
+        "Find",
+        "the",
+        "letter",
+        "em."
+      ]
+    },
+    {
+      "line": "find.M.3",
+      "file": "assets/voice/find-m-3.mp3",
+      "script": "Where is the letter em?",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Where is the letter em?</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.16,
+      "bytes": 13245,
+      "gainDb": -2.7,
+      "words": [
+        "Where",
+        "is",
+        "the",
+        "letter",
+        "em?"
+      ]
+    },
+    {
+      "line": "found.M.0",
+      "file": "assets/voice/found-m-0.mp3",
+      "script": "Yes! That's the letter em.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Yes! That&apos;s the letter em.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.93,
+      "bytes": 17856,
+      "gainDb": -1.2,
+      "words": [
+        "Yes!",
+        "That's",
+        "the",
+        "letter",
+        "em."
+      ]
+    },
+    {
+      "line": "found.M.1",
+      "file": "assets/voice/found-m-1.mp3",
+      "script": "Great job! You found the letter em.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Great job! You found the letter em.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.48,
+      "bytes": 21177,
+      "gainDb": -4,
+      "words": [
+        "Great",
+        "job!",
+        "You",
+        "found",
+        "the",
+        "letter",
+        "em."
+      ]
+    },
+    {
+      "line": "again.M.0",
+      "file": "assets/voice/again-m-0.mp3",
+      "script": "Listen. Find the letter em.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Listen. Find the letter em.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.93,
+      "bytes": 17857,
+      "gainDb": -4.3,
+      "words": [
+        "Listen.",
+        "Find",
+        "the",
+        "letter",
+        "em."
+      ]
+    },
+    {
+      "line": "show.M",
+      "file": "assets/voice/show-m.mp3",
+      "script": "Here it is! This is the letter em. Tap it!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Here it is! This is the letter em. Tap it!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 5.23,
+      "bytes": 31696,
+      "gainDb": -2.3,
+      "words": [
+        "Here",
+        "it",
+        "is!",
+        "This",
+        "is",
+        "the",
+        "letter",
+        "em.",
+        "Tap",
+        "it!"
+      ]
+    },
+    {
+      "line": "find.S",
+      "file": "assets/voice/find-s.mp3",
+      "script": "Find the letter ess.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Find the letter ess.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.26,
+      "bytes": 13818,
+      "gainDb": -3.2,
+      "words": [
+        "Find",
+        "the",
+        "letter",
+        "ess."
+      ]
+    },
+    {
+      "line": "find.S.3",
+      "file": "assets/voice/find-s-3.mp3",
+      "script": "Where is the letter ess?",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Where is the letter ess?</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.52,
+      "bytes": 15406,
+      "gainDb": 1.2,
+      "words": [
+        "Where",
+        "is",
+        "the",
+        "letter",
+        "ess?"
+      ]
+    },
+    {
+      "line": "found.S.0",
+      "file": "assets/voice/found-s-0.mp3",
+      "script": "Yes! That's the letter ess.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Yes! That&apos;s the letter ess.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.43,
+      "bytes": 20881,
+      "gainDb": -2.1,
+      "words": [
+        "Yes!",
+        "That's",
+        "the",
+        "letter",
+        "ess."
+      ]
+    },
+    {
+      "line": "found.S.1",
+      "file": "assets/voice/found-s-1.mp3",
+      "script": "Great job! You found the letter ess.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Great job! You found the letter ess.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.89,
+      "bytes": 23626,
+      "gainDb": -3.1,
+      "words": [
+        "Great",
+        "job!",
+        "You",
+        "found",
+        "the",
+        "letter",
+        "ess."
+      ]
+    },
+    {
+      "line": "again.S.0",
+      "file": "assets/voice/again-s-0.mp3",
+      "script": "Listen. Find the letter ess.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Listen. Find the letter ess.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.38,
+      "bytes": 20594,
+      "gainDb": -3.9,
+      "words": [
+        "Listen.",
+        "Find",
+        "the",
+        "letter",
+        "ess."
+      ]
+    },
+    {
+      "line": "show.S",
+      "file": "assets/voice/show-s.mp3",
+      "script": "Here it is! This is the letter ess. Tap it!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Here it is! This is the letter ess. Tap it!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 4.78,
+      "bytes": 28961,
+      "gainDb": -3,
+      "words": [
+        "Here",
+        "it",
+        "is!",
+        "This",
+        "is",
+        "the",
+        "letter",
+        "ess.",
+        "Tap",
+        "it!"
+      ]
+    },
+    {
+      "line": "find.O",
+      "file": "assets/voice/find-o.mp3",
+      "script": "Find the letter oh.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Find the letter O.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.21,
+      "bytes": 13529,
+      "gainDb": -3.6,
+      "words": [
+        "Find",
+        "the",
+        "letter",
+        "O."
+      ]
+    },
+    {
+      "line": "find.O.3",
+      "file": "assets/voice/find-o-3.mp3",
+      "script": "Where is the letter oh?",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Where is the letter O?</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.04,
+      "bytes": 12525,
+      "gainDb": -4,
+      "words": [
+        "Where",
+        "is",
+        "the",
+        "letter",
+        "O?"
+      ]
+    },
+    {
+      "line": "found.O.0",
+      "file": "assets/voice/found-o-0.mp3",
+      "script": "Yes! That's the letter oh.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Yes! That&apos;s the letter O.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.31,
+      "bytes": 20160,
+      "gainDb": -2.2,
+      "words": [
+        "Yes!",
+        "That's",
+        "the",
+        "letter",
+        "O."
+      ]
+    },
+    {
+      "line": "found.O.1",
+      "file": "assets/voice/found-o-1.mp3",
+      "script": "Great job! You found the letter oh.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Great job! You found the letter O.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.82,
+      "bytes": 23193,
+      "gainDb": -3.3,
+      "words": [
+        "Great",
+        "job!",
+        "You",
+        "found",
+        "the",
+        "letter",
+        "O."
+      ]
+    },
+    {
+      "line": "again.O.0",
+      "file": "assets/voice/again-o-0.mp3",
+      "script": "Listen. Find the letter oh.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Listen. Find the letter O.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.17,
+      "bytes": 19297,
+      "gainDb": -3.2,
+      "words": [
+        "Listen.",
+        "Find",
+        "the",
+        "letter",
+        "O."
+      ]
+    },
+    {
+      "line": "show.O",
+      "file": "assets/voice/show-o.mp3",
+      "script": "Here it is! This is the letter oh. Tap it!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Here it is! This is the letter O. Tap it!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 4.66,
+      "bytes": 28240,
+      "gainDb": -2.8,
+      "words": [
+        "Here",
+        "it",
+        "is!",
+        "This",
+        "is",
+        "the",
+        "letter",
+        "O.",
+        "Tap",
+        "it!"
+      ]
+    },
+    {
+      "line": "find.T",
+      "file": "assets/voice/find-t.mp3",
+      "script": "Find the letter tee.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Find the letter tee.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 1.85,
+      "bytes": 11370,
+      "gainDb": -3.1,
+      "words": [
+        "Find",
+        "the",
+        "letter",
+        "tee."
+      ]
+    },
+    {
+      "line": "find.T.3",
+      "file": "assets/voice/find-t-3.mp3",
+      "script": "Where is the letter tee?",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Where is the letter tee?</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 1.92,
+      "bytes": 11806,
+      "gainDb": -2.9,
+      "words": [
+        "Where",
+        "is",
+        "the",
+        "letter",
+        "tee?"
+      ]
+    },
+    {
+      "line": "found.T.0",
+      "file": "assets/voice/found-t-0.mp3",
+      "script": "Yes! That's the letter tee.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Yes! That&apos;s the letter tee.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.78,
+      "bytes": 16993,
+      "gainDb": -1.8,
+      "words": [
+        "Yes!",
+        "That's",
+        "the",
+        "letter",
+        "tee."
+      ]
+    },
+    {
+      "line": "found.T.1",
+      "file": "assets/voice/found-t-1.mp3",
+      "script": "Great job! You found the letter tee.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Great job! You found the letter tee.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.67,
+      "bytes": 22330,
+      "gainDb": -4,
+      "words": [
+        "Great",
+        "job!",
+        "You",
+        "found",
+        "the",
+        "letter",
+        "tee."
+      ]
+    },
+    {
+      "line": "again.T.0",
+      "file": "assets/voice/again-t-0.mp3",
+      "script": "Listen. Find the letter tee.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Listen. Find the letter tee.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.12,
+      "bytes": 19010,
+      "gainDb": -3.8,
+      "words": [
+        "Listen.",
+        "Find",
+        "the",
+        "letter",
+        "tee."
+      ]
+    },
+    {
+      "line": "show.T",
+      "file": "assets/voice/show-t.mp3",
+      "script": "Here it is! This is the letter tee. Tap it!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Here it is! This is the letter tee. Tap it!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 4.78,
+      "bytes": 28961,
+      "gainDb": -2,
+      "words": [
+        "Here",
+        "it",
+        "is!",
+        "This",
+        "is",
+        "the",
+        "letter",
+        "tee.",
+        "Tap",
+        "it!"
+      ]
+    },
+    {
+      "line": "feedback.almost.1",
+      "file": "assets/voice/feedback-almost-1.mp3",
+      "script": "Almost! Listen again.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Almost! Listen again.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.59,
+      "bytes": 15835,
+      "gainDb": -2.5,
+      "words": [
+        "Almost!",
+        "Listen",
+        "again."
+      ]
+    },
+    {
+      "line": "feedback.almost.2",
+      "file": "assets/voice/feedback-almost-2.mp3",
+      "script": "Good try! Listen again.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Good try! Listen again.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.71,
+      "bytes": 16557,
+      "gainDb": -1.1,
+      "words": [
+        "Good",
+        "try!",
+        "Listen",
+        "again."
+      ]
+    },
+    {
+      "line": "story.moon.restored",
+      "file": "assets/voice/story-moon-restored.mp3",
+      "script": "You did it! The Moon's beacon is shining again!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">You did it! The Moon&apos;s beacon is shining again!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 4.37,
+      "bytes": 26517,
+      "gainDb": -4.7,
+      "words": [
+        "You",
+        "did",
+        "it!",
+        "The",
+        "Moon's",
+        "beacon",
+        "is",
+        "shining",
+        "again!"
+      ]
+    },
+    {
+      "line": "story.moon.shining.1",
+      "file": "assets/voice/story-moon-shining-1.mp3",
+      "script": "You did it! The Moon is shining bright!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">You did it! The Moon is shining bright!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.91,
+      "bytes": 23773,
+      "gainDb": -5.9,
+      "words": [
+        "You",
+        "did",
+        "it!",
+        "The",
+        "Moon",
+        "is",
+        "shining",
+        "bright!"
+      ]
+    },
+    {
+      "line": "stars.found.3",
+      "file": "assets/voice/stars-found-3.mp3",
+      "script": "You found 3 stars!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">You found 3 stars!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.3,
+      "bytes": 14104,
+      "gainDb": -3.6,
+      "words": [
+        "You",
+        "found",
+        "3",
+        "stars!"
+      ]
+    },
+    {
+      "line": "story.mercury.reveal",
+      "file": "assets/voice/story-mercury-reveal.mp3",
+      "script": "Look! A new planet is waiting for us. That is Mercury!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Look! A new planet is waiting for us. That is Mercury!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 5.33,
+      "bytes": 32284,
+      "gainDb": -5.1,
+      "words": [
+        "Look!",
+        "A",
+        "new",
+        "planet",
+        "is",
+        "waiting",
+        "for",
+        "us.",
+        "That",
+        "is",
+        "Mercury!"
+      ]
+    },
+    {
+      "line": "marker.slate",
+      "file": "assets/voice/marker-slate.mp3",
+      "script": "Tap the writing slate. Let's write!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Tap the writing slate. Let&apos;s write!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.55,
+      "bytes": 21609,
+      "gainDb": -2.1,
+      "words": [
+        "Tap",
+        "the",
+        "writing",
+        "slate.",
+        "Let's",
+        "write!"
+      ]
+    },
+    {
+      "line": "planet.homeHint",
+      "file": "assets/voice/planet-home-hint.mp3",
+      "script": "Tap the big yellow button to fly home!",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Tap the big yellow button to fly home!</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 3.31,
+      "bytes": 20172,
+      "gainDb": -2.4,
+      "words": [
+        "Tap",
+        "the",
+        "big",
+        "yellow",
+        "button",
+        "to",
+        "fly",
+        "home!"
+      ]
+    },
+    {
+      "line": "home.ask",
+      "file": "assets/voice/home-ask.mp3",
+      "script": "Go back to Earth?",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Go back to Earth?</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 1.73,
+      "bytes": 10647,
+      "gainDb": -0.4,
+      "words": [
+        "Go",
+        "back",
+        "to",
+        "Earth?"
+      ]
+    },
+    {
+      "line": "rotate",
+      "file": "assets/voice/rotate.mp3",
+      "script": "Turn the screen sideways.",
+      "input": "<speak><speechify:style emotion=\"warm\"><prosody rate=\"-20%\">Turn the screen sideways.</prosody></speechify:style></speak>",
+      "voice": "harper_32",
+      "model": "simba-3.2",
+      "made": "2026-10-03",
+      "seconds": 2.16,
+      "bytes": 13247,
+      "gainDb": -4.1,
+      "words": [
+        "Turn",
+        "the",
+        "screen",
+        "sideways."
+      ]
+    }
+  ]
+}

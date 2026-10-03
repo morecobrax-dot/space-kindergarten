@@ -1,0 +1,10 @@
+{
+  "voice": "harper_32",
+  "model": "simba-3.2",
+  "rate": "-20%",
+  "emotion": "warm",
+  "sampleRate": 24000,
+  "bitrate": "48k",
+  "level": -20,
+  "budget": 15000
+}

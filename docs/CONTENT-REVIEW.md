@@ -801,6 +801,20 @@ The voice is still the device's built-in speech voice, a temporary stand-in
 for recorded narration: a slower pace makes it easier to follow, not more
 natural. See [AUDIO.md](AUDIO.md).
 
+## 29. Pip's recorded voice: the voice pilot (v0.7.1)
+
+AI-generated (Speechify, the stock voice "Harper"), heard only in the first
+trip to the Moon and its Letter Explorer mission. **Nobody has listened to
+it in the app yet.** See [AUDIO.md](AUDIO.md), "The voice pilot".
+
+| Item | Current | Question for the reviewer | Status |
+|---|---|---|---|
+| The voice | A warm, soft adult voice, AI-generated, US English | Warm, clear and calm — a friend, not a cheerleader? Right for 4 to 6? | Awaiting review |
+| The pace | 20% slower than the voice's own: about 2.9 words a second in a story line, with the app's pauses between lines | Comfortable for 4 to 6? | Awaiting review |
+| Letter names in sentences | "em", "ess", "oh" (made from "O"), "tee", in "Find the letter em." and the rest | Is each name clear, and never heard as another letter? | Awaiting review |
+| Fewer phrasings inside the pilot | Two questions and two praises a letter, one nudge, two "almost"s | Varied enough, or repetitive across replays? | Awaiting review |
+| The disclosure | "This voice is AI-generated, not a human voice. Voices powered by Speechify." in the grown-ups area | Clear to a parent? | Awaiting review |
+
 ---
 
 **Reviewer:** _____ **Date:** _____

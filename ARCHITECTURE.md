@@ -504,8 +504,12 @@ phonics voice for a sound, the device voice for anything else, a caption).
 The development phonics voice (`synthPhonics()`, `phonicsRender()`,
 `DevVoice`) is a small, deterministic formant synthesiser, played through
 the Web Audio output the first tap wakes (`AudioOut`), which `Sfx` shares.
-Recordings will play through one media element woken on the first tap
-(`MediaVoice`), only once one exists. The device voice speaks sentence by
+Recordings play through one media element woken on the first tap
+(`MediaVoice`): one clip at a time, every play settled. The voice pilot's
+recordings (`VOICE_PILOT`) play only inside its stretch of play
+(`voicePilot`, `recordingFor()`), where a family of lines rotates through
+its recorded phrasings only (`pilotTakes()`, `memberLine()`); the service
+worker answers them from the cache in byte ranges (`voiceClip()`). The device voice speaks sentence by
 sentence with punctuation pauses (`speechChunks()`). The pace is a
 grown-up's choice (`soundPrefs.pace`, `speechPace()`): the device voice's
 rate and every pause (`dialogueScale()`), never the phonics voice's own
@@ -652,7 +656,7 @@ See the QA notes in `docs/PRODUCT.md`.
 | You are adding | Put it |
 |---|---|
 | A picture | A file in `assets/`, one `ASSET_REGISTRY` entry, then `npm run config:sync` |
-| A recording | A registry entry, then its path in `VOICE_RECORDINGS` under the cue's id ([docs/AUDIO-RECORDINGS.md](docs/AUDIO-RECORDINGS.md) lists every one) |
+| A recording | A file in `assets/voice/` and its `voiceAsset()` registry entry (`tools/voice` build writes the voice pilot's, between the `VOICE-ASSETS` markers), then `npm run config:sync`; `VOICE_RECORDINGS` is derived from the registry. A line inside the pilot's stretch of play is recorded with the rest of it (`VOICE_PILOT.lines`) ([docs/AUDIO-RECORDINGS.md](docs/AUDIO-RECORDINGS.md) lists every recording) |
 | A word | One `WORDS` entry (picture, rime, beats, phonemes); every game can then use it |
 | A sight word | A `WORDS` entry with `sight: { list }`, its `phonemes`, and no picture, from a list recorded in `WORD_LISTS` and docs/CONTENT-SOURCES.md (whose decodability columns must match `soundsOutByLetter()` and `decodableHere()`) |
 | A letter to write | Nothing new: all 52 are in `LETTER_FORMS`. A `letter-trace` activity in a Moon Writer mission, and its strokes checked in docs/CONTENT-REVIEW.md |

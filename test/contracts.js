@@ -1961,9 +1961,14 @@ function testAssets(){
   section('CONTRACT 26 — every picture is registered, present, and ours');
   const app = H.loadApp();
   const c = app.ctx;
-  const reg = c.ASSET_REGISTRY;
+  const all = c.ASSET_REGISTRY;
+  /* Pictures are checked as pictures here; Pip's recorded voice (kind
+     'voice') is contract 63's. Both share one registry and one id space. */
+  const reg = all.filter(a => a.kind !== 'voice');
 
   sub('the registry');
+  T('ids are unique across pictures and recordings', new Set(all.map(a => a.id)).size === all.length);
+  T('everything registered is a picture or a recording of Pip', all.every(a => a.kind === undefined || a.kind === 'voice'));
   T('ids are unique', new Set(reg.map(a => a.id)).size === reg.length);
   T('every entry has purpose, source, licence, format, size and state',
     reg.every(a => a.purpose && a.source && a.license && a.format && a.dimensions && c.ASSET_STATES.indexOf(a.state) !== -1));
@@ -2022,7 +2027,7 @@ function testAssets(){
       if(e.isDirectory()) walk(full); else files.push(path.relative(H.ROOT, full).split(path.sep).join('/'));
     });
   })(path.join(H.ROOT, 'assets'));
-  const unregistered = files.filter(f => !reg.some(a => a.path === f));
+  const unregistered = files.filter(f => !all.some(a => a.path === f));
   T('every file under assets/ has a registry entry', unregistered.length === 0, unregistered.join(','));
 
   sub('the moodboard can never reach production');
@@ -2033,13 +2038,13 @@ function testAssets(){
     [...html.matchAll(/(?:href|src)\s*=\s*"([^"]+)"/g)].map(m => m[1]).join('\n');
   T('nothing the app loads or caches points into references/', !/references\//.test(requested));
   T('no registered path lies outside assets/ or the app icons',
-    reg.every(a => /^(assets\/|icon-\d+\.png$)/.test(a.path)));
+    all.every(a => /^(assets\/|icon-\d+\.png$)/.test(a.path)));
   T('the moodboard folder is git-ignored', /references\/visual\/\*/.test(fs.readFileSync(path.join(H.ROOT, '.gitignore'), 'utf8')));
   T('and its rules are written down', fs.existsSync(path.join(H.ROOT, 'references', 'README.md')));
 
   sub('derived from the registry, so they cannot drift');
   const sw = H.readSW();
-  T('the service worker precaches every core picture', reg.filter(a => a.load === 'core').every(a => sw.indexOf("'./" + a.path + "'") !== -1));
+  T('the service worker precaches every core picture, and every recording', all.filter(a => a.load === 'core').every(a => sw.indexOf("'./" + a.path + "'") !== -1));
   T('and nothing that waits: not the icons, not a world that is not yet near', reg.filter(a => a.load !== 'core').every(a => sw.indexOf("'./" + a.path + "'") === -1));
   T('the precache list config:sync writes holds the core pictures and nothing that waits', (() => {
     const list = require('../scripts/config.js').precacheList({ registry: reg });
@@ -2050,7 +2055,7 @@ function testAssets(){
     /function carryPictures\(older\)/.test(sw) && /carryPictures\(older\)\.then\(\(\) => Promise\.all\(older\.map\(k => caches\.delete\(k\)\)\)\)/.test(sw) &&
     /!PRECACHED\.has\(req\.url\) && new URL\(req\.url\)\.pathname\.indexOf\('\/assets\/'\) !== -1/.test(sw));
   const manifest = fs.readFileSync(path.join(H.ROOT, 'docs', 'ASSET-MANIFEST.md'), 'utf8');
-  T('the asset manifest lists every registered file', reg.every(a => manifest.indexOf('`' + a.path + '`') !== -1));
+  T('the asset manifest lists every registered file', all.every(a => manifest.indexOf('`' + a.path + '`') !== -1));
   T('and is marked as generated', /Do not hand-edit/.test(manifest));
 }
 
@@ -6393,6 +6398,373 @@ async function testComeBack(){
   T('no console errors', app.errors.length === 0, app.errors.join(' | '));
 }
 
+/* =========================================================
+   CONTRACT 63 — PIP'S RECORDED VOICE: THE VOICE PILOT
+   One stretch of play in a recorded voice — the first trip to the Moon
+   and its Letter Explorer mission — with no switch to the device voice
+   inside it and the device voice everywhere else; recordings that say
+   exactly their lines, say they are AI-generated, and play offline. The
+   media element here is a fake: nothing is heard, and no contract can
+   say how the voice sounds.
+   ========================================================= */
+function fakeMedia(o){
+  const opts = o || {};
+  const log = { events: opts.events || [], plays: [], active: 0, maxActive: 0, rates: [] };
+  class Media {
+    constructor(){ this.src = ''; this.ended = false; this.error = null; this.playbackRate = 1; this._t = null; this._on = false; }
+    play(){
+      const src = this.src;
+      if(/^data:/.test(src)) return Promise.resolve();
+      log.plays.push(src); log.rates.push(this.playbackRate); log.events.push('file:' + src);
+      this._halt(); this.ended = false; this.error = null;
+      this._on = true; log.active++; log.maxActive = Math.max(log.maxActive, log.active);
+      const fail = opts.fail && opts.fail(src), hang = opts.hang && opts.hang(src);
+      if(!hang) this._t = setTimeout(() => {
+        this._t = null; this._off();
+        if(fail){ this.error = { code: 4 }; if(this.onerror) this.onerror(); }
+        else { this.ended = true; if(this.onended) this.onended(); }
+      }, opts.ms || 1);
+      const late = opts.rejectLater && opts.rejectLater(src);
+      return late ? new Promise((res, rej) => setTimeout(() => rej(new Error('AbortError')), late)) : Promise.resolve();
+    }
+    _off(){ if(this._on){ this._on = false; log.active--; } }
+    _halt(){ if(this._t){ clearTimeout(this._t); this._t = null; } this._off(); }
+    pause(){ this._halt(); }
+  }
+  return { Audio: Media, log: log };
+}
+/* An app with the device voice and a media element, and one log of what
+   was heard in order: 'file:<line>' for a recording, 'tts:<words>' for
+   the device voice. */
+function pilotRig(o){
+  const opts = o || {}, events = [];
+  const sp = fakeSpeech();
+  const speak = sp.extras.speechSynthesis.speak;
+  sp.extras.speechSynthesis.speak = u => { if(String(u.text).trim()) events.push('tts:' + u.text); speak(u); };
+  const media = fakeMedia(Object.assign({ events: events }, opts));
+  const app = H.loadApp({ windowExtras: Object.assign({}, sp.extras, opts.noMedia ? {} : { Audio: media.Audio }) });
+  const c = fast(app.ctx);
+  const byPath = {};
+  Object.keys(c.VOICE_RECORDINGS).forEach(id => { byPath[c.VOICE_RECORDINGS[id]] = id; });
+  const heard = from => events.slice(from || 0).map(e => (e.indexOf('file:') === 0 ? 'file:' + (byPath[e.slice(5)] || e.slice(5)) : e));
+  return { app: app, c: c, media: media, events: events, heard: heard };
+}
+/* The round waiting for an answer, once it takes one. */
+async function openRound(c){
+  for(let i = 0; i < 400; i++){
+    const run = c.session.run;
+    if(run && run.round && !run.round.resolved && c.session.input === 'open' && Date.now() >= c.session.inputHeldUntil) return run.round;
+    if(c.currentScene !== 'mission') return null;
+    await wait(2);
+  }
+  return null;
+}
+function wrongChoice(r){ return r.options.map((_, i) => i).find(i => i !== r.answer && r.out.indexOf(i) === -1); }
+
+async function testVoicePilot(){
+  section('CONTRACT 63 — the voice pilot: one recorded voice from Launch to the way home, and honest about what it is');
+  const V = require('../tools/voice/voice.js');
+  const base = H.loadApp(), c = base.ctx, P = c.VOICE_PILOT;
+  const voice = c.ASSET_REGISTRY.filter(a => a.kind === 'voice');
+  const src = stripComments(js());
+
+  sub('what the pilot records');
+  T('every pilot line is a real line, listed once', P.lines.length === new Set(P.lines).size && P.lines.every(id => !!c.voiceCue(id)));
+  T('a small pilot, not the catalogue: at most 40 lines', P.lines.length <= 40, String(P.lines.length));
+  T('no sound a child learns from is in it: phonemes, words said sound by sound and blends stay separate assets',
+    P.lines.every(id => !(c.AUDIO_TYPES[c.cueType(id)] || {}).phonics) && !P.lines.some(id => /^(phoneme|seg|blend|letter)\./.test(id)));
+  const m = c.MISSIONS[P.mission];
+  const letters = [...new Set(m.activities.map(a => a.target).concat(m.replay.letters))];
+  T('every letter the mission and its replays can ask has its six lines: the question, a second phrasing, two praises, the nudge, the help',
+    m.activities.every(a => a.type === 'find-letter' && a.form === 'upper' && !a.from) &&
+    letters.every(L => ['find.' + L, 'find.' + L + '.3', 'found.' + L + '.0', 'found.' + L + '.1', 'again.' + L + '.0', 'show.' + L]
+      .every(id => P.lines.indexOf(id) !== -1)), letters.join(''));
+  T('the pilot\'s mission is played at a marker of its destination', m.destinationId === P.destination &&
+    Object.keys(c.DESTINATIONS[P.destination].markers).some(k => c.DESTINATIONS[P.destination].markers[k].missions.indexOf(P.mission) !== -1));
+  T('the grown-ups sample is made of pilot lines', P.sample.length > 0 && P.sample.every(id => P.lines.indexOf(id) !== -1));
+
+  sub('every recording is registered, present, and exactly its line');
+  const settings = JSON.parse(fs.readFileSync(path.join(H.ROOT, 'tools', 'voice', 'voice.json'), 'utf8'));
+  const takesFile = path.join(H.ROOT, 'tools', 'voice', 'takes.json');
+  T('the record of how each clip was made is in the repository (tools/voice/takes.json)', fs.existsSync(takesFile));
+  const takes = fs.existsSync(takesFile) ? JSON.parse(fs.readFileSync(takesFile, 'utf8')) : { clips: [] };
+  const take = a => takes.clips.find(t => t.file === a.path);
+  T('every pilot line has its recording, registered in ASSET_REGISTRY', c.voicePilotReady() &&
+    P.lines.every(id => voice.some(a => a.line === id && c.VOICE_RECORDINGS[id] === a.path)));
+  T('and nothing is recorded that the pilot does not say', voice.length === P.lines.length && voice.every(a => P.lines.indexOf(a.line) !== -1));
+  T('each clip was made from its line\'s script, word for word', voice.every(a => take(a) && take(a).line === a.line && take(a).script === c.voiceCue(a.line).speak),
+    voice.filter(a => !(take(a) && take(a).script === c.voiceCue(a.line).speak)).map(a => a.line).join(', '));
+  const sent = a => String(take(a) ? take(a).input : '').replace(/<[^>]+>/g, '')
+    .replace(/&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  T('and the service was sent exactly that script — but for the letter O, sent as "O": its spelling "oh" is read as the exclamation',
+    voice.every(a => sent(a) === V.inputText(c.voiceCue(a.line).speak)) && V.inputText('Where is the letter oh?') === 'Where is the letter O?' &&
+    V.inputText('Find the letter em.') === 'Find the letter em.', voice.filter(a => sent(a) !== V.inputText(c.voiceCue(a.line).speak)).map(a => a.line).join(', '));
+  T('by the stock Speechify voice tools/voice/voice.json names — never a test voice or the device\'s',
+    !!settings.voice && /^simba-/.test(settings.model) && voice.every(a => take(a) && take(a).voice === settings.voice && take(a).model === settings.model),
+    [...new Set(takes.clips.map(t => t.voice + '/' + t.model))].join(', '));
+  const bytes = a => fs.readFileSync(path.join(H.ROOT, a.path));
+  T('each is an MP3 in assets/voice/, and the registry states its real length',
+    voice.every(a => /^assets\/voice\/[a-z0-9-]+\.mp3$/.test(a.path) && Math.abs(V.mp3Seconds(bytes(a)) - a.seconds) < 0.011),
+    voice.filter(a => Math.abs(V.mp3Seconds(bytes(a)) - a.seconds) >= 0.011).map(a => a.line + ' ' + V.mp3Seconds(bytes(a)).toFixed(2) + ' vs ' + a.seconds).join(', '));
+  const tagged = a => { const b = bytes(a).subarray(0, 4096); return [b.toString('latin1'), b.toString('utf16le'), b.subarray(1).toString('utf16le')].some(t => t.indexOf('AI-generated voice, not a human voice') !== -1); };
+  T('each file says in its own tags that it is an AI-generated voice, not a human voice', voice.every(tagged), voice.filter(a => !tagged(a)).map(a => a.path).join(', '));
+  T('the registry names the service, says the voice is generated, the terms it is shipped on, and that nobody has signed it off',
+    voice.every(a => /Speechify/.test(a.source) && /AI-generated, not a human voice/.test(a.source) && /AI disclosure/.test(a.license) && a.state === 'DRAFT' && a.load === 'core'));
+  const sizes = voice.map(a => bytes(a).length), total = sizes.reduce((s, n) => s + n, 0);
+  /* Audio is measured apart from the pictures, whose budgets it never
+     touches: about two minutes of voice at 48 kbps, which keeps the "s" of
+     "ess" — a lower rate cuts the high sounds a letter name needs. */
+  T('audio has its own budget, apart from the pictures\': the pilot\'s clips under 800 KB together, none over 48 KB',
+    total < 800 * 1024 && sizes.every(n => n < 48 * 1024), Math.round(total / 1024) + ' KB, largest ' + Math.round(Math.max.apply(null, sizes.concat([0])) / 1024) + ' KB');
+  const tm = H.loadApp().ctx.TIMING;
+  T('even by its words alone, every line\'s safety timer outlasts its recording by a second',
+    voice.every(a => a.seconds * 1000 + 1000 < tm.speechSafetyBase + c.voiceCue(a.line).speak.length * tm.speechSafetyPerChar),
+    voice.filter(a => !(a.seconds * 1000 + 1000 < tm.speechSafetyBase + c.voiceCue(a.line).speak.length * tm.speechSafetyPerChar)).map(a => a.line).join(', '));
+
+  sub('what was measured in every clip (tools/voice/check.json)');
+  const checkFile = path.join(H.ROOT, 'tools', 'voice', 'check.json');
+  const checked = fs.existsSync(checkFile) ? JSON.parse(fs.readFileSync(checkFile, 'utf8')).clips : [];
+  const row = a => checked.find(r => r.line === a.line);
+  T('every shipped clip was measured, and its measured length is the registry\'s', voice.length > 0 &&
+    voice.every(a => row(a) && Math.abs(row(a).seconds - a.seconds) < 0.12), voice.filter(a => !row(a) || Math.abs(row(a).seconds - a.seconds) >= 0.12).map(a => a.line).join(', '));
+  T('one speaking level: every clip within a decibel of -20 dBFS while speaking, its peak under -1 dBFS',
+    checked.length > 0 && checked.every(r => Math.abs(r.levelDb + 20) <= 1 && r.peakDb < -1), checked.filter(r => !(Math.abs(r.levelDb + 20) <= 1 && r.peakDb < -1)).map(r => r.line).join(', '));
+  T('nothing clipped and no dead air: a breath of silence before and after every line, never more than 0.6 s',
+    checked.length > 0 && checked.every(r => r.leadSeconds > 0 && r.leadSeconds <= 0.1 && r.tailSeconds >= 0.05 && r.tailSeconds <= 0.6),
+    checked.filter(r => !(r.leadSeconds > 0 && r.leadSeconds <= 0.1 && r.tailSeconds >= 0.05 && r.tailSeconds <= 0.6)).map(r => r.line + ' ' + r.leadSeconds + '/' + r.tailSeconds).join(', '));
+  const letterRows = checked.filter(r => r.letter);
+  T('every letter line was put to the recogniser three times, and was never heard as another letter',
+    letterRows.length === P.lines.filter(id => /^(find|found|again|show)\./.test(id)).length &&
+    letterRows.every(r => Array.isArray(r.letterRuns) && r.letterRuns.length === 3 && r.letterRuns.every(p => p === null || p === r.letter)),
+    letterRows.filter(r => !(r.letterRuns || []).every(p => p === null || p === r.letter)).map(r => r.line + ' ' + (r.letterRuns || []).join('/')).join(', '));
+
+  sub('the first trip to the Moon, in one voice');
+  const R = pilotRig(), a1 = R.c;
+  await a1.startAdventure();
+  T('before it, Pip speaks with the device voice, and no recording plays', R.events.length > 0 && R.events.every(e => e.indexOf('tts:') === 0) && !a1.voicePilot.on);
+  const at = R.events.length;
+  a1.unlockAudio();
+  await a1.launch();
+  T('Launch towards the pilot\'s mission begins the pilot', a1.voicePilot.on && a1.session.visit && a1.session.visit.dest === P.destination);
+  await a1.tapMarker('beacon');
+  const asked = [], letter = [];
+  const note = r => { asked.push(r.askLines.filter(x => typeof x === 'string')[0]); letter.push(r.activity.target); };
+  let r = await openRound(a1); note(r); await a1.choose(r.answer);
+  r = await openRound(a1); note(r); await a1.choose(wrongChoice(r)); r = await openRound(a1); await a1.choose(r.answer);
+  r = await openRound(a1); note(r); await a1.choose(wrongChoice(r)); r = await openRound(a1); await a1.choose(wrongChoice(r));
+  r = await openRound(a1); await a1.choose(r.answer);
+  r = await openRound(a1); note(r);
+  a1.TIMING.reprompt = 5; a1.armReprompt(a1.session.run); await wait(120); a1.TIMING.reprompt = 1e9; a1.disarmReprompt();
+  a1.repeatPrompt(); await wait(20);
+  a1.Voice.say('rotate'); await wait(20);
+  a1.askGoHome(); await wait(20); a1.closeHomeSheet(); await wait(20);
+  r = await openRound(a1); await a1.choose(r.answer);
+  r = await openRound(a1); note(r); await a1.choose(r.answer);
+  r = await openRound(a1); note(r); await a1.choose(r.answer);
+  await wait(30);
+  const trip = R.heard(at);
+  T('from Launch to the celebration, nothing was said by the device voice', trip.length > 20 && trip.every(e => e.indexOf('file:') === 0),
+    trip.filter(e => e.indexOf('tts:') === 0).join(' / '));
+  T('and every clip that played is a pilot recording', trip.every(e => P.lines.indexOf(e.slice(5)) !== -1), trip.filter(e => P.lines.indexOf(e.slice(5)) === -1).join(', '));
+  ['travel.launch.1', 'story.moon.firstArrive', 'marker.beacon', 'mission.howTo', 'feedback.almost.1', 'feedback.almost.2', 'rotate', 'home.ask',
+   'story.moon.restored', 'stars.found.3', 'story.mercury.reveal', 'marker.slate'].forEach(id =>
+    T('heard in the pilot: ' + id, trip.indexOf('file:' + id) !== -1));
+  T('the help shows the letter in the pilot voice', trip.some(e => /^file:show\.[MSOT]$/.test(e)));
+  const nudges = trip.filter(e => /^file:again\./.test(e));
+  T('the nudge, twice, uses its one recorded phrasing', nudges.length === 2 && nudges[0] === nudges[1] && /\.0$/.test(nudges[0]), nudges.join(', '));
+  T('the questions rotate through their recorded phrasings, the plainest first', asked.length === 6 &&
+    asked.every((id, i) => id === 'find.' + letter[i] + (i % 2 ? '.3' : '')), asked.join(', '));
+  const praise = trip.filter(e => /^file:found\./.test(e)).map(e => e.slice(-1));
+  T('praise alternates its two phrasings: never the same one twice in a row', praise.length === 6 && praise.every((k, i) => i === 0 || k !== praise[i - 1]), praise.join(''));
+  T('one clip at a time: no two ever overlapped', R.media.log.maxActive === 1, String(R.media.log.maxActive));
+  const t2 = R.events.length;
+  await a1.tapMarker('beacon');
+  T('back on the planet, still the pilot: the lit beacon points at the slate in the same voice', R.heard(t2).join() === 'file:marker.slate', R.heard(t2).join(', '));
+  const t2b = R.events.length;
+  await a1.tapMarker('slate');
+  T('another mission on the same visit ends the pilot as it starts', a1.session.run && a1.session.run.missionId !== P.mission && !a1.voicePilot.on);
+  await playMission(a1);
+  await wait(20);
+  T('so Moon Writer and its celebration are all the device voice, its stars included — no recorded line slips in',
+    R.heard(t2b).length > 3 && R.heard(t2b).every(e => e.indexOf('tts:') === 0), R.heard(t2b).filter(e => e.indexOf('file:') === 0).join(', '));
+  a1.session.celebrateReadyAt = 0;
+  const t3 = R.events.length;
+  await a1.flyHome();
+  T('leaving the Moon ends the pilot: home, Pip speaks with the device voice again', !a1.voicePilot.on && R.heard(t3).length > 0 &&
+    R.heard(t3).every(e => e.indexOf('tts:') === 0), R.heard(t3).join(' / '));
+
+  sub('the mission again, the way home, and a grown-up\'s trip to hear it');
+  a1.pickDestination('moon');
+  await a1.launch();
+  T('a trip to the Moon for another mission is not the pilot', a1.session.visit.dest === 'moon' && !a1.voicePilot.on && a1.markerNext('moon') !== P.mission);
+  await a1.tapMarker(a1.markerOf(a1.markerNext('moon')));
+  await playMission(a1);
+  const t4 = R.events.length;
+  await a1.tapMarker('beacon');
+  await playMission(a1);
+  await wait(20);
+  a1.tapPip(); await wait(20);
+  const again = R.heard(t4);
+  T('the pilot\'s mission played again from its lit beacon is the pilot, from its first word to the way home',
+    again.length > 10 && again.every(e => e.indexOf('file:') === 0) && again[0] === 'file:mission.again.1' &&
+    ['story.moon.shining.1', 'stars.found.3', 'planet.homeHint'].every(id => again.indexOf('file:' + id) !== -1), again.join(', '));
+  a1.session.celebrateReadyAt = 0;
+  await a1.flyHome();
+  a1.openGrownups();
+  const t5 = R.events.length;
+  await a1.playVoiceSample();
+  T('the grown-ups sample plays the pilot voice, through Voice', R.heard(t5).join() === P.sample.map(id => 'file:' + id).join() && !a1.voicePilot.sample,
+    R.heard(t5).join(', '));
+  const t5b = R.events.length;
+  a1.playVoiceSample(); await wait(3);
+  await a1.playVoiceSample();
+  T('"Hear a sample" tapped twice starts over, still in the pilot voice to its last line', R.heard(t5b).every(e => e.indexOf('file:') === 0) &&
+    R.heard(t5b).slice(-P.sample.length).join() === P.sample.map(id => 'file:' + id).join() && !a1.voicePilot.sample, R.heard(t5b).join(', '));
+  const t6 = R.events.length;
+  await a1.playVoicePilot();
+  T('"Play the pilot trip" flies to the Moon in the pilot voice, where the beacon starts the pilot\'s mission',
+    a1.voicePilot.on && a1.session.visit.pilot && a1.markerNext('moon') === P.mission &&
+    R.heard(t6).join() === 'file:travel.launch.1,file:story.moon.arrive.3,file:marker.beacon', R.heard(t6).join(', '));
+  await a1.tapMarker('beacon');
+  await playMission(a1);
+  const trip2 = R.heard(t6);
+  T('and plays it through in that voice', trip2.every(e => e.indexOf('file:') === 0) && trip2.indexOf('file:stars.found.3') !== -1, trip2.filter(e => e.indexOf('tts:') === 0).join(' / '));
+  const heardAll = new Set(R.heard(0).filter(e => e.indexOf('file:') === 0).map(e => e.slice(5)));
+  const unletter = P.lines.filter(id => !/^(find|found|again|show)\./.test(id));
+  T('every recorded moment was needed: each was heard in these plays', unletter.every(id => heardAll.has(id)), unletter.filter(id => !heardAll.has(id)).join(', '));
+  T('no console errors', R.app.errors.length === 0, R.app.errors.join(' | '));
+
+  sub('outside the pilot, and when a recording cannot play');
+  const O = pilotRig(), oc = O.c;
+  oc.unlockAudio();
+  T('outside the pilot a pilot line has no recording, and the family rotates as written',
+    oc.voiceCue('find.M').file === null && oc.audioRoute(oc.voiceCue('find.M')) === 'tts' && oc.familyLine('feedback.almost', 2) === 'feedback.almost.3');
+  oc.voicePilot.on = true;
+  T('inside it, the same line is the recording', oc.audioRoute(oc.voiceCue('find.M')) === 'file' && oc.familyLine('feedback.almost', 2) === 'feedback.almost.1');
+  oc.soundPrefs.voice = false;
+  const o1 = O.events.length;
+  await oc.Voice.say('find.M');
+  T('with spoken instructions off, nothing plays at all', oc.audioRoute(oc.voiceCue('find.M')) === 'visual' && O.events.length === o1);
+  oc.soundPrefs.voice = true;
+  const N = pilotRig({ noMedia: true }), nc = N.c;
+  nc.voicePilot.on = true;
+  T('with no way to play a recording, the device voice keeps every line, rotating as written',
+    nc.audioRoute(nc.voiceCue('find.M')) === 'tts' && nc.familyLine('feedback.almost', 1) === 'feedback.almost.2' &&
+    nc.memberLine('found.M', 5, 3) === 'found.M.3');
+  const F = pilotRig({ fail: s => /find-s\.mp3$/.test(s) }), fc = F.c;
+  fc.unlockAudio(); fc.voicePilot.on = true;
+  await fc.Voice.say('find.S');
+  T('a recording that fails is said by the device voice instead, and the line still ends', F.heard(0).join(' | ') === 'file:find.S | tts:Find the letter ess.', F.heard(0).join(' | '));
+
+  sub('interrupted, tapped fast, backgrounded, cancelled');
+  const W = pilotRig(), wc = W.c;
+  wc.voicePilot.on = true;
+  const w0 = Date.now();
+  wc.unlockAudio();
+  await wc.Voice.say('travel.launch.1');
+  T('the tap that wakes the media element can start a line at once: waking it never pauses that line',
+    Date.now() - w0 < 500 && W.media.log.active === 0 && W.heard(0).join() === 'file:travel.launch.1', (Date.now() - w0) + ' ms');
+  const Q = pilotRig({ ms: 30 }), qc = Q.c;
+  qc.unlockAudio(); qc.voicePilot.on = true;
+  for(let i = 0; i < 6; i++){ qc.Voice.say(i % 2 ? 'find.S' : 'find.M'); await wait(3); }
+  await qc.Voice.say('find.O');
+  T('rapid taps: one clip at a time, and the last one asked is heard to its end', Q.media.log.maxActive === 1 && Q.media.log.active === 0 &&
+    Q.heard(0).slice(-1)[0] === 'file:find.O');
+  const S = pilotRig({ hang: s => /find-m\.mp3$/.test(s), rejectLater: s => (/find-m\.mp3$/.test(s) ? 6 : 0), ms: 20 }), scx = S.c;
+  scx.unlockAudio(); scx.voicePilot.on = true; scx.TIMING.speechSafetyBase = 3000;
+  scx.Voice.say('find.M'); await wait(2);
+  const s0 = Date.now();
+  await scx.Voice.say('find.S');
+  T('a late refusal from the clip before cannot stall the next one', Date.now() - s0 < 1000, (Date.now() - s0) + ' ms');
+  const hang = pilotRig({ hang: () => true }), hc = hang.c;
+  hc.unlockAudio();
+  const pending = hc.MediaVoice.play('assets/voice/find-m.mp3');
+  hc.MediaVoice.stop();
+  T('stopping a clip settles it: nothing waits on it forever', (await Promise.race([pending, wait(200).then(() => 'still waiting')])) === false);
+  hc.voicePilot.on = true;
+  const h0 = Date.now(), len = hc.VOICE_SECONDS['travel.launch.1'] * 1000;
+  await hc.Voice.say('travel.launch.1');
+  T('a clip that never reports its end is waited for its own length, then Pip moves on', Date.now() - h0 >= len - 30 && Date.now() - h0 < len + 1500, (Date.now() - h0) + ' ms for ' + len);
+  const B = pilotRig({ ms: 60 }), bc = B.c, bd = B.app.dom.document;
+  await bc.startAdventure();
+  await bc.launch();
+  await bc.tapMarker('beacon');
+  await openRound(bc);
+  await wait(20);
+  bd.visibilityState = 'hidden'; bd.dispatch('visibilitychange');
+  T('sent to the background mid-clip, the clip stops', B.media.log.active === 0);
+  const b0 = B.events.length;
+  bd.visibilityState = 'visible'; bd.dispatch('visibilitychange');
+  await wait(90);
+  T('back, the question is asked again in the pilot voice', B.heard(b0)[0] === 'file:' + bc.session.run.round.askLines[0], B.heard(b0).join(', '));
+  bc.soundPrefs.pace = 'quicker';
+  bc.repeatPrompt(); await wait(90);
+  T('either pace, a recording plays at the speed it was recorded: the pace changes the pauses, never the voice',
+    B.media.log.rates.every(x => x === 1) && src.indexOf('playbackRate') === -1 && bc.dialogueScale() === bc.TIMING.dialogueScale * 0.75);
+  T('no console errors', [O, N, F, W, Q, S, hang, B].every(x => x.app.errors.length === 0), [O, N, F, W, Q, S, hang, B].map(x => x.app.errors.join('|')).join(' '));
+
+  sub('the grown-ups area, and only there');
+  const html = H.readApp();
+  const overlay = html.slice(html.indexOf('id="grownupOverlay"'));
+  const outside = html.slice(0, html.indexOf('id="grownupOverlay"'));
+  T('the sample and the pilot trip are grown-ups controls: no voice choice anywhere a child can reach',
+    /onclick="playVoiceSample\(\)"/.test(overlay) && /onclick="playVoicePilot\(\)"/.test(overlay) && !/playVoice(Sample|Pilot)|voicePilot/.test(outside));
+  T('it says the voice is AI-generated, not a human voice, and "Voices powered by Speechify"',
+    /This voice is AI-generated, not a human voice\. Voices powered by Speechify\./.test(overlay));
+  const G = pilotRig(), gc = G.c, gd = G.app.dom.document;
+  await gc.startAdventure();
+  gc.TIMING.gateHold = 5;
+  const gateEl = gd.getElementById('gateBtn');
+  gateEl.style.setProperty = () => {};   // the harness's elements have no CSS
+  let stopped = 0;
+  const lift = () => gateEl.dispatch('touchend', { cancelable: true, preventDefault(){ stopped++; } });
+  gateEl.dispatch('pointerdown', { preventDefault(){} });
+  await wait(30);
+  lift();
+  const openAfterLift = gd.getElementById('grownupOverlay').classList.contains('open');
+  lift();
+  T('the finger that held the lock open lifts without tapping the page it opened (its Back button is where the lock was)',
+    openAfterLift && stopped === 1, 'open ' + openAfterLift + ', lifts stopped ' + stopped);
+  T('a letter\'s sound is still called development audio: the pilot records no sound', /detailRow\('Letter sounds', Object\.keys\(VOICE_RECORDINGS\)\.some\(id => \/\^\(phoneme\|seg\|blend\)/.test(src));
+
+  sub('offline, in the byte ranges an audio element asks for');
+  const vm = require('vm');
+  const BASE = 'https://example.github.io/app/sw.js';
+  const clip = voice[0];
+  const url = new URL(clip ? clip.path : 'assets/voice/none.mp3', BASE).href, body = clip ? bytes(clip) : Buffer.alloc(0);
+  const fetched = [];
+  const store = new Map([[url, body]]);
+  const cache = { match: (r, o) => Promise.resolve(store.has(typeof r === 'string' ? r : r.url) && o && o.ignoreVary
+    ? new Response(store.get(typeof r === 'string' ? r : r.url), { headers: { 'Content-Type': 'audio/mpeg' } }) : undefined) };
+  const handlers = {};
+  const sandbox = { URL, Set, Map, Promise, Array, String, Number, Math, Object, TypeError, Error, Response,
+    location: { href: BASE, origin: 'https://example.github.io' },
+    fetch: r => { fetched.push(typeof r === 'string' ? r : r.url); return Promise.reject(new TypeError('offline')); },
+    caches: { open: () => Promise.resolve(cache), match: () => Promise.resolve(undefined), keys: () => Promise.resolve([]) } };
+  sandbox.self = { addEventListener: (t, fn) => { handlers[t] = fn; }, location: sandbox.location };
+  vm.runInNewContext(H.readSW(), sandbox, { filename: 'sw.js' });
+  const ask = (u, range) => { const ev = { request: { url: u, method: 'GET', mode: 'no-cors', headers: new Headers(range ? { range: range } : {}) }, respondWith(p){ this.p = p; } };
+    handlers.fetch(ev); return ev.p ? Promise.resolve(ev.p) : Promise.resolve(null); };
+  const size = body.length;
+  const first = await ask(url, 'bytes=0-1');
+  const firstBytes = first ? Buffer.from(await first.arrayBuffer()) : Buffer.alloc(0);
+  T('Safari\'s first probe, "bytes=0-1", is answered from the cache as 206 Partial Content: two bytes, and the size',
+    !!first && first.status === 206 && first.headers.get('Content-Range') === 'bytes 0-1/' + size && firstBytes.equals(body.subarray(0, 2)) &&
+    first.headers.get('Content-Type') === 'audio/mpeg');
+  const rest = await ask(url, 'bytes=100-');
+  const restBytes = rest ? Buffer.from(await rest.arrayBuffer()) : Buffer.alloc(0);
+  T('the rest of the file, from any byte on', !!rest && rest.status === 206 && restBytes.equals(body.subarray(100)) && rest.headers.get('Content-Length') === String(size - 100));
+  const tail = await ask(url, 'bytes=-64');
+  T('the last bytes, asked from the end', !!tail && tail.status === 206 && Buffer.from(await tail.arrayBuffer()).equals(body.subarray(size - 64)));
+  const past = await ask(url, 'bytes=' + (size + 10) + '-');
+  T('a range past the end is refused as 416, with the size', !!past && past.status === 416 && past.headers.get('Content-Range') === 'bytes */' + size);
+  const whole = await ask(url, null);
+  T('no range: the whole file', !!whole && whole.status === 200 && Buffer.from(await whole.arrayBuffer()).equals(body));
+  T('all of it with the network gone, and without asking the network', fetched.length === 0, fetched.join(', '));
+  const other = await ask(new URL('assets/voice/not-installed.mp3', BASE).href, 'bytes=0-1').catch(() => null);
+  T('a file this version did not install is asked of the network, never cut from the cache', fetched.length === 1 && !(other && other.status === 206));
+}
+
 module.exports = {
   T, section, sub, results, reset, testPortability, testClayWorld,
   testBoot, testConfig, testStorage, testCollision, testMigration,
@@ -6405,5 +6777,6 @@ module.exports = {
   testHud, testTravel, testInput, testPlayfield, testStation,
   testAudioSystem, testWordBase, testSoundScout, testWordBuilder, testMars, testReview, testSoundDesign,
   testLetterforms, testLetterCases, testSightWords, testTracing, testMoonWriter, testJupiter, testAssetLoading, testGrownupsSeven,
-  testWorldKeeping, testUpdates, testWorker, testLateTakeover, testFindsReleases, testReplays, testSpeechPace, testPhone, testComeBack
+  testWorldKeeping, testUpdates, testWorker, testLateTakeover, testFindsReleases, testReplays, testSpeechPace, testPhone, testComeBack,
+  testVoicePilot
 };

@@ -602,3 +602,38 @@ rocket gear, and slowed Pip down.
      to the background once left a silent round that would never be asked
      again. A planet in the sky, like everything a child taps, is a whole
      `--touch-kid` target however small it is drawn.
+
+## Pip's recorded voice
+
+These came from the voice pilot (v0.7.1), the first recordings the app
+ships.
+
+102. **A recorded voice says what it is.** The pilot's narration is
+     AI-generated (Speechify, a stock voice: never cloned, never a child's,
+     never an imitation of a real person or a character). Every file says so
+     in its tags; the grown-ups area says so with "Voices powered by
+     Speechify", which the service's terms require; docs/CONTENT-SOURCES.md
+     records the source. It stays DRAFT until a person has listened.
+103. **One voice per exchange.** A pilot recording plays only inside
+     `VOICE_PILOT`'s stretch of play (`voicePilot.on`). Inside it, every
+     line that stretch can say is recorded, and a family rotates through its
+     recorded phrasings only (`pilotTakes()`). A new line the pilot's
+     stretch of play can say is recorded with it, or Pip changes voice in
+     the middle of an exchange.
+104. **Clips are made by `tools/voice` alone.** The key comes from the
+     environment, never the repository or the output. The tool stops at its
+     monthly budget and at the first 402, and never retries. The registry's
+     voice entries are derived from `tools/voice/takes.json` (`build`), and
+     `check` records what was measured in `tools/voice/check.json`: a letter
+     line is never heard as another letter. Letter sounds never come from
+     this voice (rule 33).
+105. **A clip is a core asset with its own budget** (under 800 KB, apart
+     from the pictures'), answered cache-first in byte ranges by the worker
+     (Safari will not play a whole-file answer to a range request), and
+     played by the one `MediaVoice` element: one clip at a time, every play
+     settled, and the silence that wakes it never pauses a clip (it once
+     silenced the line its tap was for). A clip plays at the speed it was
+     made; the pace changes only the pauses.
+106. **A hold that opens a page is not a tap on it.** The grown-ups lock's
+     Back button sits under the finger that held the lock: in Chromium the
+     lift closed the page as it opened.

@@ -1,0 +1,582 @@
+{
+  "method": "tools/voice check: each shipped MP3 decoded to 16 kHz; lengths and levels measured in 10 ms frames; each letter line given three times to Windows' offline speech recogniser (System.Speech, en-US) with the sentence that names the letter, once with each of M, S, O and T. null: it matched none of the four. Not a person listening.",
+  "checked": "2026-10-03",
+  "clips": [
+    {
+      "line": "travel.launch.1",
+      "seconds": 1.53,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.09,
+      "levelDb": -20.25,
+      "peakDb": -7.8,
+      "wordsPerSecond": 1.45,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "story.moon.firstArrive",
+      "seconds": 6.27,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.29,
+      "levelDb": -20.39,
+      "peakDb": -9.01,
+      "wordsPerSecond": 2.88,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "story.moon.arrive.3",
+      "seconds": 2.55,
+      "leadSeconds": 0.03,
+      "tailSeconds": 0.31,
+      "levelDb": -20.45,
+      "peakDb": -10.42,
+      "wordsPerSecond": 2.71,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "marker.beacon",
+      "seconds": 2.34,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.22,
+      "levelDb": -20.36,
+      "peakDb": -8.23,
+      "wordsPerSecond": 2.45,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "mission.howTo",
+      "seconds": 3.13,
+      "leadSeconds": 0.06,
+      "tailSeconds": 0.28,
+      "levelDb": -20.53,
+      "peakDb": -7.83,
+      "wordsPerSecond": 2.51,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "mission.again.1",
+      "seconds": 1.74,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.48,
+      "levelDb": -20.47,
+      "peakDb": -8.2,
+      "wordsPerSecond": 3.31,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "find.M",
+      "seconds": 1.9,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.36,
+      "levelDb": -20.44,
+      "peakDb": -10.65,
+      "wordsPerSecond": 2.68,
+      "letter": "M",
+      "letterRuns": [
+        "M",
+        "M",
+        "M"
+      ],
+      "letterConfidence": 0.85
+    },
+    {
+      "line": "find.M.3",
+      "seconds": 2.07,
+      "leadSeconds": 0.06,
+      "tailSeconds": 0.4,
+      "levelDb": -20.43,
+      "peakDb": -9.29,
+      "wordsPerSecond": 3.11,
+      "letter": "M",
+      "letterRuns": [
+        "M",
+        "M",
+        "M"
+      ],
+      "letterConfidence": 0.78
+    },
+    {
+      "line": "found.M.0",
+      "seconds": 2.84,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.33,
+      "levelDb": -19.67,
+      "peakDb": -6.74,
+      "wordsPerSecond": 2.03,
+      "letter": "M",
+      "letterRuns": [
+        null,
+        null,
+        null
+      ],
+      "letterConfidence": 0
+    },
+    {
+      "line": "found.M.1",
+      "seconds": 3.4,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.3,
+      "levelDb": -20.44,
+      "peakDb": -9.42,
+      "wordsPerSecond": 2.3,
+      "letter": "M",
+      "letterRuns": [
+        "M",
+        "M",
+        "M"
+      ],
+      "letterConfidence": 0.91
+    },
+    {
+      "line": "again.M.0",
+      "seconds": 2.84,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.23,
+      "levelDb": -20.35,
+      "peakDb": -9.27,
+      "wordsPerSecond": 1.95,
+      "letter": "M",
+      "letterRuns": [
+        "M",
+        "M",
+        "M"
+      ],
+      "letterConfidence": 0.86
+    },
+    {
+      "line": "show.M",
+      "seconds": 5.14,
+      "leadSeconds": 0.03,
+      "tailSeconds": 0.26,
+      "levelDb": -20.15,
+      "peakDb": -7.87,
+      "wordsPerSecond": 2.06,
+      "letter": "M",
+      "letterRuns": [
+        "M",
+        "M",
+        "M"
+      ],
+      "letterConfidence": 0.89
+    },
+    {
+      "line": "find.S",
+      "seconds": 2.17,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.15,
+      "levelDb": -19.39,
+      "peakDb": -10.22,
+      "wordsPerSecond": 2.04,
+      "letter": "S",
+      "letterRuns": [
+        "S",
+        "S",
+        "S"
+      ],
+      "letterConfidence": 0.83
+    },
+    {
+      "line": "find.S.3",
+      "seconds": 2.43,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.42,
+      "levelDb": -20.41,
+      "peakDb": -8.09,
+      "wordsPerSecond": 2.56,
+      "letter": "S",
+      "letterRuns": [
+        null,
+        null,
+        null
+      ],
+      "letterConfidence": 0
+    },
+    {
+      "line": "found.S.0",
+      "seconds": 3.35,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.39,
+      "levelDb": -20.21,
+      "peakDb": -7.09,
+      "wordsPerSecond": 1.72,
+      "letter": "S",
+      "letterRuns": [
+        "S",
+        null,
+        null
+      ],
+      "letterConfidence": 0.73
+    },
+    {
+      "line": "found.S.1",
+      "seconds": 3.81,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.27,
+      "levelDb": -19.97,
+      "peakDb": -8.88,
+      "wordsPerSecond": 2.01,
+      "letter": "S",
+      "letterRuns": [
+        "S",
+        "S",
+        "S"
+      ],
+      "letterConfidence": 0.89
+    },
+    {
+      "line": "again.S.0",
+      "seconds": 3.31,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.22,
+      "levelDb": -19.71,
+      "peakDb": -7.81,
+      "wordsPerSecond": 1.66,
+      "letter": "S",
+      "letterRuns": [
+        "S",
+        "S",
+        "S"
+      ],
+      "letterConfidence": 0.88
+    },
+    {
+      "line": "show.S",
+      "seconds": 4.7,
+      "leadSeconds": 0.03,
+      "tailSeconds": 0.36,
+      "levelDb": -19.65,
+      "peakDb": -7.05,
+      "wordsPerSecond": 2.32,
+      "letter": "S",
+      "letterRuns": [
+        "S",
+        "S",
+        "S"
+      ],
+      "letterConfidence": 0.92
+    },
+    {
+      "line": "find.O",
+      "seconds": 2.12,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.24,
+      "levelDb": -20.44,
+      "peakDb": -10.72,
+      "wordsPerSecond": 2.2,
+      "letter": "O",
+      "letterRuns": [
+        "O",
+        "O",
+        "O"
+      ],
+      "letterConfidence": 0.66
+    },
+    {
+      "line": "find.O.3",
+      "seconds": 1.96,
+      "leadSeconds": 0.06,
+      "tailSeconds": 0.41,
+      "levelDb": -20.32,
+      "peakDb": -8.87,
+      "wordsPerSecond": 3.38,
+      "letter": "O",
+      "letterRuns": [
+        "O",
+        "O",
+        "O"
+      ],
+      "letterConfidence": 0.65
+    },
+    {
+      "line": "found.O.0",
+      "seconds": 3.23,
+      "leadSeconds": 0.06,
+      "tailSeconds": 0.22,
+      "levelDb": -19.59,
+      "peakDb": -6.53,
+      "wordsPerSecond": 1.69,
+      "letter": "O",
+      "letterRuns": [
+        "O",
+        "O",
+        "O"
+      ],
+      "letterConfidence": 0.91
+    },
+    {
+      "line": "found.O.1",
+      "seconds": 3.73,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.39,
+      "levelDb": -20.44,
+      "peakDb": -9.49,
+      "wordsPerSecond": 2.13,
+      "letter": "O",
+      "letterRuns": [
+        "O",
+        "O",
+        "O"
+      ],
+      "letterConfidence": 0.85
+    },
+    {
+      "line": "again.O.0",
+      "seconds": 3.09,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.26,
+      "levelDb": -20.22,
+      "peakDb": -8.9,
+      "wordsPerSecond": 1.8,
+      "letter": "O",
+      "letterRuns": [
+        "O",
+        "O",
+        "O"
+      ],
+      "letterConfidence": 0.85
+    },
+    {
+      "line": "show.O",
+      "seconds": 4.57,
+      "leadSeconds": 0.02,
+      "tailSeconds": 0.09,
+      "levelDb": -20.28,
+      "peakDb": -9.1,
+      "wordsPerSecond": 2.24,
+      "letter": "O",
+      "letterRuns": [
+        "O",
+        "O",
+        "O"
+      ],
+      "letterConfidence": 0.89
+    },
+    {
+      "line": "find.T",
+      "seconds": 1.76,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.59,
+      "levelDb": -20.44,
+      "peakDb": -10.54,
+      "wordsPerSecond": 3.6,
+      "letter": "T",
+      "letterRuns": [
+        "T",
+        "T",
+        "T"
+      ],
+      "letterConfidence": 0.71
+    },
+    {
+      "line": "find.T.3",
+      "seconds": 1.85,
+      "leadSeconds": 0.06,
+      "tailSeconds": 0.41,
+      "levelDb": -20.36,
+      "peakDb": -9.43,
+      "wordsPerSecond": 3.65,
+      "letter": "T",
+      "letterRuns": [
+        "T",
+        "T",
+        "T"
+      ],
+      "letterConfidence": 0.88
+    },
+    {
+      "line": "found.T.0",
+      "seconds": 2.71,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.2,
+      "levelDb": -19.9,
+      "peakDb": -8.11,
+      "wordsPerSecond": 2.04,
+      "letter": "T",
+      "letterRuns": [
+        null,
+        null,
+        null
+      ],
+      "letterConfidence": 0
+    },
+    {
+      "line": "found.T.1",
+      "seconds": 3.59,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.26,
+      "levelDb": -20.5,
+      "peakDb": -9.1,
+      "wordsPerSecond": 2.13,
+      "letter": "T",
+      "letterRuns": [
+        "T",
+        "T",
+        "T"
+      ],
+      "letterConfidence": 0.89
+    },
+    {
+      "line": "again.T.0",
+      "seconds": 3.04,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.28,
+      "levelDb": -20.2,
+      "peakDb": -9,
+      "wordsPerSecond": 1.85,
+      "letter": "T",
+      "letterRuns": [
+        "T",
+        "T",
+        "T"
+      ],
+      "letterConfidence": 0.9
+    },
+    {
+      "line": "show.T",
+      "seconds": 4.7,
+      "leadSeconds": 0.03,
+      "tailSeconds": 0.22,
+      "levelDb": -20.28,
+      "peakDb": -7.55,
+      "wordsPerSecond": 2.25,
+      "letter": "T",
+      "letterRuns": [
+        "T",
+        "T",
+        "T"
+      ],
+      "letterConfidence": 0.87
+    },
+    {
+      "line": "feedback.almost.1",
+      "seconds": 2.5,
+      "leadSeconds": 0.04,
+      "tailSeconds": 0.31,
+      "levelDb": -20.24,
+      "peakDb": -8.56,
+      "wordsPerSecond": 1.4,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "feedback.almost.2",
+      "seconds": 2.63,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.32,
+      "levelDb": -20.35,
+      "peakDb": -6.4,
+      "wordsPerSecond": 1.79,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "story.moon.restored",
+      "seconds": 4.29,
+      "leadSeconds": 0.06,
+      "tailSeconds": 0.38,
+      "levelDb": -20.47,
+      "peakDb": -9.88,
+      "wordsPerSecond": 2.34,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "story.moon.shining.1",
+      "seconds": 3.82,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.28,
+      "levelDb": -20.5,
+      "peakDb": -10.92,
+      "wordsPerSecond": 2.31,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "stars.found.3",
+      "seconds": 2.21,
+      "leadSeconds": 0.06,
+      "tailSeconds": 0.33,
+      "levelDb": -20.18,
+      "peakDb": -9.98,
+      "wordsPerSecond": 1.65,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "story.mercury.reveal",
+      "seconds": 5.26,
+      "leadSeconds": 0.05,
+      "tailSeconds": 0.21,
+      "levelDb": -20.28,
+      "peakDb": -9.42,
+      "wordsPerSecond": 2.2,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "marker.slate",
+      "seconds": 3.46,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.25,
+      "levelDb": -20.23,
+      "peakDb": -7.27,
+      "wordsPerSecond": 1.91,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "planet.homeHint",
+      "seconds": 3.23,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.25,
+      "levelDb": -20.45,
+      "peakDb": -6.72,
+      "wordsPerSecond": 2.75,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "home.ask",
+      "seconds": 1.64,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.48,
+      "levelDb": -20.38,
+      "peakDb": -7.15,
+      "wordsPerSecond": 3.7,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    },
+    {
+      "line": "rotate",
+      "seconds": 2.07,
+      "leadSeconds": 0.07,
+      "tailSeconds": 0.35,
+      "levelDb": -20.15,
+      "peakDb": -9.23,
+      "wordsPerSecond": 2.42,
+      "letter": null,
+      "letterRuns": null,
+      "letterConfidence": null
+    }
+  ]
+}

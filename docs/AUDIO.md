@@ -9,6 +9,10 @@ Phase 5 — every family of lines built from a template (a letter's
 questions and praise, each rhyme pair's, each word's beats, and so on),
 each phrasing as written with every item it is said for, replays included.
 
+**Since v0.7.1 one stretch of play has a recorded voice**: the first trip to
+the Moon and its Letter Explorer mission, in an AI-generated voice ("The
+voice pilot", below). Everywhere else Pip still uses the device's voice.
+
 ## One owner, one cue at a time
 
 Everything the app says is a **cue**: an id, what may show on screen
@@ -20,7 +24,8 @@ code (a contract checks this).
 
 Each cue is resolved in one place, `audioRoute()`:
 
-1. **A recording**, if one is attached to the cue.
+1. **A recording**, if one is attached to the cue — for a line of the voice
+   pilot, only inside the pilot (below).
 2. **A sound a child learns from** (a letter's sound, a word said sound by
    sound, a word blended) plays in the **development phonics voice**. It is
    **never** given to the device voice.
@@ -94,15 +99,81 @@ with its second tap.
 natural. It is still the device's built-in speech voice — the best one
 installed (a Premium voice, then an Enhanced one, then any US English
 voice; a tie is settled by name, so the order a device lists its voices in
-never decides). No recordings exist, and no authorized way to make natural
-narration was available, so Pip's voice naturalness is still limited. The
-recording list is complete enough to hand to a voice actor; recordings, not
-a slower synthesizer, are the way to a warm, human Pip.
+never decides). Outside the voice pilot (below), Pip's voice naturalness is
+still limited. The recording list is complete enough to hand to a voice
+actor; recordings, not a slower synthesizer, are the way to a warm Pip.
 
 **Delayed visuals.** In Sound Scout the pictures appear only as Pip names
 them, so the sound is heard before there is anything to look at. In Word
 Builder each slot lights as its sound plays, and the word's picture appears
 only once it is built.
+
+## The voice pilot (v0.7.1)
+
+Pip's first recorded voice, for one stretch of play: **the first trip to the
+Moon** — Launch, the landing, "Tap the beacon to start!", the whole first
+Letter Explorer mission (M, S, O and T), its celebration and the way home —
+and that mission whenever it is played again, from its lit beacon or from
+the grown-ups area. Everywhere else, Pip still uses the device's voice.
+
+**What it is.** 40 lines (`VOICE_PILOT.lines`), generated with the
+Speechify AI Voice API from a stock adult US English voice ("Harper",
+`harper_32`, model `simba-3.2`), 20% slower than its own pace and in its
+"warm" style. **It is AI-generated, not a human voice.** The service's
+terms ask that every use says so: each MP3 carries "AI-generated voice, not
+a human voice. Voices powered by Speechify." in its tags, and the grown-ups
+area says so beside the pilot. How the clips are made:
+[tools/voice/README.md](../tools/voice/README.md); every take:
+`tools/voice/takes.json`; every measurement: `tools/voice/check.json`.
+
+**One voice per exchange.** A pilot recording plays only inside the pilot
+(`voicePilot.on`: set by the Launch that brings the pilot's mission and by
+starting that mission, ended by the flight home or by any other mission).
+Outside it, the same line is the device voice. Inside it, every line that
+stretch of play can say is recorded — "Go back to Earth?", the prompt to
+turn the phone, the nudge and the help included — so Pip never changes
+voice in the middle of an exchange. A family of lines rotates through its
+recorded phrasings only (`pilotTakes()`): the questions alternate "Find the
+letter em." and "Where is the letter em?", praise alternates its two
+recorded phrasings and is never the same twice in a row, and the nudge
+repeats its one.
+
+**Letter names** are said inside their sentences, as the script writes
+them. The one exception is the letter O: sent to the service as "oh", it
+was read as the exclamation, and the recogniser found no letter in three of
+six lines; sent as "O", all six were heard as O. Letter **sounds**, words
+said sound by sound and blended words are not part of the pilot: they stay
+separate assets, made by the development phonics voice, never by this one.
+
+**Pace.** The clips are made slower than the voice's own pace: about 2.9
+words a second in a story line, before the app's own pauses. A clip always
+plays at the speed it was made; "A little quicker" shortens only the pauses
+between lines, so the voice itself is never sped up or stretched.
+
+**Offline and reliable.** The clips install with the app: 40 files, 126 s,
+752 KB at 48 kbps, measured apart from the pictures, whose budgets they do
+not touch (contract 63 holds them under 800 KB). The service worker answers
+a clip from this version's cache first, so a lesson never waits on the
+network, and in the byte ranges an audio element asks for: Safari will not
+play a whole-file answer to a range request. One media element plays one
+clip at a time; a new line stops the last, and every play is settled however
+it ends. A clip that cannot play is said by the device voice instead, and a
+clip that never reports its end is waited for its own length, then Pip
+moves on.
+
+**What was checked, and what was not.** Every clip was measured (length,
+lead-in and tail, speaking level, peak, pace), and each letter line was put
+three times to Windows' offline speech recogniser, which had to choose
+between M, S, O and T in the same sentence: 20 of 24 were heard as intended
+every time, 21 at least once, and none was ever heard as another letter.
+The other three are sentences the recogniser could not match with either
+spelling of the letter, while the same letter passed in five other lines.
+**No person has listened to the clips here**: whether Pip now sounds warm,
+clear and comfortably paced is for the first listen on an iPhone.
+
+**To hear it:** the grown-ups area, "Pip's voice (pilot)". "Hear a sample"
+plays three lines; "Play the pilot trip" flies to the Moon, where the beacon
+starts Letter Explorer in the recorded voice.
 
 ## Letter name and letter sound
 
@@ -198,13 +269,15 @@ iOS 17 and later: `navigator.audioSession.type = 'playback'`. It also
 pauses another app's music while the game plays, so it is a choice to
 make, not a default to slip in.
 
-**Recordings on an iPad** will play through one media element that the
-first tap wakes (`MediaVoice`). iOS lets a woken element play later without
-another tap, where a new element each time would be refused. That path is
-built and tested with a stand-in element, but **not on a device**: no
-recordings exist yet. Verify it with the first recordings. The element is
-only woken once a recording exists, because a woken element can show iOS's
-"now playing" controls.
+**Recordings on an iPad** play through one media element that the first
+tap wakes (`MediaVoice`). iOS lets a woken element play later without
+another tap, where a new element each time would be refused. Since v0.7.1
+it plays the voice pilot's clips: tested with a stand-in element in the
+contracts and with a real one in Chromium (online, offline from the cache,
+backgrounded, tapped fast), but **not yet on an iPhone or iPad**. The
+element is only woken once a recording exists, because a woken element can
+show iOS's "now playing" controls, and the silence that wakes it is never
+allowed to pause the line the same tap starts.
 
 ## Pip's voice
 

@@ -16,7 +16,7 @@
  */
 
 /* APP-CACHE-BEGIN */
-const CACHE_NAME = 'space-kindergarten-v0.7.0';
+const CACHE_NAME = 'space-kindergarten-v0.7.1';
 /* APP-CACHE-END */
 
 /* The precache list is derived too — from ASSET_REGISTRY in index.html — by
@@ -120,7 +120,47 @@ const ASSETS = [
   './assets/rocket/gear-ring.webp',
   './assets/rocket/gear-flags.webp',
   './assets/rocket/gear-dish.webp',
-  './assets/characters/pip.webp'
+  './assets/characters/pip.webp',
+  './assets/voice/travel-launch-1.mp3',
+  './assets/voice/story-moon-first-arrive.mp3',
+  './assets/voice/story-moon-arrive-3.mp3',
+  './assets/voice/marker-beacon.mp3',
+  './assets/voice/mission-how-to.mp3',
+  './assets/voice/mission-again-1.mp3',
+  './assets/voice/find-m.mp3',
+  './assets/voice/find-m-3.mp3',
+  './assets/voice/found-m-0.mp3',
+  './assets/voice/found-m-1.mp3',
+  './assets/voice/again-m-0.mp3',
+  './assets/voice/show-m.mp3',
+  './assets/voice/find-s.mp3',
+  './assets/voice/find-s-3.mp3',
+  './assets/voice/found-s-0.mp3',
+  './assets/voice/found-s-1.mp3',
+  './assets/voice/again-s-0.mp3',
+  './assets/voice/show-s.mp3',
+  './assets/voice/find-o.mp3',
+  './assets/voice/find-o-3.mp3',
+  './assets/voice/found-o-0.mp3',
+  './assets/voice/found-o-1.mp3',
+  './assets/voice/again-o-0.mp3',
+  './assets/voice/show-o.mp3',
+  './assets/voice/find-t.mp3',
+  './assets/voice/find-t-3.mp3',
+  './assets/voice/found-t-0.mp3',
+  './assets/voice/found-t-1.mp3',
+  './assets/voice/again-t-0.mp3',
+  './assets/voice/show-t.mp3',
+  './assets/voice/feedback-almost-1.mp3',
+  './assets/voice/feedback-almost-2.mp3',
+  './assets/voice/story-moon-restored.mp3',
+  './assets/voice/story-moon-shining-1.mp3',
+  './assets/voice/stars-found-3.mp3',
+  './assets/voice/story-mercury-reveal.mp3',
+  './assets/voice/marker-slate.mp3',
+  './assets/voice/planet-home-hint.mp3',
+  './assets/voice/home-ask.mp3',
+  './assets/voice/rotate.mp3'
 ];
 /* APP-ASSETS-END */
 
@@ -225,6 +265,7 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   if(req.method !== 'GET') return;
   if(new URL(req.url).origin !== location.origin) return;
+  if(isVoiceClip(req.url)){ event.respondWith(voiceClip(req)); return; }
 
   event.respondWith(
     (req.mode === 'navigate' ? fetch(req, { cache: 'no-cache' }) : fetch(req))
@@ -239,3 +280,44 @@ self.addEventListener('fetch', event => {
       .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
   );
 });
+
+/* Pip's recorded voice: a clip this version installed is answered from
+ * its cache first, so a lesson never waits on the network for a line and
+ * every clip plays offline. The cache holds this version's own clips,
+ * fetched fresh at install, so cache-first cannot mix versions. An audio
+ * element asks for its file in byte ranges ("bytes=0-1", then the rest),
+ * and Safari will not play a whole-file answer to a range request: the
+ * range asked for is cut from the cached file and answered as 206 Partial
+ * Content. A clip this version did not install goes to the network, which
+ * answers ranges itself; if nothing answers, the app hears an error and
+ * Pip's device voice says the line instead. */
+function isVoiceClip(url){
+  return PRECACHED.has(url) && new URL(url).pathname.indexOf('/assets/voice/') !== -1;
+}
+function voiceClip(req){
+  return caches.open(CACHE_NAME)
+    .then(cache => cache.match(req.url, { ignoreVary: true }))
+    .then(hit => (hit && hit.ok ? byteRange(req, hit) : fetch(req)))
+    .catch(() => fetch(req));
+}
+/* One range, as media elements ask: "bytes=a-b", "bytes=a-" or "bytes=-n".
+ * No range, or one this cannot read, is answered with the whole file,
+ * which HTTP allows. A range past the end is 416. */
+function byteRange(req, res){
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.get('range') || '').trim());
+  if(!m || (m[1] === '' && m[2] === '')) return res;
+  return res.arrayBuffer().then(buf => {
+    const size = buf.byteLength;
+    const start = m[1] === '' ? Math.max(0, size - Number(m[2])) : Number(m[1]);
+    const end = m[1] === '' || m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+    if(start >= size || start > end){
+      return new Response(null, { status: 416, statusText: 'Range Not Satisfiable', headers: { 'Content-Range': 'bytes */' + size } });
+    }
+    return new Response(buf.slice(start, end + 1), { status: 206, statusText: 'Partial Content', headers: {
+      'Content-Type': res.headers.get('Content-Type') || 'audio/mpeg',
+      'Content-Range': 'bytes ' + start + '-' + end + '/' + size,
+      'Content-Length': String(end - start + 1),
+      'Accept-Ranges': 'bytes'
+    } });
+  });
+}

@@ -124,10 +124,20 @@ Fonts evaluated first:
 | **Andika** (SIL, Open Font License 1.1) | A good literacy typeface: single-storey "a" and "g", clear I and l, free to redistribute. Not bundled, because handwriting needs its own stroke data anyway; drawing the reading letters from the same strokes guarantees reading and writing agree, adds no download and no licence to track, and works offline with nothing to cache |
 | **Letters drawn from the writing strokes** | **Chosen.** Uniform round-ended strokes, like classroom print |
 
+## v0.7.1: Pip's recorded voice — the source
+
+| What | Source | Rights | Generated or human |
+|---|---|---|---|
+| The voice pilot's 40 narration lines (`assets/voice/`, listed in [AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)) | Generated with the Speechify AI Voice API — its documented API (`POST https://api.speechify.ai/v1/audio/speech`), the stock voice "Harper" (`harper_32`), model `simba-3.2` — from the scripts in `VOICE_CUES` and `LETTER_LINES`, on 2026-10-03, by `tools/voice`. 2,843 billable characters in all, auditions included | The Speechify AI Voice API terms treat generated output as the customer's, and allow it in the customer's own application for its end users, provided every use is disclosed as AI-generated and "Voices powered by Speechify" is shown in the product. Both are done: each file's ID3 tags, and the grown-ups area. The app ships the files and never calls the service | **AI-generated, not a human voice.** A stock catalogue voice: not cloned, not a child's voice, not an imitation of a real person or a character. Catalogue voices labelled as based on a real person were excluded |
+
 ## Sources still to choose
 
-- **Recordings** of every sound, word and line, by a person who can produce
-  isolated sounds without an added schwa ([AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)).
+- **Recordings by a person** of every sound and every word said sound by
+  sound or blended, by someone who can produce isolated sounds without an
+  added schwa ([AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)). These are never
+  AI-generated.
+- **Whether recorded narration grows beyond the voice pilot**, and in which
+  voice, once the pilot has been heard on a device.
 - **An educator's review** of everything in [CONTENT-REVIEW.md](CONTENT-REVIEW.md),
   including rhymes and syllable counts for regional pronunciation.
 - **Later sight words**: the rest of the pre-primer list, then primer, once

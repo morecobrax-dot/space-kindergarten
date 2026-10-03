@@ -49,6 +49,20 @@ the next marker, or home → the place relit in Earth's sky → Launch / Rocket 
 screens, and a place's markers are its missions. Every screen has one
 obvious next action, and Earth is always a natural place to stop.
 
+## The voice pilot: what is built (v0.7.1)
+
+A first listen to a recorded Pip, in one coherent stretch of play, before
+anything more is recorded.
+
+| Area | Built |
+|---|---|
+| A recorded voice | 40 lines, AI-generated (Speechify, the stock voice "Harper"): the first trip to the Moon from Launch to the way home, with the whole first Letter Explorer mission (M, S, O and T), and that mission whenever it is played again. Everywhere else Pip keeps the device's voice, so the voice never changes in the middle of an exchange |
+| Honest about it | The grown-ups area says "This voice is AI-generated, not a human voice. Voices powered by Speechify."; every file says so in its tags; [CONTENT-SOURCES.md](CONTENT-SOURCES.md) records the source and the rights |
+| Hearing it | The grown-ups area, "Pip's voice (pilot)": "Hear a sample", or "Play the pilot trip" (it flies to the Moon; the beacon starts Letter Explorer). There is no voice choice for children |
+| Offline | The clips install with the app (752 KB, measured apart from the pictures) and play from the cache, in the byte ranges Safari asks for |
+| One audio owner | `Voice`, typed cues, `audioRoute()` and `VOICE_RECORDINGS`, as before. A clip that cannot play is said by the device voice; letter sounds never use this voice |
+| Fixed on the way | The silence that wakes the media element could pause the very line it was woken for (it had never played a recording before now). Holding the grown-ups lock could close the page again as the finger lifted (seen in Chromium) |
+
 ## Phase 5: what is built (v0.7.0)
 
 Phase 5 made the app worth coming back to: a mission played again asks
@@ -282,11 +296,14 @@ These are never planned:
   - [ART-DIRECTION.md](ART-DIRECTION.md) sets the look.
     [ASSET-BRIEFS.md](ASSET-BRIEFS.md) says what a final version of each must
     match, so final art can replace the drafts one file at a time.
-- **The voice:** the device's built-in speech synthesiser, labelled as a
-  temporary stand-in in the grown-ups area and in code. Phase 5 slowed it to
-  a calm pace; that makes it easier to follow, not more natural. Every line
-  already has a script ready for a voice actor, the lines built from
-  templates included ([AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)).
+- **The voice:** outside the voice pilot, the device's built-in speech
+  synthesiser, labelled as a temporary stand-in in the grown-ups area and in
+  code. Phase 5 slowed it to a calm pace; that makes it easier to follow, not
+  more natural. Every line already has a script ready for a voice actor, the
+  lines built from templates included ([AUDIO-RECORDINGS.md](AUDIO-RECORDINGS.md)).
+- **The voice pilot's recordings are AI-generated and DRAFT**: no person has
+  listened to them in the app, and no educator has reviewed them
+  ([CONTENT-REVIEW.md](CONTENT-REVIEW.md) section 29).
 - **Letter sounds, words said sound by sound, and blended words** are
   DEVELOPMENT AUDIO: a formant synthesiser in the app, never the device voice,
   labelled in the code, the grown-ups area and [AUDIO.md](AUDIO.md). The 39
@@ -318,6 +335,42 @@ packaging removes this risk.
 **If the App Store route is taken:** the Kids Category would expect a stronger
 parental gate (one that needs adult-level knowledge) before any external link
 or purchase. There are none of either today.
+
+## Voice pilot QA record (v0.7.1, 2026-10-03)
+
+**Tested in the harness, and in Chromium (headless Edge on Windows, every
+run a throwaway guest session with sync off) against a local server that
+answers byte ranges like GitHub Pages, with real touch input, at 874×402
+(an iPhone in landscape) and 1180×820 (an iPad in landscape). The upgrade
+used the real v0.7.0 build (645b1da). No WebKit build was available on
+this machine, no physical iPhone or iPad was tested, and no person
+listened to the clips: they were measured, and checked by a speech
+recogniser, not heard.**
+
+| Check | Result |
+|---|---|
+| The source | The Speechify AI Voice API's documented endpoint; the stock voice "Harper" (`harper_32`, model `simba-3.2`); 2,843 billable characters, auditions included, within the free allowance. The key came from the environment and was never printed, written or committed |
+| The clips | 40 files, 126.3 s, 769,701 bytes (752 KB at 48 kbps). Every speaking level within a decibel of -20 dBFS, every peak under -6 dBFS, 0.02 to 0.07 s before the first sound and 0.09 to 0.59 s after the last |
+| Letter names | Each of the 24 letter lines put three times to Windows' offline recogniser, choosing between M, S, O and T in the same sentence: 20 heard as intended every time, 21 at least once, none ever as another letter. "oh" sent as written matched no letter in three of six lines; sent as "O", all six did |
+| First launch | The worker installed all 40 clips before play; the first tap woke the media element; the welcome, outside the pilot, in the device voice |
+| The first trip, by touch | From Launch to the slate's call: 26 clips, nothing in the device voice, no errors, no clip cut short, every clip at normal speed, and no clip asked of the network (cache-first). The questions alternated "Find the letter…" and "Where is the letter…", praise never repeated twice running, one miss brought "Almost! Listen again." and the question again, two misses the help line, and the nudge came twice |
+| Rapid taps | Five fast taps on the replay-audio button: one clip, heard to its end |
+| Backgrounded mid-clip | The clip paused; brought back, the question was asked again in the pilot voice |
+| The grown-ups lock | Held 3.3 s by touch, it opened the grown-ups area, and the finger lifting no longer closed it again (before the fix it did, in Chromium) |
+| The grown-ups panel | The disclosure and both buttons (118×44 and 136×44 px); "Hear a sample" played its three clips, and tapped twice started over in the same voice |
+| Offline | With the server down, the app started from its cache and the sample and the pilot trip played: 17 clips, nothing in the device voice, no errors |
+| Pace | "A little quicker": the pauses between clips 417, 78, 390 and 79 ms against calm's 552, 101, 505 and 105 ms; every clip at speed 1 |
+| Voice off | No clip and no device voice; the caption shown |
+| A broken clip | A missing file: its error, then the device voice said the line |
+| Upgrade | v0.7.0 played (the Moon restored, its writer, Mercury's first mission, a paint bought and worn, effects off, the pace "a little quicker"). The working tree deployed on the same origin: the v0.7.0 updater brought v0.7.1 in 16 s later, with one reload; every saved record and the sound settings byte-identical; the new cache held 135 files, the 40 clips among them. The pilot trip then played online (19 clips, none asked of the network) and, after a restart with the network cut, offline (19 clips), never in the device voice |
+| Contracts | `npm run verify`: 1651 passed, 0 failed; config verify ok; the Mission Control status gate ok. New: contract 63 (the voice pilot, 79 checks) and contract 26's split between pictures and recordings |
+| Mutation | 17 defects planted in the pilot's code and the worker, one at a time, in a copy: 16 caught at once. The one missed — another mission on the same visit leaving the pilot on, so Moon Writer's celebration played two recorded lines among the device voice's — got a contract, and was then caught: 17 of 17 |
+| Budgets | Pictures untouched: core 1,151,750 bytes, 91.5% of the 1.2 MB budget. Audio, measured apart: 752 KB of its 800 KB |
+
+**Not tested:** a physical iPhone or iPad; Safari (the byte-range answers
+were tested in the contracts and in Chromium, not in WebKit); how the voice
+sounds — whether Pip is warm, clear and comfortably paced is for the first
+listen; how a parent reads the AI disclosure.
 
 ## Phase 5 QA record (v0.7.0, 2026-09-28)
 

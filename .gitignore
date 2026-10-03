@@ -11,3 +11,7 @@ Thumbs.db
 # Master renders from tools/art/render.js: lossless and large. Only the
 # encoded files in assets/ ship.
 tools/art/out/
+
+# Takes, clips and checks from tools/voice: only the MP3 files in
+# assets/voice/ ship.
+tools/voice/out/

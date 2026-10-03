@@ -86,7 +86,8 @@ const SUITES = [
   C.testReplays,
   C.testSpeechPace,
   C.testPhone,
-  C.testComeBack
+  C.testComeBack,
+  C.testVoicePilot
 ];
 
 async function main(){
