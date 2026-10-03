@@ -3,11 +3,11 @@
   "appId": "space-kindergarten",
   "version": "0.7.1",
   "phase": "Voice pilot",
-  "status": "release_ready",
+  "status": "stable",
   "needsQa": true,
   "needsDecision": false,
-  "currentTask": "v0.7.1: Pip's voice pilot, an AI-generated recorded voice for the first Moon trip and its Letter Explorer mission. Release cut; production check in progress.",
-  "nextAction": "Verify production, then listen on an iPhone: is Pip warm, clear and comfortably paced?",
+  "currentTask": "v0.7.1 live and verified in production: Pip's voice pilot, an AI-generated recorded voice for the first Moon trip and its Letter Explorer mission.",
+  "nextAction": "Listen on an iPhone: is Pip warm, clear and comfortably paced?",
   "blocker": null,
-  "updatedAt": "2026-10-03T22:21:12Z"
+  "updatedAt": "2026-10-03T23:26:00Z"
 }
